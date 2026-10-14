@@ -108,7 +108,9 @@ export function CanvasNodeHoverToolbar({
 
     const activeNode = node;
     const left = viewport.x + (node.position.x + node.width / 2) * viewport.k;
-    const top = viewport.y + node.position.y * viewport.k - 14;
+    // The node title sits 28px above the node in world space and scales with the
+    // canvas, so clear it in screen space before applying the fixed gap.
+    const top = viewport.y + node.position.y * viewport.k - 28 * viewport.k - 8;
     const isImage = node.type === CanvasNodeType.Image;
     const isVideo = node.type === CanvasNodeType.Video;
     const isAudio = node.type === CanvasNodeType.Audio;
