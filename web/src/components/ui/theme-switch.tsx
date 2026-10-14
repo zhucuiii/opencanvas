@@ -13,28 +13,63 @@ type ThemeSwitchProps = {
     title?: string;
 };
 
+const REVEAL_MS = 400;
+// `finished` should always settle, but if it somehow does not, this releases the
+// in-flight guard so the reveal cannot stay disabled forever.
+const REVEAL_TIMEOUT_MS = 1200;
+
 /**
  * Day/night switch styled as a track with a thin bar handle that slides and
- * rotates on toggle. Keeps the circular view-transition reveal used elsewhere.
+ * rotates on toggle, plus a circular view-transition reveal.
+ *
+ * The reveal is deliberately serialised: a second toggle while one is still
+ * playing would put two full-viewport snapshots on the compositor at once,
+ * which is enough to take the renderer down (observed as STATUS_BREAKPOINT).
+ * Toggling during a reveal therefore switches the theme without animating.
  */
 export function ThemeSwitch({ theme, onThemeChange, className, style, "aria-label": ariaLabel, title }: ThemeSwitchProps) {
     const { t } = useTranslation();
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const transitionRef = useRef<ReturnType<typeof document.startViewTransition> | null>(null);
+    const animationRef = useRef<Animation | null>(null);
+    const releaseTimerRef = useRef<number | null>(null);
     const isDark = theme === "dark";
     // Animating the handle only after mount avoids a slide-in on first render.
     const [animate, setAnimate] = useState(false);
     useEffect(() => setAnimate(true), []);
 
+    const release = useCallback(() => {
+        if (releaseTimerRef.current !== null) {
+            window.clearTimeout(releaseTimerRef.current);
+            releaseTimerRef.current = null;
+        }
+        animationRef.current?.cancel();
+        animationRef.current = null;
+        transitionRef.current = null;
+    }, []);
+
+    useEffect(() => release, [release]);
+
     const toggle = useCallback(() => {
         const button = buttonRef.current;
-        const nextTheme = isDark ? "light" : "dark";
+        // Read the current theme off the DOM, not off props: the non-animated
+        // path below does not flush a React update, so two clicks landing in the
+        // same render would both see a stale prop and the second would be a no-op.
+        const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
         const applyTheme = () => {
             document.documentElement.classList.toggle("dark", nextTheme === "dark");
             document.documentElement.style.colorScheme = nextTheme;
             onThemeChange(nextTheme);
         };
 
-        if (!button || typeof document.startViewTransition !== "function") {
+        // One reveal at a time — see the note on the component.
+        if (transitionRef.current) {
+            applyTheme();
+            return;
+        }
+
+        const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+        if (!button || reduceMotion || typeof document.startViewTransition !== "function") {
             applyTheme();
             return;
         }
@@ -45,27 +80,26 @@ export function ThemeSwitch({ theme, onThemeChange, className, style, "aria-labe
         const x = left + width / 2;
         const y = top + height / 2;
         const maxRadius = Math.hypot(Math.max(x, viewportWidth - x), Math.max(y, viewportHeight - y));
+        const from = `circle(0px at ${x}px ${y}px)`;
 
-        const root = document.documentElement;
-        root.dataset.magicuiThemeVt = "active";
-        root.style.setProperty("--magicui-theme-toggle-vt-duration", "400ms");
-        root.style.setProperty("--magicui-theme-vt-clip-from", `circle(0px at ${x}px ${y}px)`);
-        const cleanup = () => {
-            delete root.dataset.magicuiThemeVt;
-            root.style.removeProperty("--magicui-theme-toggle-vt-duration");
-            root.style.removeProperty("--magicui-theme-vt-clip-from");
-        };
-
-        const transition = document.startViewTransition(() => {
-            flushSync(applyTheme);
-        });
-        transition.finished.finally(cleanup);
-        transition.ready
-            .then(() => {
-                root.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxRadius}px at ${x}px ${y}px)`] }, { duration: 400, easing: "ease-in-out", fill: "forwards", pseudoElement: "::view-transition-new(root)" });
-            })
-            .catch(() => {});
-    }, [isDark, onThemeChange]);
+        try {
+            const transition = document.startViewTransition(() => {
+                flushSync(applyTheme);
+            });
+            transitionRef.current = transition;
+            releaseTimerRef.current = window.setTimeout(release, REVEAL_TIMEOUT_MS);
+            transition.finished.finally(release);
+            transition.ready
+                .then(() => {
+                    animationRef.current = document.documentElement.animate({ clipPath: [from, `circle(${maxRadius}px at ${x}px ${y}px)`] }, { duration: REVEAL_MS, easing: "ease-in-out", fill: "forwards", pseudoElement: "::view-transition-new(root)" });
+                })
+                .catch(() => undefined);
+        } catch {
+            // startViewTransition can throw if a transition is already pending.
+            release();
+            applyTheme();
+        }
+    }, [onThemeChange, release]);
 
     return (
         <button
