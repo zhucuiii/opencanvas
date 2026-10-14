@@ -718,56 +718,64 @@
     }
 }
 
-/* Canvas node glass surface: a coloured glow orbits behind the card and
-   spills past its edges, while the card face itself stays opaque. */
+/* Canvas node glass surface. Structure mirrors the reference card one for
+   one — an outer clipping frame, a blob behind an inset frosted pane — with
+   the light values retuned for a dark node instead of pure white. */
 .canvas-node-glass {
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    overflow: hidden;
     pointer-events: none;
 }
 
-/* The glow is larger than the node and allowed to overflow, so its halo shows
-   around the edges. The card face covers the part that sits underneath. */
+/* 75% of the node's width, matching the reference blob, and clipped by the
+   frame above so it stays inside the card. */
 .canvas-node-glass-blob {
     position: absolute;
-    inset: -4%;
+    top: 50%;
+    left: 50%;
+    width: 75%;
+    aspect-ratio: 1;
     border-radius: 50%;
-    background: var(--node-glass-blob, rgba(47, 128, 255, 0.55));
-    filter: blur(18px);
+    background: var(--node-glass-blob, rgba(8, 8, 8, 0.19));
+    filter: blur(12px);
     will-change: transform;
-    animation: canvas-node-glass-orbit 6s infinite ease-in-out;
+    animation: canvas-node-glass-orbit 5s infinite ease;
 }
 
+/* Mirrors blob-bounce: hold the -100% anchor and step one blob-size across the
+   corners via translate3d. */
 @keyframes canvas-node-glass-orbit {
     0% {
-        transform: translate(-9%, -9%);
+        transform: translate(-100%, -100%) translate3d(0, 0, 0);
     }
 
     25% {
-        transform: translate(9%, -9%);
+        transform: translate(-100%, -100%) translate3d(100%, 0, 0);
     }
 
     50% {
-        transform: translate(9%, 9%);
+        transform: translate(-100%, -100%) translate3d(100%, 100%, 0);
     }
 
     75% {
-        transform: translate(-9%, 9%);
+        transform: translate(-100%, -100%) translate3d(0, 100%, 0);
     }
 
     100% {
-        transform: translate(-9%, -9%);
+        transform: translate(-100%, -100%) translate3d(0, 0, 0);
     }
 }
 
-/* The opaque face sits on top of the glow and hides the part inside the card,
-   leaving only the spill visible around the edges. */
+/* The inset frosted pane: same 5px inset and radius step as the reference. */
 .canvas-node-glass-frost {
     position: absolute;
-    inset: 0;
-    border-radius: inherit;
+    inset: 5px;
+    border-radius: 16px;
     background: var(--node-glass-fill, rgba(255, 255, 255, 0.95));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     outline: 2px solid var(--node-glass-edge, rgba(255, 255, 255, 0.85));
     outline-offset: -2px;
 }
