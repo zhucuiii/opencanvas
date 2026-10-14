@@ -3,7 +3,7 @@ import { Tooltip } from "antd";
 import { Keyboard, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { ThemeSwitch } from "@/components/ui/theme-switch";
 import { changeAppLocale, type AppLocale } from "@/i18n";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useConfigStore } from "@/stores/use-config-store";
@@ -39,7 +39,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                     {locale === "zh-CN" ? "中" : "EN"}
                 </button>
             </Tooltip>
-            <AnimatedThemeToggler theme={theme} onThemeChange={setTheme} className={naturalIconClass} style={iconStyle} aria-label={t(theme === "dark" ? "topNav.lightTheme" : "topNav.darkTheme")} title={t(theme === "dark" ? "topNav.lightTheme" : "topNav.darkTheme")} />
+            <ThemeSwitch theme={theme} onThemeChange={setTheme} className="mx-1" style={iconStyle} aria-label={t(theme === "dark" ? "topNav.lightTheme" : "topNav.darkTheme")} title={t(theme === "dark" ? "topNav.lightTheme" : "topNav.darkTheme")} />
             {onOpenShortcuts ? (
                 <button type="button" className={naturalIconClass} style={iconStyle} onClick={onOpenShortcuts} aria-label={t("topNav.shortcuts")} title={t("topNav.shortcuts")}>
                     <Keyboard className="size-4" />

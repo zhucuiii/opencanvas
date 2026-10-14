@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Segmented, Switch } from "antd";
 import { CircleDot, Eraser, Grid2x2, Group, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Settings2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
 
-import { canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
+import { canvasThemes, type CanvasBackgroundMode, type CanvasTheme } from "@/lib/canvas-theme";
 import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { getNodeSpec } from "@/constant/canvas";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { ThemeSwitch } from "@/components/ui/theme-switch";
 import { useTranslation } from "react-i18next";
 
 export function CanvasToolbar({
@@ -218,15 +218,12 @@ export function CanvasToolbar({
                 >
                     <div className="px-1 pb-2 text-sm font-medium opacity-65">{t("canvas.toolbar.appearance")}</div>
                     <div className="px-1 pb-1.5 text-[11px] font-medium opacity-50">{t("canvas.toolbar.themeMode")}</div>
-                    <div className="grid grid-cols-2 gap-1 rounded-lg p-1" style={{ background: theme.toolbar.itemHover }}>
-                        <CanvasThemeButton colorTheme={colorTheme} targetTheme="light" onThemeChange={setTheme}>
-                            <Sun className="size-4" />
-                            {t("canvas.toolbar.light")}
-                        </CanvasThemeButton>
-                        <CanvasThemeButton colorTheme={colorTheme} targetTheme="dark" onThemeChange={setTheme}>
-                            <Moon className="size-4" />
-                            {t("canvas.toolbar.dark")}
-                        </CanvasThemeButton>
+                    <div className="flex items-center justify-between rounded-lg px-2 py-1.5" style={{ background: theme.toolbar.itemHover }}>
+                        <span className="flex items-center gap-1.5 text-sm">
+                            {colorTheme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+                            {colorTheme === "dark" ? t("canvas.toolbar.dark") : t("canvas.toolbar.light")}
+                        </span>
+                        <ThemeSwitch theme={colorTheme} onThemeChange={(next) => setTheme(next)} />
                     </div>
                     <div className="mt-3 px-1 pb-1.5 text-[11px] font-medium opacity-50">{t("canvas.toolbar.gridStyle")}</div>
                     <Segmented
@@ -325,28 +322,6 @@ function ToolbarButton({
 
 function Divider({ theme }: { theme: CanvasTheme }) {
     return <div className="mx-1 h-6 w-px" style={{ background: theme.toolbar.border }} />;
-}
-
-function CanvasThemeButton({ colorTheme, targetTheme, onThemeChange, children }: { colorTheme: CanvasColorTheme; targetTheme: CanvasColorTheme; onThemeChange: (theme: CanvasColorTheme) => void; children: ReactNode }) {
-    const theme = canvasThemes[colorTheme];
-    const active = colorTheme === targetTheme;
-    const activeStyle = colorTheme === "light" ? { background: "#111111", color: "#ffffff" } : { background: theme.toolbar.activeBg, color: theme.toolbar.activeText };
-    const { t } = useTranslation();
-    const label = targetTheme === "dark" ? t("topNav.darkTheme") : t("topNav.lightTheme");
-
-    return (
-        <AnimatedThemeToggler
-            theme={colorTheme}
-            targetTheme={targetTheme}
-            onThemeChange={onThemeChange}
-            className="inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-sm transition"
-            style={active ? activeStyle : { color: theme.toolbar.item }}
-            aria-label={label}
-            title={label}
-        >
-            {children}
-        </AnimatedThemeToggler>
-    );
 }
 
 function DockTip({ label, x, theme }: { label: string; x: number; theme: CanvasTheme }) {
