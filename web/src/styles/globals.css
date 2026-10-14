@@ -718,69 +718,56 @@
     }
 }
 
-/* Canvas node glass surface, ported from the uiverse card:
-     .card  overflow-hidden frame with a two-way neumorphic shadow
-     .bg    a frosted panel inset inside the frame, with its own light fill
-     .blob  a soft dark blob orbiting behind the panel
-   Sizes are relative so the effect holds at any node size. */
+/* Canvas node glass surface: a coloured glow orbits behind the card and
+   spills past its edges, while the card face itself stays opaque. */
 .canvas-node-glass {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    overflow: hidden;
     pointer-events: none;
 }
 
-/* Centred in the node, then swept towards each corner. The blob is sized as a
-   share of each axis, so on a wide node it still reaches the left and right
-   edges instead of staying a small circle in the middle. */
+/* The glow is larger than the node and allowed to overflow, so its halo shows
+   around the edges. The card face covers the part that sits underneath. */
 .canvas-node-glass-blob {
     position: absolute;
-    inset: 0;
-    width: 60%;
-    height: 60%;
-    margin: auto;
+    inset: -4%;
     border-radius: 50%;
-    background: var(--node-glass-blob, rgba(8, 8, 8, 0.19));
-    filter: blur(12px);
+    background: var(--node-glass-blob, rgba(47, 128, 255, 0.55));
+    filter: blur(18px);
     will-change: transform;
-    animation: canvas-node-glass-orbit 5s infinite ease;
+    animation: canvas-node-glass-orbit 6s infinite ease-in-out;
 }
 
-/* With the blob centred, half the gap between its edge and the node edge is
-   33.3% of its own size, so these offsets bring it flush with each corner and
-   the overflow clip trims the blurred overshoot. */
 @keyframes canvas-node-glass-orbit {
     0% {
-        transform: translate(-33%, -33%);
+        transform: translate(-9%, -9%);
     }
 
     25% {
-        transform: translate(33%, -33%);
+        transform: translate(9%, -9%);
     }
 
     50% {
-        transform: translate(33%, 33%);
+        transform: translate(9%, 9%);
     }
 
     75% {
-        transform: translate(-33%, 33%);
+        transform: translate(-9%, 9%);
     }
 
     100% {
-        transform: translate(-33%, -33%);
+        transform: translate(-9%, -9%);
     }
 }
 
-/* The frosted pane is inset inside the frame and carries its own fill, which is
-   what makes the light panel and the surrounding edge read as glass. */
+/* The opaque face sits on top of the glow and hides the part inside the card,
+   leaving only the spill visible around the edges. */
 .canvas-node-glass-frost {
     position: absolute;
-    inset: 5px;
-    border-radius: 16px;
+    inset: 0;
+    border-radius: inherit;
     background: var(--node-glass-fill, rgba(255, 255, 255, 0.95));
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
     outline: 2px solid var(--node-glass-edge, rgba(255, 255, 255, 0.85));
     outline-offset: -2px;
 }
