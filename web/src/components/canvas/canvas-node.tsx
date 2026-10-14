@@ -409,9 +409,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                             // Mirrors the reference card: a dark blob drifting behind a
                             // light frosted pane. Dark mode keeps a faint blob on a
                             // darker pane so the same structure still reads.
-                            ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(8,8,8,.22)" : "rgba(255,255,255,.16)",
-                            ["--node-glass-fill" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.6)" : "rgba(41,37,36,.55)",
-                            ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.22)",
+                            ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(8,8,8,.22)" : "rgba(255,255,255,.3)",
+                            ["--node-glass-fill" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.6)" : "rgba(255,255,255,.07)",
+                            ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.2)",
                         }}
                     >
                         <span className="canvas-node-glass-blob" />
