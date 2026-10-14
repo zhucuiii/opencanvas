@@ -17,8 +17,6 @@ import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 const selectionBlue = "#2f80ff";
-/** Lighter tint for the lit edge of a selected node, on top of the glow. */
-const selectionEdge = "#8fc2ff";
 
 type CanvasNodeProps = {
     data: CanvasNodeData;
@@ -147,7 +145,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     // Transparent nodes such as SVGs blend into the canvas while retaining outlines for selected or related states.
     const transparentBg = Boolean(definition?.transparentBackground);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
-    const imageBorderColor = isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent";
+    const imageBorderColor = isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : "transparent";
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef({
@@ -364,12 +362,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className="relative h-full w-full overflow-visible rounded-3xl border-2"
                 style={{
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
-                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isActive ? selectionEdge : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
+                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
                     borderStyle: isGroup ? "dashed" : "solid",
                     boxShadow: isGroupDropTarget
                         ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10`
                         : isActive
-                          ? `0 0 0 1px ${selectionBlue}, 0 0 14px ${selectionBlue}88, 0 0 34px ${selectionBlue}44, inset 0 0 0 1px rgba(255,255,255,.28)`
+                          ? `0 0 0 1px ${theme.node.activeStroke}, 0 0 16px ${theme.node.activeStroke}40, inset 0 0 0 1px rgba(255,255,255,.2)`
                           : isRelated
                             ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)`
                             : isGroup || hasImageContent || hasVideoContent || transparentBg
