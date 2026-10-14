@@ -1,0 +1,184 @@
+/*
+ * 移植自 uiverse.io/Nawsome/tiny-chipmunk-51。
+ * 原版：静止时只有一个纯色方块，hover 时四条 2px 边线依次把自己描出来
+ * （上/左 0.5s、下/右 0.3s，错峰才形成"绕一圈"的观感），
+ * 同时文字翻页 —— 旧的一层向上翻走（带 5° 倾斜），新的一层从下方升上来。
+ *
+ * 改动：
+ * 1. 按钮配色改成黑白（黑底白字 / 白底黑字，随主题）。原版是 #568fa6 蓝灰。
+ * 2. 描边线单独保留强调色 --tracing-accent（默认原版的薄荷绿 #44d8a4）。
+ *    这里不能用黑白：线画在按钮最外圈 2px 上，深色主题下黑色线会和近黑的页面背景连成一片、
+ *    浅色主题下白色线又和浅色页面糊在一起，两个主题都看不见。原版正是靠强调色才成立。
+ * 3. 尺寸不再写死 150×50。原版尺寸固定是因为文字层全是 absolute，这里放一个
+ *    visibility:hidden 的 sizer 撑出宽高，标签文案多长都跟得上。
+ * 4. 丢掉 .start / data-start 那套"已开始"状态 —— 是游戏按钮的语义，跟我们的跳转按钮无关。
+ */
+
+.tracing-button {
+    --tracing-surface: #ffffff;
+    --tracing-ink: #171717;
+    --tracing-accent: #44d8a4;
+    /* 图标占位宽度（16px 图标 + 6px 间距），由组件按是否有图标传入。 */
+    --tracing-icon-slot: 0px;
+    --tracing-pad-x: 18px;
+
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px var(--tracing-pad-x);
+    border: 0;
+    /* 沿用初版的圆角（首页白按钮原是 rounded-xl = 12px，旁边的星轨按钮也是 12px）。 */
+    border-radius: 12px;
+    background-color: var(--tracing-surface);
+    color: var(--tracing-ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 横线：上边从右端往左长，下边从左端往右长。 */
+.tracing-button::before,
+.tracing-button::after {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    width: 0;
+    height: 2px;
+    background-color: var(--tracing-accent);
+    transition: all 0.3s cubic-bezier(0.35, 0.1, 0.25, 1);
+}
+
+.tracing-button::before {
+    right: 0;
+    top: 0;
+    transition: all 0.5s cubic-bezier(0.35, 0.1, 0.25, 1);
+}
+
+.tracing-button::after {
+    left: 0;
+    bottom: 0;
+}
+
+/* 竖线：右边从上往下长，左边从下往上长。 */
+.tracing-button__lines {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.tracing-button__lines::before,
+.tracing-button__lines::after {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 0;
+    background-color: var(--tracing-accent);
+    transition: all 0.3s cubic-bezier(0.35, 0.1, 0.25, 1);
+}
+
+.tracing-button__lines::before {
+    right: 0;
+    top: 0;
+    transition: all 0.5s cubic-bezier(0.35, 0.1, 0.25, 1);
+}
+
+.tracing-button__lines::after {
+    left: 0;
+    bottom: 0;
+}
+
+.tracing-button:not(:disabled):hover::before,
+.tracing-button:not(:disabled):hover::after {
+    width: 100%;
+}
+
+.tracing-button:not(:disabled):hover .tracing-button__lines::before,
+.tracing-button:not(:disabled):hover .tracing-button__lines::after {
+    height: 100%;
+}
+
+/* 撑尺寸用，不参与显示。 */
+.tracing-button__sizer {
+    visibility: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tracing-button__icon {
+    position: absolute;
+    left: var(--tracing-pad-x);
+    top: 50%;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    transform: translateY(-50%);
+}
+
+.tracing-button__label {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.tracing-button__title,
+.tracing-button__text {
+    position: absolute;
+    /* 让出图标占位，文字在剩余空间里居中。 */
+    left: calc(var(--tracing-pad-x) + var(--tracing-icon-slot));
+    right: var(--tracing-pad-x);
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.35, 0.1, 0.25, 1);
+}
+
+.tracing-button__title {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.tracing-button__text {
+    top: 150%;
+}
+
+.tracing-button:not(:disabled):hover .tracing-button__title {
+    top: -50%;
+    transform: rotate(5deg);
+}
+
+.tracing-button:not(:disabled):hover .tracing-button__text {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.tracing-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.tracing-button:focus-visible {
+    outline: 2px solid var(--tracing-ink);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tracing-button,
+    .tracing-button::before,
+    .tracing-button::after,
+    .tracing-button__lines::before,
+    .tracing-button__lines::after,
+    .tracing-button__title,
+    .tracing-button__text {
+        transition: none;
+    }
+}

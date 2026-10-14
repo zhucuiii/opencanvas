@@ -1,23 +1,28 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { App, Button } from "antd";
+import { App } from "antd";
 import { Download, FileUp, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { readZip } from "@/lib/zip";
+import { neutral } from "@/lib/app-theme";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
 import { CanvasDeleteProjectsDialog } from "@/components/canvas/canvas-delete-projects-dialog";
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
+import { TracingButton } from "@/components/ui/tracing-button";
 import { UnderlineButton } from "@/components/ui/underline-button";
 import type { CanvasExportFile } from "@/types/canvas-export";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
+import { useThemeStore } from "@/stores/use-theme-store";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 
 export default function CanvasPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
+    // 「新建画布」用主色做倒角按钮的面色，其余明暗层次由组件从这两个色算出来。
+    const palette = useThemeStore((state) => state.theme) === "dark" ? neutral.dark : neutral.light;
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -97,9 +102,9 @@ export default function CanvasPage() {
                         <UnderlineButton disabled={!hydrated} icon={<FileUp className="size-4" />} onClick={() => inputRef.current?.click()}>
                             {t("canvas.import")}
                         </UnderlineButton>
-                        <Button disabled={!hydrated} type="primary" icon={<Plus className="size-4" />} onClick={createAndEnter}>
+                        <TracingButton disabled={!hydrated} surface={palette.primary} ink={palette.primaryText} icon={<Plus className="size-4" />} onClick={createAndEnter}>
                             {t("canvas.create")}
-                        </Button>
+                        </TracingButton>
                     </div>
                 </header>
 
@@ -115,9 +120,9 @@ export default function CanvasPage() {
                     <section className="flex min-h-[360px] flex-col items-center justify-center border-y border-stone-200 text-center dark:border-stone-800">
                         <h2 className="text-xl font-medium">{t("canvas.empty")}</h2>
                         <p className="mt-3 text-sm text-stone-500">{t("canvas.emptyDescription")}</p>
-                        <Button type="primary" className="mt-6" icon={<Plus className="size-4" />} onClick={createAndEnter}>
+                        <TracingButton className="mt-6" surface={palette.primary} ink={palette.primaryText} icon={<Plus className="size-4" />} onClick={createAndEnter}>
                             {t("canvas.create")}
-                        </Button>
+                        </TracingButton>
                     </section>
                 )}
             </div>
