@@ -10,6 +10,11 @@ data/
 .idea
 web/dist
 
+# 本地开发用，不上传
+.agents/
+skills-lock.json
+CLAUDE.md
+
 **/dist
 web/public/plugins
 plugins/canvas/*/dist
