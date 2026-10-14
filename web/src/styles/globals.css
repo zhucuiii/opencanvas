@@ -731,12 +731,15 @@
     pointer-events: none;
 }
 
+/* Centred in the node, then swept towards each corner. The blob is sized as a
+   share of each axis, so on a wide node it still reaches the left and right
+   edges instead of staying a small circle in the middle. */
 .canvas-node-glass-blob {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    inset: 0;
+    width: 60%;
     height: 60%;
-    aspect-ratio: 1;
+    margin: auto;
     border-radius: 50%;
     background: var(--node-glass-blob, rgba(8, 8, 8, 0.19));
     filter: blur(12px);
@@ -744,27 +747,28 @@
     animation: canvas-node-glass-orbit 5s infinite ease;
 }
 
-/* Offset by its own size so the blob visits each corner in turn; the overflow
-   clip above trims whatever falls outside the frame. */
+/* With the blob centred, half the gap between its edge and the node edge is
+   33.3% of its own size, so these offsets bring it flush with each corner and
+   the overflow clip trims the blurred overshoot. */
 @keyframes canvas-node-glass-orbit {
     0% {
-        transform: translate(-100%, -100%);
+        transform: translate(-33%, -33%);
     }
 
     25% {
-        transform: translate(0%, -100%);
+        transform: translate(33%, -33%);
     }
 
     50% {
-        transform: translate(0%, 0%);
+        transform: translate(33%, 33%);
     }
 
     75% {
-        transform: translate(-100%, 0%);
+        transform: translate(-33%, 33%);
     }
 
     100% {
-        transform: translate(-100%, -100%);
+        transform: translate(-33%, -33%);
     }
 }
 
@@ -784,6 +788,6 @@
 @media (prefers-reduced-motion: reduce) {
     .canvas-node-glass-blob {
         animation: none;
-        transform: translate(-100%, -100%);
+        transform: translate(0, 0);
     }
 }
