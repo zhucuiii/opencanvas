@@ -1,0 +1,6 @@
+# Shell scripts must keep LF endings: a CRLF shebang makes the script
+# unexecutable inside the Linux container image.
+*.sh text eol=lf
+
+# Dockerfile 同理，CRLF 会破坏续行。
+Dockerfile text eol=lf
