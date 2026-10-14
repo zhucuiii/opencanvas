@@ -1,13 +1,16 @@
+/*
+ * 原版这里有一条键盘焦点环：
+ *   .stack:focus-visible .stack-card[data-top] .stack-card-face {
+ *     outline: 2px solid currentColor; outline-offset: 4px; }
+ * 在画布里它是多余的 —— 节点本身有选中反馈，而且点一下卡片就会让堆叠拿到焦点，
+ * 于是一圈白边（深色主题下 currentColor 是浅色）始终挂在图上。已移除。
+ */
+
 .image-stack {
   position: relative;
   width: 100%;
   height: 100%;
   outline: none;
-}
-
-.image-stack:focus-visible .image-stack-card[data-top] .image-stack-card-face {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
 }
 
 .image-stack-card {
