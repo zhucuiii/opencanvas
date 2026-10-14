@@ -774,8 +774,10 @@
     inset: 5px;
     border-radius: 16px;
     background: var(--node-glass-fill, rgba(255, 255, 255, 0.95));
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    /* A light blur keeps a glass feel while still letting the blob's shape show
+       through; a heavy blur would smear it into flat haze. */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     outline: 2px solid var(--node-glass-edge, rgba(255, 255, 255, 0.85));
     outline-offset: -2px;
 }

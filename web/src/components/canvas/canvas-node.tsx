@@ -404,12 +404,13 @@ export const CanvasNode = React.memo(function CanvasNode({
                     <div
                         className="canvas-node-glass"
                         style={{
-                            // Same structure as the reference card: a soft blob drifts
-                            // behind an almost-opaque pane, so it reads as a faint
-                            // shadow moving under glass rather than a lit edge.
-                            ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(8,8,8,.19)" : "rgba(0,0,0,.35)",
-                            ["--node-glass-fill" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(41,37,36,.95)",
-                            ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.08)",
+                            // Same structure as the reference card, inverted for a dark
+                            // node: the reference pairs a dark blob with a white pane,
+                            // so dark mode pairs a light blob with a darker pane. A dark
+                            // blob on a dark node would be invisible.
+                            ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(8,8,8,.26)" : "rgba(255,255,255,.3)",
+                            ["--node-glass-fill" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.62)" : "rgba(14,12,11,.42)",
+                            ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.2)",
                         }}
                     >
                         <span className="canvas-node-glass-blob" />
