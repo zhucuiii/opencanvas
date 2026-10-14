@@ -401,8 +401,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                 }}
             >
                 {!isGroup ? (
-                    <div className="canvas-node-glass" style={{ ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(120,113,108,.22)" : "rgba(255,255,255,.14)" }}>
+                    <div className="canvas-node-glass" style={{ ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(120,113,108,.28)" : "rgba(255,255,255,.2)" }}>
                         <span className="canvas-node-glass-blob" />
+                        <span className="canvas-node-glass-frost" />
                     </div>
                 ) : null}
 
