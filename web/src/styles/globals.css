@@ -625,3 +625,106 @@
         opacity: 0;
     }
 }
+
+/* Canvas image generation loader: three dots bouncing with ground shadows. */
+.canvas-gen-loader {
+    position: relative;
+    width: 48px;
+    height: 26px;
+}
+
+.canvas-gen-loader-dot {
+    position: absolute;
+    bottom: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    transform-origin: 50%;
+    animation: canvas-gen-bounce 0.5s alternate infinite ease;
+}
+
+.canvas-gen-loader-dot:nth-child(1) {
+    left: 0;
+}
+
+.canvas-gen-loader-dot:nth-child(2) {
+    left: 20px;
+    animation-delay: 0.2s;
+}
+
+.canvas-gen-loader-dot:nth-child(3) {
+    left: 40px;
+    animation-delay: 0.3s;
+}
+
+@keyframes canvas-gen-bounce {
+    0% {
+        bottom: 0;
+        height: 3px;
+        border-radius: 50px 50px 25px 25px;
+        transform: scaleX(1.7);
+    }
+
+    40% {
+        height: 8px;
+        border-radius: 50%;
+        transform: scaleX(1);
+    }
+
+    100% {
+        bottom: 18px;
+        height: 8px;
+    }
+}
+
+.canvas-gen-loader-shadow {
+    position: absolute;
+    bottom: 0;
+    width: 8px;
+    height: 2px;
+    border-radius: 50%;
+    background: #000;
+    opacity: 0.3;
+    transform-origin: 50%;
+    filter: blur(1px);
+    animation: canvas-gen-shadow 0.5s alternate infinite ease;
+}
+
+.canvas-gen-loader-shadow:nth-child(4) {
+    left: 0;
+}
+
+.canvas-gen-loader-shadow:nth-child(5) {
+    left: 20px;
+    animation-delay: 0.2s;
+}
+
+.canvas-gen-loader-shadow:nth-child(6) {
+    left: 40px;
+    animation-delay: 0.3s;
+}
+
+@keyframes canvas-gen-shadow {
+    0% {
+        transform: scaleX(1.5);
+        opacity: 0.35;
+    }
+
+    40% {
+        transform: scaleX(1);
+        opacity: 0.25;
+    }
+
+    100% {
+        transform: scaleX(0.2);
+        opacity: 0.1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .canvas-gen-loader-dot,
+    .canvas-gen-loader-shadow {
+        animation: none;
+    }
+}

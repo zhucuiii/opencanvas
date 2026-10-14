@@ -923,8 +923,22 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     const failed = image?.status === "error";
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
-            {failed ? <span className="text-xs leading-5">{image.errorDetails || t("canvas.node.failed")}</span> : <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />}
+            {failed ? <span className="text-xs leading-5">{image.errorDetails || t("canvas.node.failed")}</span> : <GenerationLoader color={theme.node.activeStroke} />}
             {!failed ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
+        </div>
+    );
+}
+
+/** Three dots bouncing with ground shadows, used while a slot is generating. */
+function GenerationLoader({ color }: { color: string }) {
+    return (
+        <div className="canvas-gen-loader" style={{ color }} aria-hidden="true">
+            <span className="canvas-gen-loader-dot" />
+            <span className="canvas-gen-loader-dot" />
+            <span className="canvas-gen-loader-dot" />
+            <span className="canvas-gen-loader-shadow" />
+            <span className="canvas-gen-loader-shadow" />
+            <span className="canvas-gen-loader-shadow" />
         </div>
     );
 }
