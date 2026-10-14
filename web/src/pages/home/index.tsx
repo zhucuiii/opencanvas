@@ -1,15 +1,20 @@
 import { ArrowRight } from "lucide-react";
-import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { StarBorder } from "@/components/ui/star-border";
 import SwarmCursor from "@/components/ui/swarm-cursor";
 import TechText from "@/components/ui/tech-text";
 import { navigationTools } from "@/constant/navigation-tools";
+import { neutral } from "@/lib/app-theme";
+import { useThemeStore } from "@/stores/use-theme-store";
 
 export default function IndexPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const theme = useThemeStore((state) => state.theme);
+    const dark = theme === "dark";
+    const palette = dark ? neutral.dark : neutral.light;
     const [primaryTool] = navigationTools;
 
     return (
@@ -24,12 +29,13 @@ export default function IndexPage() {
                             <TechText text="OpenCanvas" fontWeight={600} fontSize={150} reveal="letter" dashLength={4} dashGap={2} specks={15} />
                         </div>
                         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                            <Button type="primary" size="large" onClick={() => navigate(`/${primaryTool.slug}`)} icon={<ArrowRight className="size-4" />} iconPlacement="end">
+                            <StarBorder theme={dark ? "light" : "dark"} radius={12} glow={1} backgroundColor={palette.primary} textColor={palette.primaryText} color={palette.primaryText} onClick={() => navigate(`/${primaryTool.slug}`)}>
                                 {t("home.start")}
-                            </Button>
-                            <Button size="large" onClick={() => navigate("/canvas")}>
+                                <ArrowRight className="size-4" />
+                            </StarBorder>
+                            <StarBorder theme={dark ? "dark" : "light"} radius={12} onClick={() => navigate("/canvas")}>
                                 {t("home.openCanvas")}
-                            </Button>
+                            </StarBorder>
                         </div>
                     </div>
                 </section>

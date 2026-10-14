@@ -1,7 +1,7 @@
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 
-const neutral = {
+export const neutral = {
     light: {
         primary: "#171717",
         primaryHover: "#000000",
