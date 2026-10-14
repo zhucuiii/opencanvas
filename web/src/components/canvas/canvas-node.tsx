@@ -815,6 +815,8 @@ function ImageContent({
 
     // 批量节点折叠时交给 ImageStack：每张图是一张卡，点一下把顶层那张翻到后面。
     // 展开态和单图节点保持原样。
+    // draggableCards 关掉：堆叠铺满整个节点，卡片跟手会把节点拖动顶掉（拖动整块区域
+    // 应该平移节点，而不是把卡片甩出去）。点一下翻牌仍然保留。
     const stacked = isBatchRoot && !batchExpanded;
     const stackCards = images.map((image) => {
         if (!image.content) return <span key={image.id} />;
@@ -838,7 +840,7 @@ function ImageContent({
                       .map((image, index) => <ExpandedImageCard key={image.id} node={node} image={image} index={index} scale={scale} onView={() => onViewBatchImage?.(image.id)} onSetPrimary={() => onSetBatchPrimary?.(image.id)} onDuplicate={() => onDuplicateBatchImage?.(image.id)} onDownload={() => onDownloadBatchImage?.(image.id)} onRetry={() => onRetryBatchImage?.(image.id)} onDelete={() => onDeleteBatchImage?.(image.id)} />)
                 : null}
             {stacked ? (
-                <ImageStack className="h-full w-full" layout="fan" radius={24} sendToBackOnClick cards={stackCards} />
+                <ImageStack className="h-full w-full" layout="fan" radius={24} sendToBackOnClick draggableCards={false} cards={stackCards} />
             ) : (
                 <div className="h-full w-full overflow-hidden rounded-3xl">
                     {primaryContent ? (

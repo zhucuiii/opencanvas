@@ -45,6 +45,12 @@ export interface ImageStackProps {
   threshold?: number;
   speed?: number;
   sendToBackOnClick?: boolean;
+  /**
+   * 允许把顶层卡片从堆叠里拖出来（松手甩出去就翻到后面）。默认开。
+   * 画布节点里必须关掉：那片区域是节点的拖动区，卡片跟手会把节点拖动顶掉。
+   * 关掉后仍然保留「点一下翻牌」，靠位移判断算不算是点击。
+   */
+  draggableCards?: boolean;
   autoplay?: boolean;
   autoplayDelay?: number;
   pauseOnHover?: boolean;
@@ -85,6 +91,7 @@ interface Settings {
   threshold: number;
   speed: number;
   sendToBackOnClick: boolean;
+  draggableCards: boolean;
   count: number;
   reduceMotion: boolean;
 }
@@ -189,6 +196,7 @@ export function ImageStack({
   threshold = 90,
   speed = 1,
   sendToBackOnClick = false,
+  draggableCards = true,
   autoplay = false,
   autoplayDelay = 3000,
   pauseOnHover = false,
@@ -233,6 +241,7 @@ export function ImageStack({
     threshold: Math.max(threshold, 0),
     speed: clamp(speed, 0.2, 4),
     sendToBackOnClick,
+    draggableCards,
     count,
     reduceMotion: !!reduceMotion
   };
@@ -448,6 +457,12 @@ export function ImageStack({
     const drag = dragRef.current;
     if (!drag || event.pointerId !== drag.id) return;
     const s = settingsRef.current!;
+    if (!s.draggableCards) {
+      // 卡片不跟手，只记下这一下算不算「点击」（松手时才决定要不要翻牌），
+      // 拖动本身交给外面的画布节点。
+      if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= CLICK_SLOP) drag.moved = true;
+      return;
+    }
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
     const values = valuesFor(drag.card);
@@ -505,6 +520,10 @@ export function ImageStack({
       return;
     }
     setDragging(false);
+    if (!s.draggableCards) {
+      settleFace(valuesFor(drag.card), s);
+      return;
+    }
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
     const [vx, vy] = releaseVelocity(drag.samples, event.timeStamp);
@@ -545,7 +564,9 @@ export function ImageStack({
       progress: 0,
       samples: [[event.clientX, event.clientY, event.timeStamp]]
     };
-    if (event.pointerType === 'mouse') event.preventDefault();
+    // 取消 pointerdown 的默认行为会连带压掉随后的 mousedown（连鼠标事件的兼容序列），
+    // 画布节点的拖动就挂在那上面，所以不拖卡片时不能拦。
+    if (s.draggableCards && event.pointerType === 'mouse') event.preventDefault();
     window.addEventListener('pointermove', listenersRef.current!.move);
     window.addEventListener('pointerup', listenersRef.current!.up);
     window.addEventListener('pointercancel', listenersRef.current!.up);
