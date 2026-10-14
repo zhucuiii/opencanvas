@@ -148,6 +148,9 @@ export const CanvasNode = React.memo(function CanvasNode({
     const transparentBg = Boolean(definition?.transparentBackground);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const imageBorderColor = isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : "transparent";
+    // 批量图片节点的卡片堆叠会铺到节点框之外，而选中描边只套住节点本身，
+    // 看上去就是一圈多余的方框，所以这一类节点不画选中描边。
+    const isBatchImage = isBatchRoot && data.type === CanvasNodeType.Image;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef({
@@ -364,13 +367,13 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className="relative h-full w-full overflow-visible rounded-3xl border-2"
                 style={{
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
-                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
+                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? (isBatchImage ? "transparent" : imageBorderColor) : isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
                     borderStyle: isGroup ? "dashed" : "solid",
                     boxShadow: isGroupDropTarget
                         ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10`
-                        : isActive
+                        : isActive && !isBatchImage
                           ? `0 0 0 1px ${theme.node.activeStroke}, 0 0 16px ${theme.node.activeStroke}40, inset 0 0 0 1px rgba(255,255,255,.2)`
-                          : isRelated
+                          : isRelated && !isBatchImage
                             ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)`
                             : isGroup || hasImageContent || hasVideoContent || transparentBg
                               ? undefined
