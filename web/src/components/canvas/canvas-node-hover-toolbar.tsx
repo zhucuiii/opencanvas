@@ -184,10 +184,12 @@ export function CanvasNodeHoverToolbar({
 
     return (
         <>
+            {/* Outer div positions the toolbar; the inner one runs the entrance
+                animation, so the keyframe transform never overrides the offset. */}
+            <div className="absolute z-[70]" style={{ left, top, transform: "translate(-50%, -100%)" }}>
             <div
-                className="absolute z-[70] flex h-12 -translate-x-1/2 -translate-y-full items-center overflow-visible rounded-[18px] border border-black/10 bg-white text-[15px] text-[#242529] shadow-[0_8px_28px_rgba(15,23,42,.12)]"
+                className="canvas-pop-in-up flex h-12 items-center overflow-visible rounded-[18px] border border-black/10 bg-white text-[15px] text-[#242529] shadow-[0_8px_28px_rgba(15,23,42,.12)]"
                 data-node-toolbar={node.id}
-                style={{ left, top }}
                 onMouseEnter={() => onKeep(node.id)}
                 onMouseLeave={() => {
                     if (!imageToolSettingsOpen) onLeave();
@@ -199,6 +201,7 @@ export function CanvasNodeHoverToolbar({
                     <ToolbarAction key={tool.id} {...tool} showLabel={isImage ? showImageToolLabels : true} />
                 ))}
                 {hasImage ? <ToolbarAction id="more" title={t("canvas.imageTools.configure")} label={t("canvas.imageTools.more")} icon={<Ellipsis className="size-4" />} active={imageToolSettingsOpen} onClick={openImageToolSettings} showLabel={showImageToolLabels} /> : null}
+            </div>
             </div>
             {hasImage ? (
                 <ImageToolSettingsModal

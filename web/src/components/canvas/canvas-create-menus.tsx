@@ -34,6 +34,8 @@ export function ConnectionCreateMenu({
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            {/* Inner wrapper animates without overriding the counter-scale above. */}
+            <div className="canvas-pop-in">
             <div className="mb-1.5 flex items-center justify-between px-1">
                 <span className="text-sm font-medium" style={{ color: theme.node.muted }}>
                     {t("canvas.createMenu.fromNode")}
@@ -49,6 +51,7 @@ export function ConnectionCreateMenu({
                 <ConnectionCreateOption theme={theme} icon={<Video className="size-4" />} title={t("canvas.createMenu.video")} onClick={() => onCreate(CanvasNodeType.Video)} />
                 <ConnectionCreateOption theme={theme} icon={<Music2 className="size-4" />} title={t("canvas.createMenu.audio")} onClick={() => onCreate(CanvasNodeType.Audio)} />
                 <ConnectionCreateOption theme={theme} icon={<Settings2 className="size-4" />} title={t("canvas.createMenu.config")} description={t("canvas.createMenu.configDescription")} onClick={() => onCreate(CanvasNodeType.Config)} />
+            </div>
             </div>
         </div>
     );
@@ -101,6 +104,8 @@ export function NodeCreateMenu({ position, scale = 1, onCreate, onClose }: { pos
             style={{ left: position.x, top: position.y, transform: `scale(${1 / scale})`, transformOrigin: "top left", background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            {/* Inner wrapper animates without overriding the counter-scale above. */}
+            <div className="canvas-pop-in">
             <div className="mb-1.5 flex items-center justify-between px-1">
                 <span className="text-sm font-medium" style={{ color: theme.node.muted }}>
                     {t("canvas.createMenu.select")}
@@ -113,6 +118,7 @@ export function NodeCreateMenu({ position, scale = 1, onCreate, onClose }: { pos
                 {definitions.map((def) => (
                     <ConnectionCreateOption key={def.type} theme={theme} icon={def.icon} title={getNodeSpec(def.type).title} description={def.description} onClick={() => onCreate(def.type)} />
                 ))}
+            </div>
             </div>
         </div>
     );
