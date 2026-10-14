@@ -718,9 +718,11 @@
     }
 }
 
-/* Canvas node glass surface, modelled on the uiverse card: a blurred blob
-   orbits the four corners behind a frosted layer, so it reads as light diffusing
-   through glass rather than a hard highlight. */
+/* Canvas node glass surface, ported from the uiverse card:
+     .card  overflow-hidden frame with a two-way neumorphic shadow
+     .bg    a frosted panel inset inside the frame, with its own light fill
+     .blob  a soft dark blob orbiting behind the panel
+   Sizes are relative so the effect holds at any node size. */
 .canvas-node-glass {
     position: absolute;
     inset: 0;
@@ -733,17 +735,17 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 75%;
-    height: 75%;
+    height: 60%;
+    aspect-ratio: 1;
     border-radius: 50%;
-    background: var(--node-glass-blob, rgba(255, 255, 255, 0.16));
+    background: var(--node-glass-blob, rgba(8, 8, 8, 0.19));
     filter: blur(12px);
     will-change: transform;
-    animation: canvas-node-glass-orbit 6s infinite ease;
+    animation: canvas-node-glass-orbit 5s infinite ease;
 }
 
 /* Offset by its own size so the blob visits each corner in turn; the overflow
-   clip above trims whatever falls outside the node. */
+   clip above trims whatever falls outside the frame. */
 @keyframes canvas-node-glass-orbit {
     0% {
         transform: translate(-100%, -100%);
@@ -766,15 +768,17 @@
     }
 }
 
+/* The frosted pane is inset inside the frame and carries its own fill, which is
+   what makes the light panel and the surrounding edge read as glass. */
 .canvas-node-glass-frost {
     position: absolute;
-    inset: 0;
-    border-radius: inherit;
+    inset: 5px;
+    border-radius: 16px;
+    background: var(--node-glass-fill, rgba(255, 255, 255, 0.95));
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    /* Bright inner edge, like the reference card's outline, so the frosted pane
-       reads as a raised sheet of glass. */
-    box-shadow: inset 0 0 0 1.5px var(--node-glass-edge, rgba(255, 255, 255, 0.5));
+    outline: 2px solid var(--node-glass-edge, rgba(255, 255, 255, 0.85));
+    outline-offset: -2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
