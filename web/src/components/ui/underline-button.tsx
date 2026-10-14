@@ -9,9 +9,10 @@ type UnderlineButtonProps = {
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type">;
 
 /**
- * Ported from uiverse.io/biswacpcode/curvy-crab-71: a borderless button whose two
- * red rules grow out from opposite sides on hover. The icon and label share one
- * inline-flex box so the rules stay siblings of it, exactly as in the original.
+ * Ported from uiverse.io/WhiteNervosa/popular-ladybug-27: a borderless button that
+ * brightens on hover while a rule grows out from the centre underneath the label.
+ * The icon and label share one inline-flex box so the label can dim independently
+ * of the rule, which stays at the button's own colour.
  */
 export function UnderlineButton({ children, icon, className, ...rest }: UnderlineButtonProps) {
     return (
