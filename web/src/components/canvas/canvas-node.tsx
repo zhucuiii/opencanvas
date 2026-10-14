@@ -9,6 +9,7 @@ import { previewUrlFor, subscribeImagePreviews, getImagePreviewRevision } from "
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { CanvasLoadingWord } from "./canvas-loading-word";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
@@ -530,11 +531,9 @@ function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererP
 }
 
 function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
-    const { t } = useTranslation();
     return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.activeStroke }}>
+        <div className="flex h-full w-full flex-col items-center justify-center" style={{ color: theme.node.activeStroke }}>
             <GenerationLoader color={theme.node.activeStroke} />
-            <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span>
         </div>
     );
 }
@@ -698,7 +697,6 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? <span className="text-xs leading-5">{text.errorDetails || t("canvas.node.failed")}</span> : loading ? <GenerationLoader color={theme.node.activeStroke} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
-            {loading ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
         </div>
     );
 }
@@ -954,23 +952,13 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? <span className="text-xs leading-5">{image.errorDetails || t("canvas.node.failed")}</span> : <GenerationLoader color={theme.node.activeStroke} />}
-            {!failed ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
         </div>
     );
 }
 
-/** Three dots bouncing with ground shadows, used while a slot is generating. */
+/** The LOADING letterform loader, used while a slot is generating. */
 function GenerationLoader({ color }: { color: string }) {
-    return (
-        <div className="canvas-gen-loader" style={{ color }} aria-hidden="true">
-            <span className="canvas-gen-loader-dot" />
-            <span className="canvas-gen-loader-dot" />
-            <span className="canvas-gen-loader-dot" />
-            <span className="canvas-gen-loader-shadow" />
-            <span className="canvas-gen-loader-shadow" />
-            <span className="canvas-gen-loader-shadow" />
-        </div>
-    );
+    return <CanvasLoadingWord color={color} />;
 }
 
 function ImageInfoBar({ node }: { node: CanvasNodeData }) {
