@@ -717,3 +717,57 @@
         animation: none;
     }
 }
+
+/* Canvas node glass surface: a blurred blob orbits inside the node behind a
+   frosted layer, giving a slow living highlight. */
+.canvas-node-glass {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.canvas-node-glass-blob {
+    position: absolute;
+    inset: 0;
+    width: 55%;
+    height: 55%;
+    margin: auto;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--node-glass-blob, rgba(255, 255, 255, 0.14)) 0%, transparent 70%);
+    filter: blur(20px);
+    will-change: transform;
+    animation: canvas-node-glass-orbit 8s infinite ease-in-out;
+}
+
+/* The blob is centred in the node, so half its own size is the furthest it can
+   travel before its edge reaches the node edge. */
+@keyframes canvas-node-glass-orbit {
+    0% {
+        transform: translate(-30%, -30%);
+    }
+
+    25% {
+        transform: translate(30%, -30%);
+    }
+
+    50% {
+        transform: translate(30%, 30%);
+    }
+
+    75% {
+        transform: translate(-30%, 30%);
+    }
+
+    100% {
+        transform: translate(-30%, -30%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .canvas-node-glass-blob {
+        animation: none;
+        transform: translate(-50%, -50%);
+    }
+}
