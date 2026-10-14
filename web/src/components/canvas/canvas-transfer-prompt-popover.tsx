@@ -124,19 +124,17 @@ export function CanvasTransferPromptPopover({ onApply, buttonClassName, placemen
 
     return (
         <>
-            <span ref={buttonRef} className="inline-flex min-w-0 shrink-0">
+            <span ref={buttonRef} className="inline-flex min-w-0">
                 <Tooltip title={t("transferPresets.title")}>
                     <Button
                         size="small"
                         type="text"
-                        className={buttonClassName || "!h-8 !max-w-[160px] !justify-start !rounded-full !px-2.5"}
+                        className={buttonClassName || "!h-10 !w-10 !min-w-10 shrink-0 !rounded-full !p-0"}
                         style={{ background: theme.node.fill, color: theme.node.text }}
                         icon={<Brush className="size-3.5" />}
                         onClick={() => updateOpen(!open)}
                         aria-label={t("transferPresets.title")}
-                    >
-                        <span className="truncate">{t("transferPresets.title")}</span>
-                    </Button>
+                    />
                 </Tooltip>
             </span>
             {panel}
