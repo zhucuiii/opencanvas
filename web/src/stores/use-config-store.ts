@@ -52,6 +52,8 @@ export type AiConfig = {
     size: string;
     imageRatio: string;
     videoRatio: string;
+    transferPresetOverrides: Record<string, { name?: string; prompt?: string }>;
+    transferCustomPresets: Array<{ id: string; name: string; prompt: string }>;
     background: string;
     count: string;
     canvasImageCount: string;
@@ -124,6 +126,8 @@ export const defaultConfig: AiConfig = {
     size: "1:1",
     imageRatio: "1:1",
     videoRatio: "16:9",
+    transferPresetOverrides: {},
+    transferCustomPresets: [],
     background: "",
     count: "1",
     canvasImageCount: "3",
@@ -285,6 +289,8 @@ export const useConfigStore = create<ConfigStore>()(
                         vquality: config.vquality || "720",
                         imageRatio: config.imageRatio || inferMediaRatio(config.size || defaultConfig.size),
                         videoRatio: config.videoRatio || "16:9",
+                        transferPresetOverrides: config.transferPresetOverrides && typeof config.transferPresetOverrides === "object" ? config.transferPresetOverrides : {},
+                        transferCustomPresets: Array.isArray(config.transferCustomPresets) ? config.transferCustomPresets : [],
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",

@@ -10,6 +10,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
+import { CanvasTransferPromptPopover } from "./canvas-transfer-prompt-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
@@ -97,6 +98,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                     {mode === "image" ? (
                         <>
                             <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true)} className="max-w-[190px]" />
+                            {connectedNodes.some((item) => item.type === CanvasNodeType.Image) ? <CanvasTransferPromptPopover onApply={updatePrompt} /> : null}
                             <CanvasImageSettingsPopover
                                 config={config}
                                 placement="topLeft"
