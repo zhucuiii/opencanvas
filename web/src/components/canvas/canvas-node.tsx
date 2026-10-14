@@ -10,6 +10,7 @@ import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasLoadingWord } from "./canvas-loading-word";
+import { ImageStack } from "./image-stack";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
@@ -809,26 +810,47 @@ function ImageContent({
           })
         : undefined;
 
+    // 批量节点折叠时交给 ImageStack：每张图是一张卡，点一下把顶层那张翻到后面。
+    // 展开态和单图节点保持原样。
+    const stacked = isBatchRoot && !batchExpanded;
+    const stackCards = images.map((image) => {
+        if (!image.content) return <span key={image.id} />;
+        const source = pickImageSource({
+            previewUrl: previewUrlFor(image.storageKey),
+            originalUrl: image.content,
+            naturalWidth: image.naturalWidth,
+            naturalHeight: image.naturalHeight,
+            renderedWidth: node.width,
+            renderedHeight: node.height,
+            scale,
+        });
+        return <img key={image.id} src={source} alt={node.title} draggable={false} />;
+    });
+
     return (
-        <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded}>
+        <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded} panels={!isBatchRoot}>
             {batchExpanded
                 ? images
                       .filter((image) => image.id !== primaryImageId)
                       .map((image, index) => <ExpandedImageCard key={image.id} node={node} image={image} index={index} scale={scale} onView={() => onViewBatchImage?.(image.id)} onSetPrimary={() => onSetBatchPrimary?.(image.id)} onDuplicate={() => onDuplicateBatchImage?.(image.id)} onDownload={() => onDownloadBatchImage?.(image.id)} onRetry={() => onRetryBatchImage?.(image.id)} onDelete={() => onDeleteBatchImage?.(image.id)} />)
                 : null}
-            <div className="h-full w-full overflow-hidden rounded-3xl">
-                {primaryContent ? (
-                    <img
-                        src={primarySource}
-                        alt={node.title}
-                        draggable={false}
-                        onDragStart={(event) => event.preventDefault()}
-                        className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`}
-                    />
-                ) : (
-                    <ImageSlotStatus image={primaryImage} />
-                )}
-            </div>
+            {stacked ? (
+                <ImageStack className="h-full w-full" layout="fan" radius={24} sendToBackOnClick cards={stackCards} />
+            ) : (
+                <div className="h-full w-full overflow-hidden rounded-3xl">
+                    {primaryContent ? (
+                        <img
+                            src={primarySource}
+                            alt={node.title}
+                            draggable={false}
+                            onDragStart={(event) => event.preventDefault()}
+                            className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`}
+                        />
+                    ) : (
+                        <ImageSlotStatus image={primaryImage} />
+                    )}
+                </div>
+            )}
             {primaryImage?.status === "error" ? <BatchImageFailureActions placement="left" onRetry={() => onRetryBatchImage?.(primaryImage.id)} onDelete={() => onDeleteBatchImage?.(primaryImage.id)} /> : null}
             {primaryImage?.content ? (
                 <button type="button" className="pointer-events-none absolute left-2.5 top-2.5 z-30 flex h-8 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium opacity-0 shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02] group-hover/node:pointer-events-auto group-hover/node:opacity-100" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }} title={t("common.download")} onClick={(event) => (event.stopPropagation(), onDownloadBatchImage?.(primaryImage.id))}>
@@ -975,9 +997,9 @@ function ImageInfoBar({ node }: { node: CanvasNodeData }) {
     );
 }
 
-function BatchFrame({ batchCount, batchExpanded, children }: { batchCount: number; batchExpanded: boolean; children: ReactNode }) {
+function BatchFrame({ batchCount, batchExpanded, panels = true, children }: { batchCount: number; batchExpanded: boolean; panels?: boolean; children: ReactNode }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const isBatchRoot = batchCount > 1;
+    const isBatchRoot = batchCount > 1 && panels;
     return (
         <div className="group/batch relative h-full w-full overflow-visible">
             {isBatchRoot ? (
