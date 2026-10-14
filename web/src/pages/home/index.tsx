@@ -29,10 +29,17 @@ export default function IndexPage() {
                             <TechText text="OpenCanvas" fontWeight={600} fontSize={150} reveal="letter" dashLength={4} dashGap={2} specks={15} />
                         </div>
                         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                            <StarBorder theme={dark ? "light" : "dark"} radius={12} glow={1} backgroundColor={palette.primary} textColor={palette.primaryText} color={palette.primaryText} onClick={() => navigate(`/${primaryTool.slug}`)}>
+                            {/* Primary action stays a flat pill — the star trail is a flourish for the
+                                secondary button only; on the high-contrast surface it reads as noise. */}
+                            <button
+                                type="button"
+                                className="inline-flex items-center justify-center gap-2 rounded-xl px-[22px] py-[10px] text-base font-medium leading-5 transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+                                style={{ background: palette.primary, color: palette.primaryText, outlineColor: palette.primaryText }}
+                                onClick={() => navigate(`/${primaryTool.slug}`)}
+                            >
                                 {t("home.start")}
                                 <ArrowRight className="size-4" />
-                            </StarBorder>
+                            </button>
                             <StarBorder theme={dark ? "dark" : "light"} radius={12} onClick={() => navigate("/canvas")}>
                                 {t("home.openCanvas")}
                             </StarBorder>
