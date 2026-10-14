@@ -372,7 +372,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                           ? `0 0 0 1px ${selectionBlue}, 0 0 14px ${selectionBlue}88, 0 0 34px ${selectionBlue}44, inset 0 0 0 1px rgba(255,255,255,.28)`
                           : isRelated
                             ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)`
-                            : undefined,
+                            : isGroup || hasImageContent || hasVideoContent || transparentBg
+                              ? undefined
+                              : `10px 10px 26px ${theme.node.shadowDark}, -10px -10px 26px ${theme.node.shadowLight}`,
                 }}
                 onMouseDown={(event) => {
                     if (!referenceSelectionState) onMouseDown(event, data.id);
@@ -401,7 +403,13 @@ export const CanvasNode = React.memo(function CanvasNode({
                 }}
             >
                 {!isGroup ? (
-                    <div className="canvas-node-glass" style={{ ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(120,113,108,.28)" : "rgba(255,255,255,.2)" }}>
+                    <div
+                        className="canvas-node-glass"
+                        style={{
+                            ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(120,113,108,.28)" : "rgba(255,255,255,.2)",
+                            ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.85)" : "rgba(255,255,255,.24)",
+                        }}
+                    >
                         <span className="canvas-node-glass-blob" />
                         <span className="canvas-node-glass-frost" />
                     </div>

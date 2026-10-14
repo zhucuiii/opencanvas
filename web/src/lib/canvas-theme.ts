@@ -23,6 +23,8 @@ export const canvasThemes = {
             text: "#292524",
             muted: "#78716c",
             faint: "#a8a29e",
+            shadowDark: "rgba(120,113,108,.42)",
+            shadowLight: "rgba(255,255,255,.9)",
         },
         toolbar: {
             panel: "rgba(251,250,247,.96)",
@@ -54,6 +56,8 @@ export const canvasThemes = {
             text: "#f5f5f4",
             muted: "#d6d3d1",
             faint: "#78716c",
+            shadowDark: "rgba(0,0,0,.5)",
+            shadowLight: "rgba(255,255,255,.06)",
         },
         toolbar: {
             panel: "rgba(31,29,26,.96)",
