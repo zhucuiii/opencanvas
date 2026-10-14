@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
+import { inferMediaRatio } from "@/lib/media-size";
 
 export type ApiCallFormat = "openai" | "gemini";
 export type ModelCapability = "image" | "video" | "text" | "audio";
@@ -49,6 +50,8 @@ export type AiConfig = {
     models: string[];
     quality: string;
     size: string;
+    imageRatio: string;
+    videoRatio: string;
     background: string;
     count: string;
     canvasImageCount: string;
@@ -119,6 +122,8 @@ export const defaultConfig: AiConfig = {
     models: ["default::gpt-image-2", "default::grok-imagine-video", "default::gpt-5.5", "default::gpt-4o-mini-tts"],
     quality: "auto",
     size: "1:1",
+    imageRatio: "1:1",
+    videoRatio: "16:9",
     background: "",
     count: "1",
     canvasImageCount: "3",
@@ -278,6 +283,8 @@ export const useConfigStore = create<ConfigStore>()(
                         reasoningEffort: config.reasoningEffort || "auto",
                         videoSeconds: config.videoSeconds || "6",
                         vquality: config.vquality || "720",
+                        imageRatio: config.imageRatio || inferMediaRatio(config.size || defaultConfig.size),
+                        videoRatio: config.videoRatio || "16:9",
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",

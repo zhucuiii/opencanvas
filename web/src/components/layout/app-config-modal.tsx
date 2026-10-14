@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
-import { videoResolutionOptions } from "@/components/video-settings-panel";
+import { imageAspectOptions } from "@/components/image-settings-panel";
+import { videoResolutionOptions, videoSizeOptions } from "@/components/video-settings-panel";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
 import { ConfigLocalProxy } from "@/components/layout/config-local-proxy";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
@@ -244,8 +245,21 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                             onBlur={(event) => updateConfig("canvasImageCount", normalizeImageCount(event.target.value))}
                                         />
                                     </Form.Item>
+                                    <Form.Item label={t("config.preferences.imageRatio")} className="mb-4">
+                                        <Select
+                                            value={config.imageRatio}
+                                            options={imageAspectOptions}
+                                            onChange={(ratio) => {
+                                                updateConfig("imageRatio", ratio);
+                                                if (ratio !== "auto") updateConfig("size", computeMediaSize(inferMediaScale(config.size), ratio));
+                                            }}
+                                        />
+                                    </Form.Item>
                                     <Form.Item label={t("config.preferences.imageResolution")} className="mb-4">
-                                        <Select value={inferMediaScale(config.size)} options={imageResolutionOptions} onChange={(scale) => updateConfig("size", computeMediaSize(scale, inferMediaRatio(config.size)))} />
+                                        <Select value={inferMediaScale(config.size)} options={imageResolutionOptions} onChange={(scale) => updateConfig("size", computeMediaSize(scale, config.imageRatio))} />
+                                    </Form.Item>
+                                    <Form.Item label={t("config.preferences.videoRatio")} className="mb-4">
+                                        <Select value={config.videoRatio} options={videoSizeOptions} onChange={(ratio) => updateConfig("videoRatio", ratio)} />
                                     </Form.Item>
                                     <Form.Item label={t("config.preferences.videoResolution")} className="mb-4">
                                         <Select value={parseVideoResolution(config.vquality)} options={videoResolutionOptions} onChange={(value) => updateConfig("vquality", value)} />

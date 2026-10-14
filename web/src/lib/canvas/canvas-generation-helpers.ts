@@ -3,6 +3,7 @@ import i18n from "@/i18n";
 import { ensureImagePreview, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveMediaUrl } from "@/services/file-storage";
 import { imageMetadata, referenceUrl } from "@/lib/canvas/canvas-node-factory";
+import { computeMediaSize, computeVideoSize, inferMediaScale } from "@/lib/media-size";
 import type { NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
@@ -102,13 +103,32 @@ export function getInputSummary(inputs: NodeGenerationInput[]) {
     };
 }
 
+// Compose a default size string for a generation mode from the configured
+// default ratio and resolution. Falls back to the stored size when the ratio is
+// "auto" (meaning the user wants the model to decide).
+function defaultSizeForMode(config: AiConfig, mode: CanvasNodeGenerationMode) {
+    if (mode === "video") {
+        const ratio = config.videoRatio || "16:9";
+        if (ratio === "auto") return config.size || defaultConfig.size;
+        return computeVideoSize(config.vquality || defaultConfig.vquality, ratio);
+    }
+    if (mode === "image") {
+        const ratio = config.imageRatio || "1:1";
+        if (ratio === "auto") return config.size || defaultConfig.size;
+        return computeMediaSize(inferMediaScale(config.size), ratio);
+    }
+    return config.size || defaultConfig.size;
+}
+
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
     return {
         ...config,
         model: resolveModelForCapability(config, node?.metadata?.model, mode),
         reasoningEffort: node?.metadata?.reasoningEffort || config.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
-        size: node?.metadata?.size || config.size || defaultConfig.size,
+        // A node's own size wins; otherwise compose one from the per-mode default
+        // ratio and resolution so new nodes do not all fall back to 1:1.
+        size: node?.metadata?.size || defaultSizeForMode(config, mode),
         background: node?.metadata?.background ?? config.background ?? defaultConfig.background,
         videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
         vquality: node?.metadata?.vquality || config.vquality || defaultConfig.vquality,
