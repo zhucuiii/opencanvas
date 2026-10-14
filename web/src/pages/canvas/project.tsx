@@ -618,7 +618,26 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | "transfer", pending: PendingConnectionCreate) => {
+            // Redraw: create an image node wired to the source image so it is sent as a reference.
+            if (type === "transfer") {
+                const source = nodesRef.current.find((node) => node.id === pending.connection.nodeId);
+                if (!source?.metadata?.content) {
+                    message.warning(t("canvas.projectPage.transferNeedsImage"));
+                    setPendingConnectionCreate(null);
+                    setConnecting(null);
+                    return;
+                }
+                const newNode = createCanvasNode(CanvasNodeType.Image, pending.position);
+                setNodes((prev) => [...prev, newNode]);
+                setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: source.id, toNodeId: newNode.id }]);
+                setSelectedNodeIds(new Set([newNode.id]));
+                setSelectedConnectionId(null);
+                setDialogNodeId(newNode.id);
+                setPendingConnectionCreate(null);
+                setConnecting(null);
+                return;
+            }
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
