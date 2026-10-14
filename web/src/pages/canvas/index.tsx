@@ -77,7 +77,8 @@ export default function CanvasPage() {
                         <p className="text-xs text-stone-500">{t("canvas.library")}</p>
                         <h1 className="mt-3 text-3xl font-semibold">{t("canvas.title")}</h1>
                     </div>
-                    <div className="flex items-center gap-2">
+                    {/* 无边框按钮本身没有内边距，间距太小会糊成一团，所以比默认 gap 拉开一档。 */}
+                    <div className="flex items-center gap-5">
                         {selectedIds.length ? (
                             <>
                                 <UnderlineButton disabled={!hydrated} icon={<Download className="size-4" />} onClick={() => void exportCanvasProjects(projects.filter((project) => selectedIds.includes(project.id)), `${t("canvas.title")}-${selectedIds.length}`)}>
