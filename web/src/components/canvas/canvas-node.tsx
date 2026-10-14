@@ -503,7 +503,7 @@ function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
     const { t } = useTranslation();
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.activeStroke }}>
-            <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
+            <GenerationLoader color={theme.node.activeStroke} />
             <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span>
         </div>
     );
@@ -667,7 +667,7 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
     const loading = text.status === "loading";
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
-            {failed ? <span className="text-xs leading-5">{text.errorDetails || t("canvas.node.failed")}</span> : loading ? <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
+            {failed ? <span className="text-xs leading-5">{text.errorDetails || t("canvas.node.failed")}</span> : loading ? <GenerationLoader color={theme.node.activeStroke} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
             {loading ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
         </div>
     );
