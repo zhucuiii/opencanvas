@@ -15,9 +15,11 @@ type CanvasZoomControlsProps = {
     onReset: () => void;
     isMiniMapOpen: boolean;
     onToggleMiniMap: () => void;
+    /** 与底部 Dock 共用的自适应比例，让两条浮条同步缩小并保持等高。 */
+    fit?: number;
 };
 
-export function CanvasZoomControls({ scale, onScaleChange, onReset, isMiniMapOpen, onToggleMiniMap }: CanvasZoomControlsProps) {
+export function CanvasZoomControls({ scale, onScaleChange, onReset, isMiniMapOpen, onToggleMiniMap, fit = 1 }: CanvasZoomControlsProps) {
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const { t } = useTranslation();
     const colorTheme = useThemeStore((state) => state.theme);
@@ -27,8 +29,12 @@ export function CanvasZoomControls({ scale, onScaleChange, onReset, isMiniMapOpe
     const activeStyle = { background: theme.toolbar.activeBg, color: theme.toolbar.activeText };
 
     return (
-        <div className="absolute bottom-5 left-5 z-50" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-            <div className="flex h-14 items-center gap-1 rounded-xl border px-2 shadow-lg backdrop-blur" style={dockStyle}>
+        <div className="absolute bottom-5 left-5 z-50" data-canvas-zoom-controls onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+            {/*
+             * 用 transform 整体缩放而不是改尺寸：高度、圆角、内边距、图标全都按同一比例走，
+             * 和 Dock 的 RAW_PANEL * fit 正好等高。origin 取左下角，缩放时底边不动。
+             */}
+            <div className="flex h-14 items-center gap-1 rounded-xl border px-2 shadow-lg backdrop-blur" style={{ ...dockStyle, transform: fit !== 1 ? `scale(${fit})` : undefined, transformOrigin: "left bottom" }}>
                 <Tooltip title={isMiniMapOpen ? t("canvas.miniMapClose") : t("canvas.miniMapOpen")}>
                     <Button
                         type="text"

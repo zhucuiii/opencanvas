@@ -28,6 +28,10 @@ const ROUNDNESS = 0.5;
 const SPRING = { mass: 0.1, stiffness: 150, damping: 12 };
 /** 原版量可用宽度时留的边距。 */
 const EDGE = 12;
+/** 给左下角缩放控件让位时留的间隙。 */
+const ZOOM_GAP = 12;
+/** 缩放控件的左外边距，与它的 left-5 保持一致，用来预留它那一档宽度。 */
+const ZOOM_LEFT = 20;
 /** 放不开时整体缩小的下限，跟原版一致。 */
 const MIN_FIT = 0.4;
 const DANGER = "#f87171";
@@ -57,6 +61,7 @@ export function CanvasToolbar({
     onBackgroundModeChange,
     onShowImageInfoChange,
     onFocusSelected,
+    onFitChange,
 }: {
     selectedCount: number;
     canvasTool: "select" | "pan";
@@ -80,6 +85,8 @@ export function CanvasToolbar({
     onBackgroundModeChange: (mode: CanvasBackgroundMode) => void;
     onShowImageInfoChange: (show: boolean) => void;
     onFocusSelected: () => void;
+    /** 上报当前自适应比例，让左下角缩放控件跟着一起缩放、保持两条浮条等高。 */
+    onFitChange?: (fit: number) => void;
 }) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const { t } = useTranslation();
@@ -92,6 +99,8 @@ export function CanvasToolbar({
     const [extensionsOpen, setExtensionsOpen] = useState(false);
     const [extPanelX, setExtPanelX] = useState(0);
     const [dock, setDock] = useState<DockLayout>({ fit: 1, isItem: [] });
+    /** 为左下角缩放控件让位而右推的距离（px），0 表示不用让。 */
+    const [shift, setShift] = useState(0);
     // Keep extension plugin nodes synchronized with registry changes.
     useNodeRegistryVersion();
     const extensionDefs = listNodeDefinitions().filter((def) => def.showInCreateMenu !== false && getNodePluginId(def.type) !== "builtin");
@@ -106,31 +115,87 @@ export function CanvasToolbar({
         const host = panel?.offsetParent as HTMLElement | null;
         if (!panel || !host) return;
 
+        let reportedFit = 1;
+
         const measure = () => {
+            // 面板隐藏或视口退化成 0 宽时量出来的都是假数据（fit 会掉到下限），
+            // 这种结果绝不能提交上去。
+            if (host.clientWidth <= 0) return;
+
             const kids = Array.from(panel.children);
             const isItem = kids.map((child) => child.classList.contains("canvas-dock-item"));
             const itemCount = isItem.filter(Boolean).length;
-            const rawLength = itemCount * RAW_BASE + (kids.length - itemCount) * 1 + RAW_GAP * Math.max(0, kids.length - 1) + (RAW_PANEL - RAW_BASE);
-            const room = host.clientWidth - EDGE * 2;
-            const next = rawLength > 0 ? Math.min(1, Math.max(MIN_FIT, room / rawLength)) : 1;
+            const dockRaw = itemCount * RAW_BASE + (kids.length - itemCount) * 1 + RAW_GAP * Math.max(0, kids.length - 1) + (RAW_PANEL - RAW_BASE);
+
+            /*
+             * 左下角的缩放控件是独立浮层，窄窗口下会和居中的 Dock 叠住。两条浮条共用同一个
+             * 缩放比例 fit 就能同时解决两件事：整体自适应缩小、以及高度天然对齐
+             * （Dock 高 RAW_PANEL*fit，缩放控件按 fit 缩放后也是同一高度）。
+             *
+             * 用 offsetWidth 当基准而不是 getBoundingClientRect：前者是布局宽度，不受
+             * transform 影响，所以「按 fit 缩放缩放控件」不会反过来改变测量结果，不震荡。
+             */
+            const zoom = document.querySelector("[data-canvas-zoom-controls]") as HTMLElement | null;
+            const zoomRaw = zoom ? zoom.offsetWidth : 0;
+            const room = host.clientWidth - EDGE - ZOOM_LEFT - (zoomRaw ? ZOOM_GAP : 0);
+            const total = dockRaw + zoomRaw;
+            const next = total > 0 ? Math.min(1, Math.max(MIN_FIT, room / total)) : 1;
             const fit = Math.round(next * 1000) / 1000;
+
+            /*
+             * 没冲突时 Dock 就居中在整幅画布上（shift = 0，与改造前一致）。
+             * 只有它真的会压到缩放控件上时才右推：缩放控件右边界 + 间隙，就是 Dock 左边界下限。
+             */
+            const dockWidth = dockRaw * fit;
+            const zoomEdge = ZOOM_LEFT + zoomRaw * fit + (zoomRaw ? ZOOM_GAP : 0);
+            const centeredLeft = (host.clientWidth - dockWidth) / 2;
+            const nextShift = zoomRaw ? Math.round(Math.max(0, zoomEdge - centeredLeft)) : 0;
+
             // 只有真变了才换引用。否则 ResizeObserver 每响一次就产生一个新对象，
             // 下面的动画 effect 会被反复重建、中途清掉内联尺寸，放大永远起不来。
             setDock((prev) => {
                 const same = prev.fit === fit && prev.isItem.length === isItem.length && prev.isItem.every((value, index) => value === isItem[index]);
                 return same ? prev : { fit, isItem };
             });
+            setShift((prev) => (prev === nextShift ? prev : nextShift));
+            // 只在真变了才上报，避免每次测量都触发父组件重渲染。
+            if (reportedFit !== fit) {
+                reportedFit = fit;
+                onFitChange?.(fit);
+            }
         };
 
-        measure();
         const resize = new ResizeObserver(measure);
         resize.observe(host);
+        /*
+         * 缩放控件渲染在本组件之后，首帧测量时它可能还没进 DOM（拿到 null 就只能按不让位算）。
+         * 用 MutationObserver 盯住整个画布容器：它一挂进来就补测一次并开始观察。
+         * 不用 rAF 轮询是因为页面不可见时 rAF 会被浏览器暂停，那样就永远等不到。
+         */
+        const canvasRoot = host.parentElement;
+        const attachZoom = () => {
+            if (zoomAttached) return;
+            const el = document.querySelector("[data-canvas-zoom-controls]");
+            if (!el) return;
+            zoomAttached = true;
+            resize.observe(el);
+            measure();
+        };
+        let zoomAttached = false;
+        const zoomWatch = new MutationObserver(attachZoom);
+        if (canvasRoot) zoomWatch.observe(canvasRoot, { childList: true, subtree: true });
+        attachZoom();
+        // host 宽度没变但缩放控件挪了位置（比如面板开合）时，ResizeObserver 不会响。
+        window.addEventListener("resize", measure);
         // 扩展节点 / 删除按钮是按条件渲染的，增删项时长度会变，得重新量。
         const mutate = new MutationObserver(measure);
         mutate.observe(panel, { childList: true });
+        measure();
         return () => {
+            window.removeEventListener("resize", measure);
             resize.disconnect();
             mutate.disconnect();
+            zoomWatch.disconnect();
         };
     }, []);
 
@@ -298,7 +363,8 @@ export function CanvasToolbar({
 
     return (
         <div ref={rootRef} className="pointer-events-none absolute bottom-5 z-50 flex justify-center" style={{ left: 16, right: 16 }} data-canvas-bottom-toolbar>
-            <div ref={wrapRef} className="canvas-dock pointer-events-auto max-w-full" style={dockStyle}>
+            {/* 让位平移加在面板上而不是外层：外层是测量的基准，动了会形成反馈震荡。 */}
+            <div ref={wrapRef} className="canvas-dock pointer-events-auto max-w-full" style={{ ...dockStyle, transform: shift ? `translateX(${shift}px)` : undefined }}>
                 <DockItem label={t(`canvas.toolbar.${canvasTool}`)} active onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
                     {canvasTool === "select" ? <MousePointer2 className="size-4.5" /> : <Hand className="size-4.5" />}
                 </DockItem>
