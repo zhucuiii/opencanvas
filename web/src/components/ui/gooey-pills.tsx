@@ -305,11 +305,15 @@ export function GooeyPills({
 
         const measure = () => {
             const box = stage.getBoundingClientRect();
+            // 上层（比如弹层的弹出动画）可能正把整棵子树 scale 着：getBoundingClientRect 量到的是缩放后的
+            // 数值，而 transform 不会触发 ResizeObserver，不折算的话气泡会一直偏小、跟选项对不齐。
+            // offsetWidth/offsetHeight 是布局尺寸，不受 transform 影响，用它当基准就能把缩放除掉。
+            const zoom = Math.max(0.01, box.width / Math.max(1, stage.offsetWidth));
             const ratio = Math.min(window.devicePixelRatio || 1, 2);
-            view.width = box.width;
-            view.height = box.height;
-            const outerWidth = box.width + MARGIN * 2;
-            const outerHeight = box.height + MARGIN * 2;
+            view.width = stage.offsetWidth || box.width;
+            view.height = stage.offsetHeight || box.height;
+            const outerWidth = view.width + MARGIN * 2;
+            const outerHeight = view.height + MARGIN * 2;
             Object.assign(canvas.style, { left: `${-MARGIN}px`, top: `${-MARGIN}px`, width: `${outerWidth}px`, height: `${outerHeight}px` });
             const width = Math.max(1, Math.round(outerWidth * ratio));
             const height = Math.max(1, Math.round(outerHeight * ratio));
@@ -319,7 +323,7 @@ export function GooeyPills({
             }
             rects = Array.from(list.children).map((item) => {
                 const rect = item.getBoundingClientRect();
-                return { x: rect.left - box.left, y: rect.top - box.top, w: rect.width, h: rect.height };
+                return { x: (rect.left - box.left) / zoom, y: (rect.top - box.top) / zoom, w: rect.width / zoom, h: rect.height / zoom };
             });
         };
 

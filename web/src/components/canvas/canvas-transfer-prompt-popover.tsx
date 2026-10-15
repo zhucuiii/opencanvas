@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Brush, Check, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button, Input, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
@@ -92,8 +93,10 @@ export function CanvasTransferPromptPopover({ onApply, buttonClassName, placemen
         setAdding(false);
     };
 
-    const panel = open && buttonRect ? (
+    // 常驻 portal，内容按 open 挂载：这样关掉时 AnimatePresence 还能播退场。
+    const panel = (
         <TransferPromptPortal
+            open={open}
             buttonRect={buttonRect}
             panelRef={panelRef}
             placement={placement}
@@ -120,7 +123,7 @@ export function CanvasTransferPromptPopover({ onApply, buttonClassName, placemen
             }}
             onAdd={() => setAdding(true)}
         />
-    ) : null;
+    );
 
     return (
         <>
@@ -149,6 +152,7 @@ export function CanvasTransferPromptPopover({ onApply, buttonClassName, placemen
 }
 
 function TransferPromptPortal({
+    open,
     buttonRect,
     panelRef,
     placement,
@@ -165,7 +169,8 @@ function TransferPromptPortal({
     onApply,
     onAdd,
 }: {
-    buttonRect: DOMRect;
+    open: boolean;
+    buttonRect: DOMRect | null;
     panelRef: RefObject<HTMLDivElement | null>;
     placement: CanvasTransferPromptPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
@@ -182,9 +187,11 @@ function TransferPromptPortal({
     onAdd: () => void;
 }) {
     const { t } = useTranslation();
+    const reduce = useReducedMotion();
     const width = 380;
     const gap = 8;
     const margin = 12;
+    if (!buttonRect) return null;
     const alignRight = placement?.endsWith("Right");
     const alignCenter = placement === "top";
     const left = alignCenter ? buttonRect.left + buttonRect.width / 2 - width / 2 : alignRight ? buttonRect.right - width : buttonRect.left;
@@ -205,7 +212,21 @@ function TransferPromptPortal({
     } as const;
 
     return createPortal(
-        <div ref={panelRef} className="thin-scrollbar" style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <AnimatePresence>
+            {open ? (
+                <motion.div
+                    ref={panelRef}
+                    className="thin-scrollbar"
+                    // 这个弹层是往上展开的，所以原点取底边、从下方一点点冒出来。
+                    style={{ ...style, transformOrigin: `${alignRight ? "right" : "left"} bottom` }}
+                    initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 6 }}
+                    animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 4 }}
+                    transition={reduce ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 30, mass: 0.7 }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                >
             <div className="mb-2 flex items-center justify-between px-1">
                 <span className="text-sm font-medium" style={{ color: theme.node.muted }}>
                     {t("transferPresets.select")}
@@ -253,7 +274,9 @@ function TransferPromptPortal({
                     );
                 })}
             </div>
-        </div>,
+                </motion.div>
+            ) : null}
+        </AnimatePresence>,
         document.body,
     );
 }
