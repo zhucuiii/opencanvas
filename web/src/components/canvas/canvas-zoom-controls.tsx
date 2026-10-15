@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { WakeSlider } from "@/components/ui/wake-slider";
 
 type CanvasZoomControlsProps = {
     scale: number;
@@ -42,17 +43,23 @@ export function CanvasZoomControls({ scale, onScaleChange, onReset, isMiniMapOpe
                     <Button type="text" className="!h-8 !w-8 !min-w-8 !p-0" style={{ color: theme.toolbar.item }} icon={<Focus className="size-4" />} onClick={onReset} aria-label={t("canvas.resetView")} />
                 </Tooltip>
                 <Tooltip title={t("canvas.zoom")}>
-                    <input
-                        type="range"
-                        min="5"
-                        max="500"
-                        step="1"
-                        value={Math.round(scale * 100)}
-                        className="w-24"
-                        style={{ accentColor: theme.node.activeStroke }}
-                        onChange={(event) => onScaleChange(Number(event.target.value) / 100)}
-                        aria-label={t("canvas.zoom")}
-                    />
+                    {/* 一排小竖条，静止时是细线，拖动时头部鼓出尾迹波。宽度要够摆下 18 根条。 */}
+                    <div className="w-[170px] shrink-0">
+                        <WakeSlider
+                            min={5}
+                            max={500}
+                            step={1}
+                            bars={18}
+                            height={44}
+                            restHeight={10}
+                            gap={4}
+                            value={Math.round(scale * 100)}
+                            onChange={(next) => onScaleChange(next / 100)}
+                            fillColor={theme.node.activeStroke}
+                            trackColor={theme.toolbar.itemHover}
+                            ariaLabel={t("canvas.zoom")}
+                        />
+                    </div>
                 </Tooltip>
                 <span className="w-10 text-right text-xs tabular-nums" style={{ color: theme.node.muted }}>
                     {Math.round(scale * 100)}%
