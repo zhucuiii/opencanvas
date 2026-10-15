@@ -478,7 +478,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 
             {/* Counter-scale the panel so its on-screen size stays constant while the canvas zooms. */}
             {showPanel && !isGroup && renderPanel ? (
-                <div className="absolute left-1/2 top-full z-[70] w-[600px] pt-4" style={{ transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: "top center" }} data-node-panel={data.id}>
+                <div className="absolute left-1/2 top-full z-[70] w-[720px] pt-4" style={{ transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: "top center" }} data-node-panel={data.id}>
                     {/* Separate wrapper so the entrance animation does not fight the
                         counter-scale transform on the element above. */}
                     <div className="canvas-pop-in">{renderPanel(data)}</div>
