@@ -297,7 +297,7 @@ export function CanvasToolbar({
     };
 
     return (
-        <div ref={rootRef} className="pointer-events-none absolute bottom-5 z-50 flex justify-center" style={{ left: 300, right: 16 }} data-canvas-bottom-toolbar>
+        <div ref={rootRef} className="pointer-events-none absolute bottom-5 z-50 flex justify-center" style={{ left: 16, right: 16 }} data-canvas-bottom-toolbar>
             <div ref={wrapRef} className="canvas-dock pointer-events-auto max-w-full" style={dockStyle}>
                 <DockItem label={t(`canvas.toolbar.${canvasTool}`)} active onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
                     {canvasTool === "select" ? <MousePointer2 className="size-4.5" /> : <Hand className="size-4.5" />}
