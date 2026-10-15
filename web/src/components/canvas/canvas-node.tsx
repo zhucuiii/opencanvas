@@ -90,10 +90,14 @@ type NodeContentRendererProps = {
 
 /**
  * 节点形变的过渡：改比例 / 改尺寸 / 程序化改位置（比如换比例时保持中心不动）时，
- * 宽高和位移一起走同一条 220ms 曲线，所以两边是同时收尾的，不会一边先到一边还在动。
+ * 宽高和位移一起走同一条曲线，所以两边是同时收尾的，不会一边先到一边还在动。
  * 拖拽和缩放期间必须换成瞬时（见 isInteracting），否则节点会拖着一条尾巴追指针。
+ *
+ * 曲线用 standard（两端都平缓）：260ms + cubic-bezier(0.4, 0, 0.2, 1)。
+ * 之前用的 (0.22, 1, 0.36, 1) 太前倾 —— 前 66ms 就走完 88% 的距离，
+ * 看着像「唰一下到位再慢慢蹭」，反而不丝滑。
  */
-const NODE_MORPH_TRANSITION = "box-shadow 200ms ease, width 220ms cubic-bezier(0.22, 1, 0.36, 1), height 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1)";
+const NODE_MORPH_TRANSITION = "box-shadow 200ms ease, width 260ms cubic-bezier(0.4, 0, 0.2, 1), height 260ms cubic-bezier(0.4, 0, 0.2, 1), transform 260ms cubic-bezier(0.4, 0, 0.2, 1)";
 
 export const CanvasNode = React.memo(function CanvasNode({
     data,
