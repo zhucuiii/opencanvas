@@ -91,7 +91,7 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
                     onClick={() => updateOpen(!open)}
                 >
                     {/* 张数和质量都改由底栏的独立控件负责，这里只显示尺寸。 */}
-                    <span className="truncate">{showQuality ? `${imageQualityLabel(quality)} · ${imageSizeLabel(activeSize)}` : imageSizeLabel(activeSize)}</span>
+                    <span className="truncate">{showQuality ? `${imageQualityLabel(quality)} · ${imageSizeLabel(activeSize, config.imageScale)}` : imageSizeLabel(activeSize, config.imageScale)}</span>
                 </Button>
             </span>
             {panel}

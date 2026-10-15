@@ -95,7 +95,9 @@ export function computeMediaSize(scale: string, ratio: string) {
 export function readMediaDimensions(size: string, scale: string, ratio: string) {
     const pixels = parsePixelSize(size);
     if (pixels) return pixels;
-    const computed = computeMediaSize(scale === "auto" ? "1k" : scale, ratio === "auto" ? "1:1" : ratio);
+    // 比例或分辨率选了「自动」时，面板里显示的是一份常见默认值（16:9），
+    // 让用户能看到一个参照；真正的生成仍按「自动」交给模型决定。
+    const computed = computeMediaSize(scale === "auto" ? "1k" : scale, ratio === "auto" ? "16:9" : ratio);
     return parsePixelSize(computed) || { width: 0, height: 0 };
 }
 

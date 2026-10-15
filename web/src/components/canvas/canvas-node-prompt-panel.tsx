@@ -117,6 +117,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                                 placement="bottomLeft"
                                 buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-none !px-0 transition hover:opacity-80"
                                 showQuality={false}
+                                // 注意 { [key]: value } 才是按变量名写字段；写成 { key: value } 只会塞一个叫 "key" 的垃圾字段。
                                 onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })}
                                 onMissingConfig={() => openConfigDialog(true)}
                                 onOpenChange={onImageSettingsOpenChange}
@@ -214,6 +215,8 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,
+        // 分辨率单独读节点自己那一份（面板改的就是它），不回落到全局，否则改完读不回来。
+        imageScale: node.metadata?.imageScale || globalConfig.imageScale || defaultConfig.imageScale,
         background: node.metadata?.background ?? globalConfig.background ?? defaultConfig.background,
         videoSeconds: node.metadata?.seconds || globalConfig.videoSeconds || defaultConfig.videoSeconds,
         vquality: node.metadata?.vquality || globalConfig.vquality || defaultConfig.vquality,

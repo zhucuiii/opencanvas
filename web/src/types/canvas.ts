@@ -56,6 +56,8 @@ export type CanvasNodeMetadata = {
     model?: string;
     reasoningEffort?: "auto" | "low" | "medium" | "high" | "xhigh";
     size?: string;
+    /** 单独存一份分辨率（1k/2k/4k/auto）：size 一个字符串塞不下「比例自动 + 指定分辨率」，两者要能各自改。 */
+    imageScale?: string;
     quality?: string;
     background?: string;
     count?: number;

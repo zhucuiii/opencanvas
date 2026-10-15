@@ -50,6 +50,8 @@ export type AiConfig = {
     models: string[];
     quality: string;
     size: string;
+    /** 单独存一份分辨率（1k/2k/4k/auto），和 size 里的比例互不影响。 */
+    imageScale: string;
     imageRatio: string;
     videoRatio: string;
     transferPresetOverrides: Record<string, { name?: string; prompt?: string }>;
@@ -124,6 +126,7 @@ export const defaultConfig: AiConfig = {
     models: ["default::gpt-image-2", "default::grok-imagine-video", "default::gpt-5.5", "default::gpt-4o-mini-tts"],
     quality: "auto",
     size: "1:1",
+    imageScale: "auto",
     imageRatio: "1:1",
     videoRatio: "16:9",
     transferPresetOverrides: {},

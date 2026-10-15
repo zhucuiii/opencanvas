@@ -129,6 +129,8 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         // A node's own size wins; otherwise compose one from the per-mode default
         // ratio and resolution so new nodes do not all fall back to 1:1.
         size: node?.metadata?.size || defaultSizeForMode(config, mode),
+        // 节点自己选的分辨率优先：它单独存着，和比例互不影响（请求里按 resolution 参数发出去）。
+        imageScale: node?.metadata?.imageScale || config.imageScale,
         background: node?.metadata?.background ?? config.background ?? defaultConfig.background,
         videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
         vquality: node?.metadata?.vquality || config.vquality || defaultConfig.vquality,

@@ -24,7 +24,7 @@ export const imageScaleOptions = mediaScaleOptions.map((value) => ({ value, labe
 
 type ImageSettingsPanelProps = {
     config: AiConfig;
-    onConfigChange: (key: "quality" | "size" | "count" | "background", value: string) => void;
+    onConfigChange: (key: "quality" | "size" | "count" | "background" | "imageScale", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
@@ -43,16 +43,31 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
     const transparentBackground = config.background === "transparent";
-    const selectedScale = inferMediaScale(activeSize);
+    /*
+     * 比例和分辨率各自独立：分辨率单独存在 config.imageScale 里，改它不会顺手把比例补成 1:1，
+     * 改比例也不会把分辨率重置掉（以前 size 一个字符串塞不下「比例自动 + 指定分辨率」，
+     * 两个 setter 只好各自用默认值补另一个，结果互相覆盖）。
+     * 「自动」时给面板一份 16:9 的参照值，生成仍然按自动交给模型。
+     */
+    const selectedScale = inferMediaScale(activeSize, config.imageScale);
     const selectedRatio = inferMediaRatio(activeSize);
     const dimensions = readMediaDimensions(activeSize, selectedScale, selectedRatio);
-    const applySize = (scale: string, ratio: string) => onConfigChange("size", computeMediaSize(scale, ratio));
-    const selectScale = (scale: string) => applySize(scale, selectedRatio === "auto" ? "1:1" : selectedRatio);
+    const applySize = (scale: string, ratio: string) => {
+        // 先把分辨率写回去：下面算尺寸要用 scale 的值，而 config 这一轮还是旧的
+        // （两个 onConfigChange 会合并进同一次 setNodes，用 config.imageScale 判断会漏写）。
+        const nextScale = config.imageScale === scale ? "" : scale;
+        if (nextScale) onConfigChange("imageScale", scale);
+        const next = computeMediaSize(scale, ratio);
+        if (next !== activeSize) onConfigChange("size", next);
+    };
+    const selectScale = (scale: string) => applySize(scale, selectedRatio);
     const selectRatio = (ratio: string) => applySize(selectedScale, ratio);
     const updateDimension = (key: "width" | "height", value: number | null) => {
         const next = Math.max(1, Math.floor(value || dimensions[key] || 1024));
         const width = key === "width" ? next : dimensions.width;
         const height = key === "height" ? next : dimensions.height;
+        // 手填像素相当于直接指定尺寸，分辨率不再有意义，一并归到「自动」。
+        onConfigChange("imageScale", "auto");
         onConfigChange("size", `${alignDimension(width, snapDimensionToStep)}x${alignDimension(height, snapDimensionToStep)}`);
     };
 
@@ -202,13 +217,14 @@ export function ImageQualityGrid({ quality, theme, onChange, className = "grid g
     );
 }
 
-export function imageSizeLabel(size: string) {
-    const scale = inferMediaScale(size);
+export function imageSizeLabel(size: string, storedScale?: string) {
+    const scale = inferMediaScale(size, storedScale);
     const ratio = inferMediaRatio(size);
-    if (ratio === "auto" || size === "auto") return i18n.t("settingsPanels.common.auto");
-    if (scale === "auto") return ratio;
+    // 比例选了自动时也要把分辨率显示出来（底栏显示「自动 · 2k」），否则用户看不到自己选的分辨率。
+    const ratioText = ratio === "auto" ? i18n.t("settingsPanels.common.auto") : ratio;
+    if (scale === "auto") return ratioText;
     // 左边比例、右边分辨率（参考即梦底栏的「9:16 · 1K」），不是之前的「分辨率 · 比例」。
-    return `${ratio} · ${scale}`;
+    return `${ratioText} · ${scale}`;
 }
 
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
