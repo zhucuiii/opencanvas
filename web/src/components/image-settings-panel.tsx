@@ -187,7 +187,8 @@ export function imageSizeLabel(size: string) {
     const ratio = inferMediaRatio(size);
     if (ratio === "auto" || size === "auto") return i18n.t("settingsPanels.common.auto");
     if (scale === "auto") return ratio;
-    return `${scale} · ${ratio}`;
+    // 左边比例、右边分辨率（参考即梦底栏的「9:16 · 1K」），不是之前的「分辨率 · 比例」。
+    return `${ratio} · ${scale}`;
 }
 
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
@@ -250,14 +251,15 @@ function CountInput({ value, max, theme, onChange }: { value: number; max: numbe
     );
 }
 
-function AspectIcon({ width, height, color }: { width: number; height: number; color: string }) {
+/** 比例图标：外框按当前比例变形 —— 1:1 是方块、9:16 是高条、16:9 是宽条。 */
+export function AspectIcon({ width, height, color, box = 24, thickness = 2 }: { width: number; height: number; color: string; box?: number; thickness?: number }) {
     if (!width || !height) return null;
     const ratio = width / height;
-    const boxWidth = ratio >= 1 ? 24 : Math.max(10, 24 * ratio);
-    const boxHeight = ratio >= 1 ? Math.max(10, 24 / ratio) : 24;
+    const boxWidth = ratio >= 1 ? box : Math.max(box * 0.42, box * ratio);
+    const boxHeight = ratio >= 1 ? Math.max(box * 0.42, box / ratio) : box;
     return (
-        <span className="grid h-7 w-9 place-items-center">
-            <span className="border-2" style={{ width: boxWidth, height: boxHeight, borderColor: color }} />
+        <span className="grid place-items-center" style={{ width: box + 12, height: box + 4 }}>
+            <span style={{ width: boxWidth, height: boxHeight, borderWidth: thickness, borderStyle: "solid", borderColor: color }} />
         </span>
     );
 }

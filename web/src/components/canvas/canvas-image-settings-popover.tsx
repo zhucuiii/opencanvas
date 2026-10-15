@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Settings2, Square } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { Button } from "antd";
 import { useTranslation } from "react-i18next";
 
-import { ImageSettingsPanel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
+import { AspectIcon, ImageSettingsPanel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { inferMediaRatio, inferMediaScale, readMediaDimensions } from "@/lib/media-size";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
 
@@ -34,6 +35,8 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
     const quality = config.quality || "auto";
     const count = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
+    // 扁平模式下图标要跟着比例变形，所以得拿到当前尺寸的像素值。
+    const dimensions = readMediaDimensions(activeSize, inferMediaScale(activeSize), inferMediaRatio(activeSize));
     const updateOpen = (nextOpen: boolean) => {
         setOpen(nextOpen);
         onOpenChange?.(nextOpen);
@@ -72,7 +75,7 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
                     type="text"
                     className={buttonClassName || "!h-8 !max-w-[180px] !justify-start !rounded-full !px-2.5"}
                     style={{ background: flat ? "transparent" : theme.node.fill, color: theme.node.text }}
-                    icon={flat ? <Square className="size-3.5" /> : <Settings2 className="size-3.5" />}
+                    icon={flat ? <AspectIcon width={dimensions.width} height={dimensions.height} color={theme.node.text} box={16} thickness={1.5} /> : <Settings2 className="size-3.5" />}
                     onClick={() => updateOpen(!open)}
                 >
                     {/* 张数和质量都改由底栏的独立控件负责，这里只显示尺寸。 */}
