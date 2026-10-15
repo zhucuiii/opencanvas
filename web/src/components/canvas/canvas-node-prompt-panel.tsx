@@ -127,18 +127,21 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     ) : mode === "video" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="video" onMissingConfig={() => openConfigDialog(true)} className="!h-10 min-w-0 max-w-[190px] flex-1" />
-                            <CanvasVideoSettingsPopover config={config} buttonClassName="!h-10 !max-w-[220px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
+                            <ModelPicker flat config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="video" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px] flex-1" />
+                            <BarDivider color={theme.node.stroke} />
+                            <CanvasVideoSettingsPopover flat config={config} buttonClassName="!h-10 !max-w-[260px] !justify-start !rounded-none !px-0 transition hover:opacity-80" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
                         </>
                     ) : mode === "audio" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" onMissingConfig={() => openConfigDialog(true)} className="!h-10 min-w-0 max-w-[190px] flex-1" />
-                            <CanvasAudioSettingsPopover config={config} buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
+                            <ModelPicker flat config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px] flex-1" />
+                            <BarDivider color={theme.node.stroke} />
+                            <CanvasAudioSettingsPopover flat config={config} buttonClassName="!h-10 !max-w-[190px] !justify-start !rounded-none !px-0 transition hover:opacity-80" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
                         </>
                     ) : (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="text" onMissingConfig={() => openConfigDialog(true)} className="!h-10 min-w-0 max-w-[190px] flex-1" />
-                            <CanvasTextSettingsPopover config={config} count={node.metadata?.textCount || 1} onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
+                            <ModelPicker flat config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="text" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px] flex-1" />
+                            <BarDivider color={theme.node.stroke} />
+                            <CanvasTextSettingsPopover flat config={config} count={node.metadata?.textCount || 1} buttonClassName="!h-10 !max-w-[190px] !justify-start !rounded-none !px-0 transition hover:opacity-80" onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
                         </>
                     )}
                 </div>
