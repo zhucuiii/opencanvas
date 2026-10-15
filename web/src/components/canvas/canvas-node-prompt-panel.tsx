@@ -16,6 +16,7 @@ import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
+import { SlingButton } from "@/components/ui/sling-button";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
 
@@ -125,26 +126,38 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     )}
                 </div>
-                <Button
-                    type="primary"
-                    className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3"
-                    danger={isRunning}
-                    disabled={!isRunning && !prompt.trim()}
-                    onClick={() => (isRunning ? onStop(node.id) : submit())}
-                    aria-label={t(isRunning ? "canvas.promptPanel.stopGeneration" : "canvas.promptPanel.generate")}
-                >
-                    <span className="flex items-center gap-1.5">
-                        {isRunning ? (
-                            <>
-                                <LoaderCircle className="size-4 animate-spin" />
-                                <Square className="size-3.5 fill-current" />
-                                <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
-                            </>
-                        ) : (
-                            <ArrowUp className="size-4" />
-                        )}
-                    </span>
-                </Button>
+                {isRunning ? (
+                    // 运行中保留原来的停止按钮：拖拽发送只在「还没开始生成」时成立。
+                    <Button type="primary" className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3" danger onClick={() => onStop(node.id)} aria-label={t("canvas.promptPanel.stopGeneration")}>
+                        <span className="flex items-center gap-1.5">
+                            <LoaderCircle className="size-4 animate-spin" />
+                            <Square className="size-3.5 fill-current" />
+                            <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
+                        </span>
+                    </Button>
+                ) : (
+                    /*
+                     * 圆孔取面板底色，和它所在的输入面板连成一片；圆钮取主按钮色，
+                     * 跟改造前那颗 antd primary 圆钮同色。皮筋取边框色、强调色取正文色。
+                     */
+                    <SlingButton
+                        size={40}
+                        strokeWidth={2}
+                        armAt={34}
+                        maxPull={120}
+                        disabled={!prompt.trim()}
+                        ariaLabel={t("canvas.promptPanel.generate")}
+                        hint={t("canvas.promptPanel.sendHint")}
+                        onSend={submit}
+                        wellColor={theme.toolbar.panel}
+                        padColor="var(--primary)"
+                        iconColor="var(--primary-foreground)"
+                        bandColor={theme.toolbar.border}
+                        accentColor={theme.node.text}
+                    >
+                        <ArrowUp className="size-4" />
+                    </SlingButton>
+                )}
             </div>
             <Modal title={t("canvas.promptPanel.editorTitle")} open={expanded} centered width={760} footer={null} onCancel={() => setExpanded(false)} destroyOnHidden>
                 <div data-canvas-no-zoom className="pt-2" onWheelCapture={(event) => event.stopPropagation()}>
