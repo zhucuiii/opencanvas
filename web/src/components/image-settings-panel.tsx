@@ -93,30 +93,45 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 </div>
                 <div className="space-y-2.5">
                     <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.resolution")}</SettingTitle>
-                    <div className="grid grid-cols-4 gap-2.5">
-                        {mediaScaleOptions.map((value) => (
-                            <OptionPill key={value} selected={selectedScale === value} theme={theme} onClick={() => selectScale(value)}>
-                                {value === "auto" ? t("settingsPanels.common.auto") : value}
-                            </OptionPill>
-                        ))}
+                    {/* 分段控件：整条是一个底槽，选中项在槽里填一块更实的底色。 */}
+                    <div className="flex gap-0.5 rounded-xl p-1" style={{ background: theme.node.fill }}>
+                        {mediaScaleOptions.map((value) => {
+                            const selected = selectedScale === value;
+                            return (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className="h-8 flex-1 cursor-pointer rounded-lg text-sm transition"
+                                    style={{ background: selected ? theme.toolbar.border : "transparent", color: selected ? theme.node.text : theme.node.muted, fontWeight: selected ? 500 : 400 }}
+                                    onMouseDown={(event) => event.stopPropagation()}
+                                    onClick={() => selectScale(value)}
+                                >
+                                    {value === "auto" ? t("settingsPanels.common.auto") : value}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
                 <div className="space-y-2.5">
                     <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.aspectRatio")}</SettingTitle>
-                    <div className="grid grid-cols-4 gap-2.5">
-                        {mediaRatioOptions.map((item) => (
-                            <button
-                                key={item.value}
-                                type="button"
-                                className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
-                                style={{ borderColor: selectedRatio === item.value ? theme.node.text : theme.node.stroke, background: "transparent", color: theme.node.text }}
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onClick={() => selectRatio(item.value)}
-                            >
-                                <AspectIcon width={item.width} height={item.height} color={theme.node.text} />
-                                <span>{item.value === "auto" ? t("settingsPanels.common.auto") : item.value}</span>
-                            </button>
-                        ))}
+                    {/* 比例宫格：只有图标和标签，不加边框；选中项自己带一块圆角底色。 */}
+                    <div className="grid grid-cols-5 gap-1 rounded-2xl p-2" style={{ background: theme.node.fill }}>
+                        {mediaRatioOptions.map((item) => {
+                            const selected = selectedRatio === item.value;
+                            return (
+                                <button
+                                    key={item.value}
+                                    type="button"
+                                    className="flex cursor-pointer flex-col items-center gap-1 rounded-xl py-1.5 transition"
+                                    style={{ background: selected ? theme.toolbar.border : "transparent", color: selected ? theme.node.text : theme.node.muted }}
+                                    onMouseDown={(event) => event.stopPropagation()}
+                                    onClick={() => selectRatio(item.value)}
+                                >
+                                    <AspectIcon width={item.width || 1} height={item.height || 1} color="currentColor" box={20} thickness={selected ? 2 : 1.5} />
+                                    <span className="text-[11px] leading-none">{item.value === "auto" ? t("settingsPanels.common.auto") : item.value}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
                 <div className="flex items-center justify-between gap-3">
@@ -262,7 +277,7 @@ export function AspectIcon({ width, height, color, box = 24, thickness = 2 }: { 
             {/* 切换比例时外框平滑变形，而不是直接跳过去（外槽是定宽的，所以不会带着旁边的文字抖）。 */}
             <span
                 className="canvas-aspect-icon"
-                style={{ width: boxWidth, height: boxHeight, borderWidth: thickness, borderStyle: "solid", borderColor: color, transition: "width 200ms cubic-bezier(0.22, 1, 0.36, 1), height 200ms cubic-bezier(0.22, 1, 0.36, 1)" }}
+                style={{ width: boxWidth, height: boxHeight, borderWidth: thickness, borderStyle: "solid", borderColor: color, transition: "width 200ms cubic-bezier(0.22, 1, 0.36, 1), height 200ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease" }}
             />
         </span>
     );

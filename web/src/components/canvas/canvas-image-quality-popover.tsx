@@ -105,7 +105,10 @@ function QualityPortal({
         zIndex: 1200,
         width,
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, buttonRect.left)),
-        bottom: window.innerHeight - buttonRect.top + gap,
+        // 和「参数」一致：向下展开，别盖住上面的提示词输入区。
+        top: buttonRect.bottom + gap,
+        maxHeight: Math.max(200, window.innerHeight - buttonRect.bottom - gap - margin),
+        overflowY: "auto",
         background: theme.toolbar.panel,
         borderRadius: 18,
         boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",

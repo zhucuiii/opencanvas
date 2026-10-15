@@ -114,7 +114,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                             <CanvasImageSettingsPopover
                                 flat
                                 config={config}
-                                placement="topLeft"
+                                placement="bottomLeft"
                                 buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-none !px-0 transition hover:opacity-80"
                                 showQuality={false}
                                 onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })}
