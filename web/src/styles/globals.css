@@ -693,4 +693,9 @@
     .canvas-pop-in-up {
         animation: none;
     }
+
+    /* 过渡写在行内样式里，这里要 !important 才盖得住。 */
+    .canvas-aspect-icon {
+        transition: none !important;
+    }
 }

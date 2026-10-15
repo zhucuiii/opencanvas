@@ -259,7 +259,11 @@ export function AspectIcon({ width, height, color, box = 24, thickness = 2 }: { 
     const boxHeight = ratio >= 1 ? Math.max(box * 0.42, box / ratio) : box;
     return (
         <span className="grid place-items-center" style={{ width: box + 12, height: box + 4 }}>
-            <span style={{ width: boxWidth, height: boxHeight, borderWidth: thickness, borderStyle: "solid", borderColor: color }} />
+            {/* 切换比例时外框平滑变形，而不是直接跳过去（外槽是定宽的，所以不会带着旁边的文字抖）。 */}
+            <span
+                className="canvas-aspect-icon"
+                style={{ width: boxWidth, height: boxHeight, borderWidth: thickness, borderStyle: "solid", borderColor: color, transition: "width 200ms cubic-bezier(0.22, 1, 0.36, 1), height 200ms cubic-bezier(0.22, 1, 0.36, 1)" }}
+            />
         </span>
     );
 }
