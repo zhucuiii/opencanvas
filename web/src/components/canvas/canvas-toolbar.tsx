@@ -1,14 +1,38 @@
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
-import { Button, Segmented, Switch } from "antd";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Segmented, Switch } from "antd";
 import { CircleDot, Eraser, Grid2x2, Group, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Settings2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
 
-import { canvasThemes, type CanvasBackgroundMode, type CanvasTheme } from "@/lib/canvas-theme";
+import "./canvas-dock.css";
+
+import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { getNodeSpec } from "@/constant/canvas";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { ThemeSwitch } from "@/components/ui/theme-switch";
 import { useTranslation } from "react-i18next";
+
+/*
+ * Dock 参数，含义与 reactbits 原版一一对应（见 canvas-dock.css 顶部的说明）。
+ * 静止尺寸沿用改造前的工具栏：图标 32px、面板高 56px、间距 4px。
+ * peak / distance 按原版与 base 的比例折算（原版 50→70、distance 200、间距 60），
+ * 所以放大倍率仍是 1.4×、影响范围仍是左右各三项左右。
+ */
+const RAW_BASE = 32;
+const RAW_PEAK = 45;
+const RAW_PANEL = 56;
+const RAW_GAP = 4;
+const RAW_DISTANCE = 120;
+/** 圆角：键帽半径 = base * ROUNDNESS * 0.5，面板半径 = 键帽半径 + 内边距（原版的同心圆角）。 */
+const ROUNDNESS = 0.5;
+const SPRING = { mass: 0.1, stiffness: 150, damping: 12 };
+/** 原版量可用宽度时留的边距。 */
+const EDGE = 12;
+/** 放不开时整体缩小的下限，跟原版一致。 */
+const MIN_FIT = 0.4;
+const DANGER = "#f87171";
+
+type DockLayout = { fit: number; isItem: boolean[] };
 
 export function CanvasToolbar({
     selectedCount,
@@ -63,19 +87,170 @@ export function CanvasToolbar({
     const colorTheme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const theme = canvasThemes[colorTheme];
-    const [hovered, setHovered] = useState<string | null>(null);
-    const [tipX, setTipX] = useState(0);
     const [appearanceOpen, setAppearanceOpen] = useState(false);
     const [panelX, setPanelX] = useState(0);
     const [extensionsOpen, setExtensionsOpen] = useState(false);
     const [extPanelX, setExtPanelX] = useState(0);
+    const [dock, setDock] = useState<DockLayout>({ fit: 1, isItem: [] });
     // Keep extension plugin nodes synchronized with registry changes.
     useNodeRegistryVersion();
     const extensionDefs = listNodeDefinitions().filter((def) => def.showInCreateMenu !== false && getNodePluginId(def.type) !== "builtin");
-    const dockStyle = { background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.item, boxShadow: colorTheme === "dark" ? "0 18px 45px rgba(0,0,0,.32)" : "0 16px 40px rgba(28,25,23,.12)" };
-    const hoverStyle = { background: theme.toolbar.itemHover, color: theme.toolbar.activeText };
-    const activeStyle = { background: theme.toolbar.activeBg, color: theme.toolbar.activeText };
-    const tip = hovered ? toolLabel(hovered, t) : "";
+    const isLight = colorTheme === "light";
+
+    /*
+     * 量放不放得下。原版在放不下时整条等比缩小（而不是出现横向滚动条）——
+     * 因为放大动效要求面板 overflow 可见，一旦允许滚动，长大的键帽会被裁掉。
+     */
+    useLayoutEffect(() => {
+        const panel = wrapRef.current;
+        const host = panel?.offsetParent as HTMLElement | null;
+        if (!panel || !host) return;
+
+        const measure = () => {
+            const kids = Array.from(panel.children);
+            const isItem = kids.map((child) => child.classList.contains("canvas-dock-item"));
+            const itemCount = isItem.filter(Boolean).length;
+            const rawLength = itemCount * RAW_BASE + (kids.length - itemCount) * 1 + RAW_GAP * Math.max(0, kids.length - 1) + (RAW_PANEL - RAW_BASE);
+            const room = host.clientWidth - EDGE * 2;
+            const next = rawLength > 0 ? Math.min(1, Math.max(MIN_FIT, room / rawLength)) : 1;
+            const fit = Math.round(next * 1000) / 1000;
+            // 只有真变了才换引用。否则 ResizeObserver 每响一次就产生一个新对象，
+            // 下面的动画 effect 会被反复重建、中途清掉内联尺寸，放大永远起不来。
+            setDock((prev) => {
+                const same = prev.fit === fit && prev.isItem.length === isItem.length && prev.isItem.every((value, index) => value === isItem[index]);
+                return same ? prev : { fit, isItem };
+            });
+        };
+
+        measure();
+        const resize = new ResizeObserver(measure);
+        resize.observe(host);
+        // 扩展节点 / 删除按钮是按条件渲染的，增删项时长度会变，得重新量。
+        const mutate = new MutationObserver(measure);
+        mutate.observe(panel, { childList: true });
+        return () => {
+            resize.disconnect();
+            mutate.disconnect();
+        };
+    }, []);
+
+    /*
+     * 放大动效。每帧按「指针到这一项静止位的距离」算目标尺寸，再走弹簧插值，
+     * 然后把尺寸写成项的宽高、把 `size / base` 写成键帽的 scale。
+     * 项本身是 flex 子项，宽高一变邻居就被推开 —— 这就是 dock 的观感来源。
+     */
+    useEffect(() => {
+        const panel = wrapRef.current;
+        if (!panel || !dock.isItem.some(Boolean)) return;
+
+        const base = RAW_BASE * dock.fit;
+        const peak = RAW_PEAK * dock.fit;
+        const gap = RAW_GAP * dock.fit;
+        const distance = RAW_DISTANCE * dock.fit;
+        const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+        // 槽位：分隔线也要占位，否则 rest 位置会和实际布局错开。
+        const slots: (HTMLElement | null)[] = Array.from(panel.children).map((child) => (child.classList.contains("canvas-dock-item") ? (child as HTMLElement) : null));
+        const spans = slots.map((el) => (el ? base : 1));
+        let cursor = -(spans.reduce((sum, span) => sum + span, 0) + gap * Math.max(0, spans.length - 1)) / 2;
+        const rest = spans.map((span) => {
+            const middle = cursor + span / 2;
+            cursor += span + gap;
+            return middle;
+        });
+
+        const motion = new Map<number, { size: number; velocity: number }>();
+        const entry = (index: number) => {
+            let state = motion.get(index);
+            if (!state) {
+                state = { size: base, velocity: 0 };
+                motion.set(index, state);
+            }
+            return state;
+        };
+
+        const pointer = { x: 0, inside: false };
+        let raf = 0;
+        let last = performance.now();
+        let alive = true;
+        const k = SPRING.stiffness / SPRING.mass;
+        const c = SPRING.damping / SPRING.mass;
+
+        const tick = (now: number) => {
+            raf = 0;
+            if (!alive) return;
+            const dt = Math.min(1 / 30, Math.max(0.001, (now - last) / 1000));
+            last = now;
+            // 面板是居中的，放大时自身也在变宽，所以每帧重新取中心。
+            const rect = panel.getBoundingClientRect();
+            const focus = pointer.inside ? pointer.x - (rect.left + rect.width / 2) : null;
+            const steps = Math.max(1, Math.ceil(dt * 240));
+            const h = dt / steps;
+            let moving = false;
+
+            slots.forEach((el, index) => {
+                if (!el) return;
+                const state = entry(index);
+                const reach = focus === null ? 1 : Math.abs(focus - rest[index]) / distance;
+                const target = base + (peak - base) * (reach < 1 ? Math.cos((reach * Math.PI) / 2) ** 2 : 0);
+                if (reduce) {
+                    state.size = target;
+                    state.velocity = 0;
+                } else {
+                    for (let step = 0; step < steps; step++) {
+                        state.velocity = (state.velocity + h * k * (target - state.size)) / (1 + h * c + h * h * k);
+                        state.size += state.velocity * h;
+                    }
+                }
+                if (Math.abs(state.velocity) < 0.01 && Math.abs(target - state.size) < 0.01) {
+                    state.size = target;
+                    state.velocity = 0;
+                } else {
+                    moving = true;
+                }
+
+                const size = Math.max(1, state.size);
+                el.style.width = `${size}px`;
+                el.style.height = `${size}px`;
+                const tile = el.firstElementChild as HTMLElement | null;
+                if (tile) tile.style.transform = `scale(${size / base})`;
+            });
+
+            if (moving) raf = requestAnimationFrame(tick);
+        };
+
+        const wake = () => {
+            if (raf || !alive) return;
+            last = performance.now();
+            raf = requestAnimationFrame(tick);
+        };
+        const handleMove = (event: PointerEvent) => {
+            pointer.x = event.clientX;
+            pointer.inside = true;
+            wake();
+        };
+        const handleLeave = () => {
+            pointer.inside = false;
+            wake();
+        };
+
+        panel.addEventListener("pointermove", handleMove);
+        panel.addEventListener("pointerleave", handleLeave);
+        wake();
+        return () => {
+            alive = false;
+            if (raf) cancelAnimationFrame(raf);
+            panel.removeEventListener("pointermove", handleMove);
+            panel.removeEventListener("pointerleave", handleLeave);
+            slots.forEach((el) => {
+                if (!el) return;
+                el.style.width = "";
+                el.style.height = "";
+                const tile = el.firstElementChild as HTMLElement | null;
+                if (tile) tile.style.transform = "";
+            });
+        };
+    }, [dock]);
 
     // Close extension-node and canvas-appearance popovers when clicking outside the toolbar and its panels.
     useEffect(() => {
@@ -90,52 +265,75 @@ export function CanvasToolbar({
         return () => document.removeEventListener("pointerdown", handlePointerDown, true);
     }, [extensionsOpen, appearanceOpen]);
 
+    const fit = dock.fit;
+    const base = RAW_BASE * fit;
+    const pad = ((RAW_PANEL - RAW_BASE) / 2) * fit;
+    const tileRadius = base * ROUNDNESS * 0.5;
+    // 键帽比面板略亮一档：深色主题往亮里调、浅色主题往暗里调，都靠 theme 自己的两个色混出来。
+    const tileTop = `color-mix(in srgb, ${theme.toolbar.panel} ${isLight ? 94 : 84}%, ${theme.node.text})`;
+    const tileBottom = `color-mix(in srgb, ${theme.toolbar.panel} ${isLight ? 86 : 92}%, ${theme.node.text})`;
+
+    const dockStyle = {
+        background: theme.toolbar.panel,
+        color: theme.toolbar.item,
+        ["--dock-base" as string]: `${base}px`,
+        ["--dock-gap" as string]: `${RAW_GAP * fit}px`,
+        ["--dock-thickness" as string]: `${RAW_PANEL * fit}px`,
+        ["--dock-pad" as string]: `${pad}px`,
+        ["--dock-radius" as string]: `${tileRadius + pad}px`,
+        ["--dock-tile-radius" as string]: `${tileRadius}px`,
+        ["--dock-dot-offset" as string]: `${Math.max(pad / 2, 5) - 2}px`,
+        ["--dock-tile" as string]: `linear-gradient(180deg, ${tileTop} 0%, ${tileBottom} 100%)`,
+        ["--dock-tile-edge" as string]: isLight ? "rgba(24,24,27,.08)" : "rgba(255,255,255,.07)",
+        ["--dock-tile-highlight" as string]: isLight ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.14)",
+        ["--dock-tile-shadow" as string]: isLight ? "0 4px 10px -5px rgba(24,24,27,.25)" : "0 4px 10px -4px rgba(0,0,0,.7)",
+        ["--dock-panel-edge" as string]: theme.toolbar.border,
+        ["--dock-panel-shadow" as string]: isLight ? "0 16px 40px rgba(28,25,23,.12)" : "0 18px 45px rgba(0,0,0,.32)",
+        ["--dock-separator" as string]: theme.toolbar.border,
+        ["--dock-dot" as string]: theme.node.muted,
+        ["--dock-label" as string]: theme.node.text,
+        ["--dock-label-ink" as string]: theme.node.panel,
+        ["--dock-accent" as string]: theme.node.activeStroke,
+    };
+
     return (
         <div ref={rootRef} className="pointer-events-none absolute bottom-5 z-50 flex justify-center" style={{ left: 300, right: 16 }} data-canvas-bottom-toolbar>
-            {tip ? <DockTip label={tip} x={tipX} theme={theme} /> : null}
-            <div ref={wrapRef} className="thin-scrollbar pointer-events-auto flex h-14 max-w-full items-center gap-1 overflow-x-auto rounded-xl border px-2 shadow-lg backdrop-blur [&>*]:shrink-0" style={dockStyle}>
-                <ToolbarButton id={`tool-${canvasTool}`} label={t(`canvas.toolbar.${canvasTool}`)} active hovered={hovered} activeStyle={activeStyle} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
+            <div ref={wrapRef} className="canvas-dock pointer-events-auto max-w-full" style={dockStyle}>
+                <DockItem label={t(`canvas.toolbar.${canvasTool}`)} active onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
                     {canvasTool === "select" ? <MousePointer2 className="size-4.5" /> : <Hand className="size-4.5" />}
-                </ToolbarButton>
-                <ToolbarButton id="tool-undo" label={t("canvas.undo")} disabled={!canUndo} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onUndo}>
+                </DockItem>
+                <DockItem label={t("canvas.undo")} disabled={!canUndo} onClick={onUndo}>
                     <Undo2 className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-redo" label={t("canvas.redo")} disabled={!canRedo} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onRedo}>
+                </DockItem>
+                <DockItem label={t("canvas.redo")} disabled={!canRedo} onClick={onRedo}>
                     <Redo2 className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-focus" label={t("canvas.toolbar.focus")} disabled={!selectedCount} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onFocusSelected}>
+                </DockItem>
+                <DockItem label={t("canvas.toolbar.focus")} disabled={!selectedCount} onClick={onFocusSelected}>
                     <LocateFixed className="size-4.5" />
-                </ToolbarButton>
-                <Divider theme={theme} />
-                <ToolbarButton id="tool-text" label={t("canvas.toolbar.text")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddText}>
+                </DockItem>
+                <Divider />
+                <DockItem label={t("canvas.toolbar.text")} onClick={onAddText}>
                     <Type className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-image" label={t("canvas.toolbar.image")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImage}>
+                </DockItem>
+                <DockItem label={t("canvas.toolbar.image")} onClick={onAddImage}>
                     <ImageIcon className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddVideo}>
+                </DockItem>
+                <DockItem label={t("canvas.toolbar.video")} onClick={onAddVideo}>
                     <Video className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-audio" label={t("canvas.toolbar.audio")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudio}>
+                </DockItem>
+                <DockItem label={t("canvas.toolbar.audio")} onClick={onAddAudio}>
                     <Music2 className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-config" label={t("canvas.toolbar.config")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddConfig}>
+                </DockItem>
+                <DockItem label={t("canvas.toolbar.config")} onClick={onAddConfig}>
                     <Settings2 className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-group" label={t("canvas.toolbar.group")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddGroup}>
+                </DockItem>
+                <DockItem label={t("canvas.toolbar.group")} onClick={onAddGroup}>
                     <Group className="size-4.5" />
-                </ToolbarButton>
+                </DockItem>
                 {extensionDefs.length ? (
-                    <ToolbarButton
-                        id="tool-extensions"
+                    <DockItem
                         label={t("canvas.toolbar.extensions")}
                         active={extensionsOpen}
-                        hovered={hovered}
-                        activeStyle={activeStyle}
-                        hoverStyle={hoverStyle}
-                        wrapRef={wrapRef}
-                        onTipX={setTipX}
-                        onHover={setHovered}
                         onClick={(event) => {
                             setExtPanelX(getTipX(wrapRef.current, event.currentTarget));
                             setAppearanceOpen(false);
@@ -143,22 +341,15 @@ export function CanvasToolbar({
                         }}
                     >
                         <Puzzle className="size-4.5" />
-                    </ToolbarButton>
+                    </DockItem>
                 ) : null}
-                <ToolbarButton id="tool-upload" label={t("canvas.toolbar.upload")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onUpload}>
+                <DockItem label={t("canvas.toolbar.upload")} onClick={onUpload}>
                     <Upload className="size-4.5" />
-                </ToolbarButton>
-                <Divider theme={theme} />
-                <ToolbarButton
-                    id="tool-style"
+                </DockItem>
+                <Divider />
+                <DockItem
                     label={t("canvas.toolbar.appearance")}
                     active={appearanceOpen}
-                    hovered={hovered}
-                    activeStyle={activeStyle}
-                    hoverStyle={hoverStyle}
-                    wrapRef={wrapRef}
-                    onTipX={setTipX}
-                    onHover={setHovered}
                     onClick={(event) => {
                         setPanelX(getTipX(wrapRef.current, event.currentTarget));
                         setExtensionsOpen(false);
@@ -166,19 +357,19 @@ export function CanvasToolbar({
                     }}
                 >
                     <Palette className="size-4.5" />
-                </ToolbarButton>
+                </DockItem>
                 {selectedCount ? (
                     <>
-                        <Divider theme={theme} />
-                        <ToolbarButton id="tool-delete" label={t("canvas.deleteSelected")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onDelete} danger>
+                        <Divider />
+                        <DockItem label={t("canvas.deleteSelected")} danger onClick={onDelete}>
                             <Trash2 className="size-4.5" />
-                        </ToolbarButton>
+                        </DockItem>
                     </>
                 ) : null}
-                <Divider theme={theme} />
-                <ToolbarButton id="tool-clear" label={t("canvas.toolbar.clear")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onClear} danger>
+                <Divider />
+                <DockItem label={t("canvas.toolbar.clear")} danger onClick={onClear}>
                     <Eraser className="size-4.5" />
-                </ToolbarButton>
+                </DockItem>
             </div>
 
             {extensionsOpen && extensionDefs.length ? (
@@ -271,85 +462,28 @@ export function CanvasToolbar({
     );
 }
 
-function ToolbarButton({
-    id,
-    label,
-    active,
-    hovered,
-    activeStyle,
-    hoverStyle,
-    wrapRef,
-    onTipX,
-    onHover,
-    onClick,
-    disabled = false,
-    danger = false,
-    children,
-}: {
-    id: string;
-    label: string;
-    active?: boolean;
-    hovered: string | null;
-    activeStyle?: CSSProperties;
-    hoverStyle: CSSProperties;
-    wrapRef: RefObject<HTMLDivElement | null>;
-    onTipX: (x: number) => void;
-    onHover: (id: string | null) => void;
-    onClick?: (event: ReactMouseEvent<HTMLElement>) => void;
-    disabled?: boolean;
-    danger?: boolean;
-    children: ReactNode;
-}) {
+/**
+ * 一个 dock 项：外层 button 的宽高由放大动效每帧改写，里面是一个绝对定位的键帽，
+ * 再加上当前态圆点和悬停标签。键帽负责视觉，button 负责命中区域。
+ */
+function DockItem({ label, active, disabled = false, danger = false, onClick, children }: { label: string; active?: boolean; disabled?: boolean; danger?: boolean; onClick?: (event: ReactMouseEvent<HTMLElement>) => void; children: ReactNode }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
 
     return (
-        <Button
-            type="text"
-            aria-label={label}
-            className="!h-8 !w-8 !min-w-8 !p-0"
-            disabled={disabled}
-            style={active ? activeStyle : hovered === id && !disabled ? hoverStyle : { color: danger ? "#f87171" : theme.toolbar.item, opacity: disabled ? 0.35 : 1 }}
-            icon={children}
-            onMouseEnter={(event) => {
-                onHover(id);
-                onTipX(getTipX(wrapRef.current, event.currentTarget));
-            }}
-            onMouseLeave={() => onHover(null)}
-            onClick={onClick}
-        />
+        <button type="button" className="canvas-dock-item" aria-label={label} aria-pressed={active} disabled={disabled} onClick={onClick}>
+            <span className="canvas-dock-tile" style={{ color: danger ? DANGER : theme.toolbar.item }}>
+                {children}
+            </span>
+            {active ? <span className="canvas-dock-dot" aria-hidden="true" /> : null}
+            <span className="canvas-dock-label" aria-hidden="true">
+                {label}
+            </span>
+        </button>
     );
 }
 
-function Divider({ theme }: { theme: CanvasTheme }) {
-    return <div className="mx-1 h-6 w-px" style={{ background: theme.toolbar.border }} />;
-}
-
-function DockTip({ label, x, theme }: { label: string; x: number; theme: CanvasTheme }) {
-    return (
-        <span className="absolute bottom-[calc(100%+8px)] -translate-x-1/2 rounded-md px-2 py-1 text-xs shadow-lg" style={{ left: x, background: theme.node.text, color: theme.node.panel }}>
-            {label}
-        </span>
-    );
-}
-
-function toolLabel(id: string, t: (key: string) => string) {
-    if (id === "tool-select") return t("canvas.toolbar.select");
-    if (id === "tool-pan") return t("canvas.toolbar.pan");
-    if (id === "tool-undo") return t("canvas.undo");
-    if (id === "tool-redo") return t("canvas.redo");
-    if (id === "tool-focus") return t("canvas.toolbar.focus");
-    if (id === "tool-text") return t("canvas.toolbar.text");
-    if (id === "tool-image") return t("canvas.toolbar.image");
-    if (id === "tool-video") return t("canvas.toolbar.video");
-    if (id === "tool-audio") return t("canvas.toolbar.audio");
-    if (id === "tool-config") return t("canvas.toolbar.config");
-    if (id === "tool-group") return t("canvas.toolbar.group");
-    if (id === "tool-extensions") return t("canvas.toolbar.extensions");
-    if (id === "tool-upload") return t("canvas.toolbar.upload");
-    if (id === "tool-style") return t("canvas.toolbar.appearance");
-    if (id === "tool-delete") return t("canvas.deleteSelected");
-    if (id === "tool-clear") return t("canvas.toolbar.clear");
-    return "";
+function Divider() {
+    return <span className="canvas-dock-separator" aria-hidden="true" />;
 }
 
 function getTipX(wrap: HTMLDivElement | null, target: HTMLElement) {

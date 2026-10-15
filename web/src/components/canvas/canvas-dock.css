@@ -1,0 +1,151 @@
+/*
+ * 画布底部工具栏的 Dock 外观与放大机制，移植自 reactbits.dev/components/dock
+ * （源码：DavidHDev/react-bits 的 src/content/Components/Dock）。
+ *
+ * 原版机制：每一项的**布局宽度固定为 --dock-base**，视觉尺寸由 JS 每帧写成
+ * `scale(size / --dock-base)`，所以放大时邻居被推开而不是叠在一起；尺寸朝
+ * `base + (peak - base) * cos²(π/2 · |指针 - 该项静止位| / distance)` 做弹簧插值。
+ * 底部 dock 用 `align-items: flex-end`，项长高时向上长，键帽贴着项顶，视觉上就是从
+ * 面板底边往外冒。
+ *
+ * 原版的配色写死在它自己的主题表里（深色 `--dock-tile: #3a3644 → #27242f` 之类），
+ * 这里全部改成 CSS 变量，由 canvas-toolbar.tsx 按 canvasThemes 算好后注入。
+ */
+
+.canvas-dock {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--dock-gap);
+    box-sizing: border-box;
+    /*
+     * 高度固定。原版 `.dock--bottom { height: var(--dock-thickness) }` —— 键帽放大时是
+     * 从面板里「冒出去」（面板不 overflow 裁切），面板本身尺寸纹丝不动。
+     * 少了这一行，面板会跟着项一起长高，dock 那种「图标从底边弹出来」的观感就没了。
+     */
+    height: var(--dock-thickness);
+    padding: var(--dock-pad);
+    border-radius: var(--dock-radius);
+    /* 和原版一样用内描边而不是 border：border 会挤掉内容盒，让几何和 rest 位置对不上。 */
+    box-shadow:
+        inset 0 0 0 1px var(--dock-panel-edge),
+        var(--dock-panel-shadow);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+    touch-action: none;
+}
+
+.canvas-dock-item {
+    position: relative;
+    flex: none;
+    width: var(--dock-base);
+    height: var(--dock-base);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+/*
+ * 键帽。transform-origin 在左上角 —— 项本身已经是被放大后的尺寸，
+ * 键帽按 size / base 缩放后正好铺满它，和图标的放大同步。
+ */
+.canvas-dock-tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--dock-base);
+    height: var(--dock-base);
+    border-radius: var(--dock-tile-radius);
+    background: var(--dock-tile);
+    box-shadow:
+        inset 0 0 0 1px var(--dock-tile-edge),
+        inset 0 1px 0 var(--dock-tile-highlight),
+        var(--dock-tile-shadow);
+    transform-origin: 0 0;
+    pointer-events: none;
+}
+
+.canvas-dock-item:disabled {
+    cursor: not-allowed;
+}
+
+.canvas-dock-item:disabled .canvas-dock-tile {
+    opacity: 0.35;
+}
+
+.canvas-dock-item:focus-visible .canvas-dock-tile {
+    outline: 2px solid var(--dock-accent);
+    outline-offset: 3px;
+}
+
+/* 当前工具、以及展开中的面板：原版是用项下方的小圆点表示，不是换底色。 */
+.canvas-dock-dot {
+    position: absolute;
+    top: calc(100% + var(--dock-dot-offset));
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--dock-dot);
+    pointer-events: none;
+}
+
+/*
+ * 悬停标签。原版把它放在项内部，所以项长高时标签跟着抬高，
+ * 永远不会撞到放大的键帽顶端。
+ */
+.canvas-dock-label {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--dock-label);
+    color: var(--dock-label-ink);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(-50%, 4px);
+    transition:
+        opacity 0.16s ease,
+        transform 0.16s ease;
+    pointer-events: none;
+}
+
+@media (hover: hover) {
+    .canvas-dock-item:hover .canvas-dock-label {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* 禁用项没有可执行的动作，别弹标签。 */
+.canvas-dock-item:disabled .canvas-dock-label {
+    display: none;
+}
+
+/* 原版的分隔线：高度是键帽的 72%，在面板里垂直居中。 */
+.canvas-dock-separator {
+    flex: none;
+    align-self: center;
+    width: 1px;
+    height: calc(var(--dock-base) * 0.72);
+    border-radius: 1px;
+    background: var(--dock-separator);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .canvas-dock-label {
+        transition: none;
+    }
+}
