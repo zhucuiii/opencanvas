@@ -542,7 +542,9 @@ export function GooeyPills({
             gl.uniform1i(uniforms.uCount, count);
             gl.uniform1f(uniforms.uSmooth, smooth);
             gl.uniform3f(uniforms.uPill, s.pillRgb[0], s.pillRgb[1], s.pillRgb[2]);
-            gl.uniform4f(uniforms.uHoverColor, s.hoverRgb[0], s.hoverRgb[1], s.hoverRgb[2], s.hoverAlpha);
+            // 这里必须乘 hover.alpha：不然悬停层一出现就是满亮度，而且永远不淡出
+            // （鼠标停在哪格就留一块，看着像卡住的选中块）。原版就是这么乘的。
+            gl.uniform4f(uniforms.uHoverColor, s.hoverRgb[0], s.hoverRgb[1], s.hoverRgb[2], s.hoverAlpha * hover.alpha);
             gl.uniform1f(uniforms.uShadow, s.shadow);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         };

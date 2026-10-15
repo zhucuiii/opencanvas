@@ -98,6 +98,9 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     <div className="rounded-full p-1" style={{ background: theme.node.fill }}>
                         <GooeyPills
                             className="h-8"
+                            // 悬停气泡和选中气泡同色，鼠标停在哪格就在哪格留一块，看着像卡住的选中块；
+                            // 悬停反馈交给 CSS 的文字变亮就够了。
+                            hoverEffect={false}
                             ariaLabel={t("settingsPanels.image.resolution")}
                             items={mediaScaleOptions.map((value) => ({ label: value === "auto" ? t("settingsPanels.common.auto") : value }))}
                             activeIndex={Math.max(0, mediaScaleOptions.findIndex((value) => value === selectedScale))}
@@ -117,6 +120,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             columns={5}
                             gap={4}
                             gooeyness={0.45}
+                            hoverEffect={false}
                             ariaLabel={t("settingsPanels.image.aspectRatio")}
                             items={mediaRatioOptions.map((item) => ({
                                 label: (
