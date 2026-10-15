@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Settings2 } from "lucide-react";
 import { Button } from "antd";
 import { useTranslation } from "react-i18next";
@@ -65,7 +66,8 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
         };
     }, [onOpenChange, open]);
 
-    const panel = open && buttonRect ? <ImageSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} onConfigChange={onConfigChange} showQuality={showQuality} /> : null;
+    // 弹层常驻 portal（只是内容按 open 挂载），这样关掉时 AnimatePresence 还能播退场。
+    const panel = <ImageSettingsPortal open={open} buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} onConfigChange={onConfigChange} showQuality={showQuality} />
 
     return (
         <>
@@ -98,6 +100,7 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
 }
 
 function ImageSettingsPortal({
+    open,
     buttonRect,
     panelRef,
     placement,
@@ -106,7 +109,8 @@ function ImageSettingsPortal({
     onConfigChange,
     showQuality,
 }: {
-    buttonRect: DOMRect;
+    open: boolean;
+    buttonRect: DOMRect | null;
     panelRef: RefObject<HTMLDivElement | null>;
     placement: CanvasImageSettingsPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
@@ -114,9 +118,11 @@ function ImageSettingsPortal({
     onConfigChange: (key: keyof AiConfig, value: string) => void;
     showQuality?: boolean;
 }) {
+    const reduce = useReducedMotion();
     const width = 356;
     const gap = 8;
     const margin = 12;
+    if (!buttonRect) return null;
     const alignRight = placement?.endsWith("Right");
     const alignCenter = placement === "top" || placement === "bottom";
     const left = alignCenter ? buttonRect.left + buttonRect.width / 2 - width / 2 : alignRight ? buttonRect.right - width : buttonRect.left;
@@ -139,21 +145,33 @@ function ImageSettingsPortal({
         color: theme.node.text,
     } as const;
 
+    // 从芯片那一侧长出来：向下展开的弹层以顶边为原点，向上展开的以底边为原点。
+    const origin = `${alignRight ? "right" : "left"} ${topPlacement ? "bottom" : "top"}`;
+    const away = topPlacement ? 6 : -6;
+
     return createPortal(
-        <div
-            ref={panelRef}
-            className="canvas-image-settings-popover"
-            style={style}
-            onPointerDown={(event) => event.stopPropagation()}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-        >
-            {/* 把 gooey canvas 那圈溢出裁在面板边界上：既保住面板内的气泡和水珠，
-                又不让它撑出滚动区（撑出去的话底部会多一条横向滚动条，内容还会被滚走）。 */}
-            <div className="overflow-hidden">
-                <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" showCount={false} showQuality={showQuality} />
-            </div>
-        </div>,
+        <AnimatePresence>
+            {open ? (
+                <motion.div
+                    ref={panelRef}
+                    className="canvas-image-settings-popover"
+                    style={{ ...style, transformOrigin: origin }}
+                    initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: away }}
+                    animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: away * 0.6 }}
+                    transition={reduce ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 30, mass: 0.7 }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                >
+                    {/* 把 gooey canvas 那圈溢出裁在面板边界上：既保住面板内的气泡和水珠，
+                        又不让它撑出滚动区（撑出去的话底部会多一条横向滚动条，内容还会被滚走）。 */}
+                    <div className="overflow-hidden">
+                        <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" showCount={false} showQuality={showQuality} />
+                    </div>
+                </motion.div>
+            ) : null}
+        </AnimatePresence>,
         document.body,
     );
 }

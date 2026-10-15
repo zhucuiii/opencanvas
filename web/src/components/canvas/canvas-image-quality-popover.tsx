@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Gauge } from "lucide-react";
 import { Button } from "antd";
 import { useTranslation } from "react-i18next";
@@ -67,39 +68,43 @@ export function CanvasImageQualityPopover({ quality, onChange, buttonClassName, 
                     <span className="truncate">{imageQualityLabel(quality)}</span>
                 </Button>
             </span>
-            {open && buttonRect ? (
-                <QualityPortal
-                    buttonRect={buttonRect}
-                    panelRef={panelRef}
-                    theme={theme}
-                    quality={quality}
-                    onChange={(value) => {
-                        onChange(value);
-                        setOpen(false);
-                    }}
-                />
-            ) : null}
+            {/* 和「参数」一样常驻 portal，让退场动画有地方播。 */}
+            <QualityPortal
+                open={open}
+                buttonRect={buttonRect}
+                panelRef={panelRef}
+                theme={theme}
+                quality={quality}
+                onChange={(value) => {
+                    onChange(value);
+                    setOpen(false);
+                }}
+            />
         </>
     );
 }
 
 function QualityPortal({
+    open,
     buttonRect,
     panelRef,
     theme,
     quality,
     onChange,
 }: {
-    buttonRect: DOMRect;
+    open: boolean;
+    buttonRect: DOMRect | null;
     panelRef: RefObject<HTMLDivElement | null>;
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
     quality: string;
     onChange: (quality: string) => void;
 }) {
     const { t } = useTranslation();
+    const reduce = useReducedMotion();
     const width = 240;
     const gap = 8;
     const margin = 12;
+    if (!buttonRect) return null;
     const style = {
         position: "fixed",
         zIndex: 1200,
@@ -117,12 +122,26 @@ function QualityPortal({
     } as const;
 
     return createPortal(
-        <div ref={panelRef} style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
-            <div className="mb-2 px-1 text-sm font-medium" style={{ color: theme.node.muted }}>
-                {t("settingsPanels.image.quality")}
-            </div>
-            <ImageQualityGrid quality={quality} theme={theme} onChange={onChange} className="grid grid-cols-3 gap-2" />
-        </div>,
+        <AnimatePresence>
+            {open ? (
+                <motion.div
+                    ref={panelRef}
+                    style={{ ...style, transformOrigin: "left top" }}
+                    initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: -6 }}
+                    animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: -4 }}
+                    transition={reduce ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 30, mass: 0.7 }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                >
+                    <div className="mb-2 px-1 text-sm font-medium" style={{ color: theme.node.muted }}>
+                        {t("settingsPanels.image.quality")}
+                    </div>
+                    <ImageQualityGrid quality={quality} theme={theme} onChange={onChange} className="grid grid-cols-3 gap-2" />
+                </motion.div>
+            ) : null}
+        </AnimatePresence>,
         document.body,
     );
 }
