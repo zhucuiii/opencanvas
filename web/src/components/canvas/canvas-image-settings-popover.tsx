@@ -64,8 +64,9 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
         <>
             <span ref={buttonRef} className="inline-flex min-w-0">
                 <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[180px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => updateOpen(!open)}>
+                    {/* 张数改由底栏的独立控件负责，这里只显示质量和尺寸。 */}
                     <span className="truncate">
-                        {imageQualityLabel(quality)} · {imageSizeLabel(activeSize)} · {t("canvas.controls.images", { count })}
+                        {imageQualityLabel(quality)} · {imageSizeLabel(activeSize)}
                     </span>
                 </Button>
             </span>
@@ -119,7 +120,7 @@ function ImageSettingsPortal({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" />
+            <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" showCount={false} />
         </div>,
         document.body,
     );
