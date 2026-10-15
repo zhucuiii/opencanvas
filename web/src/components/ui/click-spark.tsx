@@ -5,9 +5,10 @@ import { useEffect, useRef } from "react";
  * src/ts-default/Animations/ClickSpark/ClickSpark.tsx）。绘制数学、缓动、形状、
  * 随机分布、画布尺寸与 DPR 处理全部照抄，只补了类型、去掉 'use client'。
  *
- * 与原版的唯一结构差异：原版是个包裹 children 的容器组件，靠监听 root 上的
+ * 与原版的结构差异：原版是个包裹 children 的容器组件，靠监听 root 上的
  * pointerdown/click 触发；这里是**全局**特效，所以改成铺满视口的固定覆盖层，
- * 监听 document 上的 pointerdown，只对命中的按钮触发。
+ * 监听 document 上的 pointerup（不是 pointerdown —— 拖动画布时火花要出现在松手处
+ * 而不是按下处）。
  *
  * 一次点击 = 一个 burst：在点击点新建一块刚好盖住飞溅范围的 canvas（而不是
  * 一张全屏画布），画完自己 remove。火花拖尾靠「头部位置 + 按 lag 回退的尾部位置」
@@ -181,7 +182,6 @@ export function ClickSparkLayer({
         const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const bursts: Burst[] = [];
         let raf = 0;
-        let lastPress = { time: -1e9, x: 0, y: 0 };
 
         const drop = (s: Settings, seconds: number) => 0.5 * s.gravity * GRAVITY * seconds * seconds;
 
@@ -393,13 +393,16 @@ export function ClickSparkLayer({
         };
 
         // 全页任意位置按下左键都溅火花；传了 selector 就收窄到命中的元素。
-        const onPointerDown = (event: PointerEvent) => {
+        /*
+         * 用 pointerup 而不是 pointerdown：拖动画布时按下点（A）和松手点（B）会差很远，
+         * 火花应该在真正「完成一次点击」的地方（B）出现，而不是按下的地方。
+         */
+        const onPointerUp = (event: PointerEvent) => {
             if (event.button !== 0) return;
             if (selector) {
                 const target = event.target instanceof Element ? event.target : null;
                 if (!target?.closest(selector)) return;
             }
-            lastPress = { time: performance.now(), x: event.clientX, y: event.clientY };
             spawn(event.clientX, event.clientY);
         };
 
@@ -413,12 +416,12 @@ export function ClickSparkLayer({
             spawn(rect.left + rect.width / 2, rect.top + rect.height / 2);
         };
 
-        document.addEventListener("pointerdown", onPointerDown, true);
+        document.addEventListener("pointerup", onPointerUp, true);
         document.addEventListener("click", onClick, true);
 
         return () => {
             cancelAnimationFrame(raf);
-            document.removeEventListener("pointerdown", onPointerDown, true);
+            document.removeEventListener("pointerup", onPointerUp, true);
             document.removeEventListener("click", onClick, true);
             for (const burst of [...bursts]) remove(burst);
         };
