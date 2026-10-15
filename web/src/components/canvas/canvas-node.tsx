@@ -28,6 +28,8 @@ type CanvasNodeProps = {
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
     isConnecting: boolean;
+    /** 正在拖拽或缩放节点：这时宽高和位置跟着指针逐帧改，不能带过渡，否则会拖出一条尾巴。 */
+    isInteracting?: boolean;
     referenceSelectionState?: "target" | "disabled" | "available";
     showPanel: boolean;
     showImageInfo: boolean;
@@ -86,6 +88,13 @@ type NodeContentRendererProps = {
     groupChildCount: number;
 };
 
+/**
+ * 节点形变的过渡：改比例 / 改尺寸 / 程序化改位置（比如换比例时保持中心不动）时，
+ * 宽高和位移一起走同一条 220ms 曲线，所以两边是同时收尾的，不会一边先到一边还在动。
+ * 拖拽和缩放期间必须换成瞬时（见 isInteracting），否则节点会拖着一条尾巴追指针。
+ */
+const NODE_MORPH_TRANSITION = "box-shadow 200ms ease, width 220ms cubic-bezier(0.22, 1, 0.36, 1), height 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1)";
+
 export const CanvasNode = React.memo(function CanvasNode({
     data,
     scale,
@@ -94,6 +103,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     isFocusRelated,
     isConnectionTarget,
     isConnecting,
+    isInteracting = false,
     referenceSelectionState,
     showPanel,
     showImageInfo,
@@ -308,7 +318,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 transform: `translate(${data.position.x}px, ${data.position.y}px)`,
                 width: data.width,
                 height: data.height,
-                transition: "box-shadow 200ms ease",
+                transition: isInteracting || resizeRef.current.isResizing ? "box-shadow 200ms ease" : NODE_MORPH_TRANSITION,
                 contain: "layout style",
             }}
             onMouseEnter={() => {
