@@ -1,0 +1,145 @@
+/*
+ * 移植自 reactbits.dev/components/gooey-nav（源码：DavidHDev/react-bits 的
+ * src/content/Components/GooeyNav）。类名和变量保留原版的命名习惯（gooey-nav__x →
+ * gooey-pills__x、--gn-* → --gp-*），方便跟原版对照。
+ *
+ * 机制见 gooey-pills.tsx 顶部说明。这里只负责两件事：
+ * 1. 把两层列表叠在同一格位置（上面那层是 clip-path 裁出来的高亮文字）；
+ * 2. 颜色全部走 --gp-* 变量，由调用方按主题注入。
+ *
+ * 和原版的差异：原版自带 999px 圆角外框（frame），我们这边底槽由调用方画，所以去掉了；
+ * 另外原版靠 --gn-x/--gn-y 给每项留内边距，我们这里是等宽分段，改由 flex: 1 撑开。
+ */
+
+.gooey-pills {
+    position: relative;
+    display: flex;
+    width: 100%;
+    /* 高度交给调用方（这里不写 height，否则会盖掉调用方的 Tailwind 高度类）。 */
+    font-size: 14px;
+    line-height: 1.2;
+    --gp-pill: #3f3f46;
+    --gp-ink: #fafafa;
+    --gp-muted: rgba(250, 250, 250, 0.62);
+    --gp-active-ink: #fafafa;
+}
+
+.gooey-pills__stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* 气泡本体和高光画在这张 canvas 上；它比控件大一圈（MARGIN），水珠才有地方飞。 */
+.gooey-pills__canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+/* WebGL 不可用时的兜底：一枚静止的圆角块，摆在选中项上。 */
+.gooey-pills__fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    border-radius: 999px;
+    background: var(--gp-pill);
+    pointer-events: none;
+}
+
+.gooey-pills__list {
+    position: relative;
+    display: flex;
+    gap: var(--gp-gap, 0px);
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* 宫格模式：每项等宽（宽度由内联 flex-basis 给），撑不下就换行。 */
+.gooey-pills--grid .gooey-pills__list {
+    flex-wrap: wrap;
+}
+
+.gooey-pills--grid .gooey-pills__link {
+    padding: 6px 0;
+}
+
+.gooey-pills--grid .gooey-pills__label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    overflow: visible;
+}
+
+/* 叠在上面的高亮文字层：默认整块裁掉，每帧由 JS 换成液体轮廓。 */
+.gooey-pills__list--active {
+    position: absolute;
+    inset: 0;
+    color: var(--gp-active-ink);
+    visibility: hidden;
+    clip-path: inset(100%);
+    pointer-events: none;
+}
+
+.gooey-pills__item {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+
+.gooey-pills__link {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 0 10px;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--gp-muted);
+    font: inherit;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.gooey-pills__list--active .gooey-pills__link {
+    color: inherit;
+}
+
+/* 选中项的文字在底层也调亮，液体扫过去时不会突然换色。 */
+.gooey-pills__item[data-active] .gooey-pills__link {
+    color: var(--gp-ink);
+}
+
+.gooey-pills__link:focus-visible {
+    outline: 2px solid var(--gp-ink);
+    outline-offset: 2px;
+}
+
+.gooey-pills__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (hover: hover) {
+    .gooey-pills__link:hover {
+        color: var(--gp-ink);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gooey-pills__link {
+        transition: none;
+    }
+}

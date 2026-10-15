@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { ConfigProvider, Switch } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { GooeyPills } from "@/components/ui/gooey-pills";
 import i18n from "@/i18n";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { computeMediaSize, inferMediaRatio, inferMediaScale, mediaRatioOptions, mediaScaleOptions, readMediaDimensions } from "@/lib/media-size";
@@ -93,45 +94,45 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 </div>
                 <div className="space-y-2.5">
                     <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.resolution")}</SettingTitle>
-                    {/* 分段控件：整条是一个底槽，选中项在槽里填一块更实的底色。 */}
-                    <div className="flex gap-0.5 rounded-xl p-1" style={{ background: theme.node.fill }}>
-                        {mediaScaleOptions.map((value) => {
-                            const selected = selectedScale === value;
-                            return (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className="h-8 flex-1 cursor-pointer rounded-lg text-sm transition"
-                                    style={{ background: selected ? theme.toolbar.border : "transparent", color: selected ? theme.node.text : theme.node.muted, fontWeight: selected ? 500 : 400 }}
-                                    onMouseDown={(event) => event.stopPropagation()}
-                                    onClick={() => selectScale(value)}
-                                >
-                                    {value === "auto" ? t("settingsPanels.common.auto") : value}
-                                </button>
-                            );
-                        })}
+                    {/* 选中块是 gooey 液体气泡：切换时气泡拖着水珠流过去，文字被液体吞掉再吐出来。 */}
+                    <div className="rounded-full p-1" style={{ background: theme.node.fill }}>
+                        <GooeyPills
+                            className="h-8"
+                            ariaLabel={t("settingsPanels.image.resolution")}
+                            items={mediaScaleOptions.map((value) => ({ label: value === "auto" ? t("settingsPanels.common.auto") : value }))}
+                            activeIndex={Math.max(0, mediaScaleOptions.findIndex((value) => value === selectedScale))}
+                            onChange={(index) => selectScale(mediaScaleOptions[index])}
+                            pillColor={theme.toolbar.border}
+                            activeInk={theme.node.text}
+                            mutedInk={theme.node.muted}
+                            hoverColor={theme.node.text}
+                        />
                     </div>
                 </div>
                 <div className="space-y-2.5">
                     <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.aspectRatio")}</SettingTitle>
-                    {/* 比例宫格：只有图标和标签，不加边框；选中项自己带一块圆角底色。 */}
-                    <div className="grid grid-cols-5 gap-1 rounded-2xl p-2" style={{ background: theme.node.fill }}>
-                        {mediaRatioOptions.map((item) => {
-                            const selected = selectedRatio === item.value;
-                            return (
-                                <button
-                                    key={item.value}
-                                    type="button"
-                                    className="flex cursor-pointer flex-col items-center gap-1 rounded-xl py-1.5 transition"
-                                    style={{ background: selected ? theme.toolbar.border : "transparent", color: selected ? theme.node.text : theme.node.muted }}
-                                    onMouseDown={(event) => event.stopPropagation()}
-                                    onClick={() => selectRatio(item.value)}
-                                >
-                                    <AspectIcon width={item.width || 1} height={item.height || 1} color="currentColor" box={20} thickness={selected ? 2 : 1.5} />
-                                    <span className="text-[11px] leading-none">{item.value === "auto" ? t("settingsPanels.common.auto") : item.value}</span>
-                                </button>
-                            );
-                        })}
+                    {/* 比例宫格：和分辨率一样走 gooey 液体气泡，气泡会从上一格流到下一格（跨行也是）。 */}
+                    <div className="rounded-2xl p-2" style={{ background: theme.node.fill }}>
+                        <GooeyPills
+                            columns={5}
+                            gap={4}
+                            gooeyness={0.45}
+                            ariaLabel={t("settingsPanels.image.aspectRatio")}
+                            items={mediaRatioOptions.map((item) => ({
+                                label: (
+                                    <>
+                                        <AspectIcon width={item.width || 1} height={item.height || 1} color="currentColor" box={20} thickness={item.value === selectedRatio ? 2 : 1.5} />
+                                        <span className="text-[11px] leading-none">{item.value === "auto" ? t("settingsPanels.common.auto") : item.value}</span>
+                                    </>
+                                ),
+                            }))}
+                            activeIndex={Math.max(0, mediaRatioOptions.findIndex((item) => item.value === selectedRatio))}
+                            onChange={(index) => selectRatio(mediaRatioOptions[index].value)}
+                            pillColor={theme.toolbar.border}
+                            activeInk={theme.node.text}
+                            mutedInk={theme.node.muted}
+                            hoverColor={theme.node.text}
+                        />
                     </div>
                 </div>
                 <div className="flex items-center justify-between gap-3">
