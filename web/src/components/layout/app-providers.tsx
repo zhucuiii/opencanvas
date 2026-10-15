@@ -10,6 +10,7 @@ import "dayjs/locale/zh-cn";
 import { useTranslation } from "react-i18next";
 
 import { ClientRootInit } from "@/components/layout/client-root-init";
+import { ClickSparkLayer } from "@/components/ui/click-spark";
 import type { AppLocale } from "@/i18n";
 import { getAntThemeConfig } from "@/lib/app-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -48,6 +49,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
                 <App>
                     <QueryClientProvider client={queryClient}>
                         <ClientRootInit>{children}</ClientRootInit>
+                        {/* 全局点击火花：只认落在按钮上的按下。参数用原版默认（classic 预设），只把颜色按主题反相。 */}
+                        <ClickSparkLayer sparkColor={dark ? "#ffffff" : "#18181b"} />
                     </QueryClientProvider>
                 </App>
             </ProConfigProvider>
