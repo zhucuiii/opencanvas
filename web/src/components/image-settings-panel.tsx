@@ -31,9 +31,11 @@ type ImageSettingsPanelProps = {
     quickCount?: number;
     /** 画布节点的底栏已有独立的张数控件，那里的面板用不到这一块。 */
     showCount?: boolean;
+    /** 画布节点的底栏已有独立的质量控件，那里的面板用不到这一块。 */
+    showQuality?: boolean;
 };
 
-export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 10, showCount = true }: ImageSettingsPanelProps) {
+export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 10, showCount = true, showQuality = true }: ImageSettingsPanelProps) {
     const { t } = useTranslation();
     const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
     const quality = config.quality || "auto";
@@ -65,16 +67,12 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 }}
             >
                 {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.image.title")}</div> : null}
-                <div className="space-y-2.5">
-                    <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.quality")}</SettingTitle>
-                    <div className="grid grid-cols-3 gap-2.5">
-                        {qualityOptions.map((item) => (
-                            <OptionPill key={item.value} selected={quality === item.value} theme={theme} onClick={() => onConfigChange("quality", item.value)}>
-                                {t(`settingsPanels.common.${item.labelKey}`)}
-                            </OptionPill>
-                        ))}
+                {showQuality ? (
+                    <div className="space-y-2.5">
+                        <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.quality")}</SettingTitle>
+                        <ImageQualityGrid quality={quality} theme={theme} onChange={(value) => onConfigChange("quality", value)} />
                     </div>
-                </div>
+                ) : null}
                 <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-3">
                         <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.size")}</SettingTitle>
@@ -168,6 +166,20 @@ export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; ch
 
 export function imageQualityLabel(value: string) {
     return qualityOptions.some((item) => item.value === value) ? i18n.t(`settingsPanels.common.${value}`) : value;
+}
+
+/** 六档质量选项的宫格，图像设置面板和画布节点底栏的质量控件共用。 */
+export function ImageQualityGrid({ quality, theme, onChange, className = "grid grid-cols-3 gap-2.5" }: { quality: string; theme: CanvasTheme; onChange: (value: string) => void; className?: string }) {
+    const { t } = useTranslation();
+    return (
+        <div className={className}>
+            {qualityOptions.map((item) => (
+                <OptionPill key={item.value} selected={quality === item.value} theme={theme} onClick={() => onChange(item.value)}>
+                    {t(`settingsPanels.common.${item.labelKey}`)}
+                </OptionPill>
+            ))}
+        </div>
+    );
 }
 
 export function imageSizeLabel(size: string) {

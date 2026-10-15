@@ -16,9 +16,11 @@ type ModelPickerProps = {
     fullWidth?: boolean;
     placeholder?: string;
     onMissingConfig?: () => void;
+    /** 画布节点底栏的扁平样式：去掉胶囊的底色和描边，只留图标加文字。 */
+    flat?: boolean;
 };
 
-export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, onMissingConfig }: ModelPickerProps) {
+export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, onMissingConfig, flat = false }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
     const [open, setOpen] = useState(false);
@@ -47,11 +49,16 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
         >
             <SelectTrigger
                 className={cn(
-                    "canvas-composer-model-picker h-8 w-fit max-w-full gap-2 rounded-full border border-input bg-transparent px-3 text-sm font-normal shadow-sm transition-colors",
-                    fullWidth ? "w-full min-w-0 justify-start" : "min-w-[9rem] justify-start",
-                    "data-[state=open]:border-ring data-[state=open]:ring-2 data-[state=open]:ring-ring/20",
+                    "canvas-composer-model-picker w-fit max-w-full gap-2 text-sm font-normal",
+                    flat
+                        ? // SelectTrigger 的基础样式里 h-8 和浅底是带变体的（data-[size=default] / dark:），
+                          // tailwind-merge 不会把它们和普通工具类合并掉，只好逐个把变体也覆盖一遍。
+                          "h-10 data-[size=default]:h-10 min-w-0 justify-start rounded-none border-0 bg-transparent p-0 shadow-none dark:bg-transparent hover:bg-transparent dark:hover:bg-transparent transition-opacity data-[state=open]:opacity-80 hover:opacity-80"
+                        : "h-8 rounded-full border border-input bg-transparent px-3 shadow-sm transition-colors data-[state=open]:border-ring data-[state=open]:ring-2 data-[state=open]:ring-ring/20",
+                    fullWidth ? "w-full min-w-0 justify-start" : flat ? "" : "min-w-[9rem] justify-start",
                     className,
                 )}
+                hideChevron={flat}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
                 title={current ? modelOptionLabel(config, current) : pickerPlaceholder}

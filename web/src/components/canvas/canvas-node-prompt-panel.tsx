@@ -8,6 +8,7 @@ import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveC
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
+import { CanvasImageQualityPopover } from "./canvas-image-quality-popover";
 import { CanvasImageCountChip } from "./canvas-image-count-chip";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
@@ -108,15 +109,20 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                     {mode === "image" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true)} className="!h-10 min-w-0 max-w-[190px] flex-1" />
+                            <ModelPicker flat config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px] flex-1" />
+                            <BarDivider color={theme.node.stroke} />
                             <CanvasImageSettingsPopover
+                                flat
                                 config={config}
                                 placement="topLeft"
-                                buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3"
+                                buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-none !px-0 transition hover:opacity-80"
+                                showQuality={false}
                                 onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })}
                                 onMissingConfig={() => openConfigDialog(true)}
                                 onOpenChange={onImageSettingsOpenChange}
                             />
+                            <BarDivider color={theme.node.stroke} />
+                            <CanvasImageQualityPopover flat quality={config.quality || "auto"} onChange={(quality) => onConfigChange(node.id, { quality })} buttonClassName="!h-10 !max-w-[120px] !justify-start !rounded-none !px-0 transition hover:opacity-80" />
                             {connectedNodes.some((item) => item.type === CanvasNodeType.Image) ? <CanvasTransferPromptPopover onApply={updatePrompt} /> : null}
                         </>
                     ) : mode === "video" ? (
@@ -187,6 +193,11 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
             </Modal>
         </div>
     );
+}
+
+/** 扁平底栏里分隔「模型 / 尺寸 / 质量」的细竖线，取主题描边色。 */
+function BarDivider({ color }: { color: string }) {
+    return <span className="h-4 w-px shrink-0" style={{ background: color }} aria-hidden />;
 }
 
 function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
