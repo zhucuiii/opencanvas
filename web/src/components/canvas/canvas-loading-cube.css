@@ -1,0 +1,96 @@
+/*
+ * 移植自 uiverse.io/bociKond/wise-bat-13。
+ *
+ * 原版是一个 3D 线框立方体：容器 `preserve-3d`，里面 6 个绝对定位的 div 各代表一个面，
+ * 靠 translateZ / rotateY / rotateX 拼成方体；容器每 1.6s 翻滚一次 —— 先绕 X 轴翻满
+ * 360°，再绕 Y 轴转满 360°。
+ *
+ * 原版尺寸写死 70.4px、描边 3.5px、translateZ 35.2px（= 尺寸的一半），这里把尺寸抽成
+ * --cube-size，其余按原版比例推导，改一处就能整体缩放。
+ *
+ * 两条容易踩的坑：
+ * 1. 面是 border-box。原版 CSS 自己没写 box-sizing，但 uiverse 站点全局引了 Tailwind 的
+ *    preflight（`*,:before,:after{box-sizing:border-box}`），所以原版实际是以 border-box
+ *    渲染的 —— width:100% 含描边，6 个面正好和容器同宽，拼成一个闭合的方体。这里显式写死
+ *    border-box，既跟原版一致，也不依赖本页 preflight 是否还在。
+ *    （如果单独把原版 CSS 拎出来在空白页里渲染，会退化成 content-box，面比容器大一圈、
+ *    彼此重叠 —— 那是漏了 preflight 的假象，不是原版的样子。）
+ * 2. 原版没给容器 position:relative —— 它靠容器自身的 transform 成为绝对定位子元素的
+ *    包含块。这里补上，效果一致但不再依赖“容器一定带 transform”这个隐含前提。
+ */
+
+.canvas-loading-cube {
+    /* 原版 70.4px（4.4rem）在节点里偏大，按用户要求缩到 80%。 */
+    --cube-size: 56.32px;
+    /* 原版描边 3.5px / 尺寸 70.4px。 */
+    --cube-edge: calc(var(--cube-size) * 3.5 / 70.4);
+
+    position: relative;
+    flex: none;
+    width: var(--cube-size);
+    height: var(--cube-size);
+    transform-style: preserve-3d;
+    animation: canvas-loading-cube-tumble 1.6s infinite ease;
+}
+
+.canvas-loading-cube > div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    border: var(--cube-edge) solid currentColor;
+    /* 原版 --clr-alpha 是同色的 10% 透明度。 */
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+/* 后面那片。translateZ 是原版写死的 35.2px，即尺寸的一半。 */
+.canvas-loading-cube > div:nth-of-type(1) {
+    transform: translateZ(calc(var(--cube-size) / -2)) rotateY(180deg);
+}
+
+.canvas-loading-cube > div:nth-of-type(2) {
+    transform: rotateY(-270deg) translateX(50%);
+    transform-origin: top right;
+}
+
+.canvas-loading-cube > div:nth-of-type(3) {
+    transform: rotateY(270deg) translateX(-50%);
+    transform-origin: center left;
+}
+
+.canvas-loading-cube > div:nth-of-type(4) {
+    transform: rotateX(90deg) translateY(-50%);
+    transform-origin: top center;
+}
+
+.canvas-loading-cube > div:nth-of-type(5) {
+    transform: rotateX(-90deg) translateY(50%);
+    transform-origin: bottom center;
+}
+
+/* 前面那片。 */
+.canvas-loading-cube > div:nth-of-type(6) {
+    transform: translateZ(calc(var(--cube-size) / 2));
+}
+
+@keyframes canvas-loading-cube-tumble {
+    0% {
+        transform: rotate(45deg) rotateX(-25deg) rotateY(25deg);
+    }
+
+    50% {
+        transform: rotate(45deg) rotateX(-385deg) rotateY(25deg);
+    }
+
+    100% {
+        transform: rotate(45deg) rotateX(-385deg) rotateY(385deg);
+    }
+}
+
+/* 停在不动的 0% 姿态，仍然看得出是个立方体，而不是塌成一张平面。 */
+@media (prefers-reduced-motion: reduce) {
+    .canvas-loading-cube {
+        animation: none;
+        transform: rotate(45deg) rotateX(-25deg) rotateY(25deg);
+    }
+}

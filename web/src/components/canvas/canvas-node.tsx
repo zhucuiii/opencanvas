@@ -9,7 +9,7 @@ import { previewUrlFor, subscribeImagePreviews, getImagePreviewRevision } from "
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { CanvasLoadingWord } from "./canvas-loading-word";
+import { CanvasLoadingCube } from "./canvas-loading-cube";
 import { ImageStack } from "./image-stack";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeText, type Position } from "@/types/canvas";
@@ -409,16 +409,13 @@ export const CanvasNode = React.memo(function CanvasNode({
                     <div
                         className="canvas-node-glass"
                         style={{
-                            // Same structure as the reference card, inverted for a dark
-                            // node: the reference pairs a dark blob with a white pane,
-                            // so dark mode pairs a light blob with a darker pane. A dark
-                            // blob on a dark node would be invisible.
-                            ["--node-glass-blob" as string]: theme === canvasThemes.light ? "rgba(8,8,8,.15)" : "rgba(255,255,255,.14)",
+                            // The frosted pane only; the orbiting blob that used to sit
+                            // behind it was dropped, it read as a stray light patch on
+                            // the empty nodes.
                             ["--node-glass-fill" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.72)" : "rgba(14,12,11,.56)",
                             ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.2)",
                         }}
                     >
-                        <span className="canvas-node-glass-blob" />
                         <span className="canvas-node-glass-frost" />
                     </div>
                 ) : null}
@@ -428,7 +425,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     style={
                         {
                             // The frame behind already paints the fill; staying
-                            // transparent here lets the glass blob show through.
+                            // transparent here lets the frosted pane show through.
                             background: "transparent",
                             pointerEvents: contentInteractive ? undefined : "none",
                         } as React.CSSProperties
@@ -983,9 +980,9 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     );
 }
 
-/** The LOADING letterform loader, used while a slot is generating. */
+/** The tumbling cube loader, used while a slot is generating. */
 function GenerationLoader({ color }: { color: string }) {
-    return <CanvasLoadingWord color={color} />;
+    return <CanvasLoadingCube color={color} />;
 }
 
 function ImageInfoBar({ node }: { node: CanvasNodeData }) {

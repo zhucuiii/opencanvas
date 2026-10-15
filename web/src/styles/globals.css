@@ -626,9 +626,9 @@
     }
 }
 
-/* Canvas node glass surface. Structure mirrors the reference card one for
-   one — an outer clipping frame, a blob behind an inset frosted pane — with
-   the light values retuned for a dark node instead of pure white. */
+/* Canvas node glass surface: an outer clipping frame with an inset frosted
+   pane. The orbiting blob that used to sit behind the pane was removed — on
+   an empty node it read as a stray light patch drifting across the card. */
 .canvas-node-glass {
     position: absolute;
     inset: 0;
@@ -637,64 +637,18 @@
     pointer-events: none;
 }
 
-/* 75% of the node's width, matching the reference blob, and clipped by the
-   frame above so it stays inside the card. */
-.canvas-node-glass-blob {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 75%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: var(--node-glass-blob, rgba(8, 8, 8, 0.19));
-    filter: blur(12px);
-    will-change: transform;
-    animation: canvas-node-glass-orbit 5s infinite ease;
-}
-
-/* Mirrors blob-bounce: hold the -100% anchor and step one blob-size across the
-   corners via translate3d. */
-@keyframes canvas-node-glass-orbit {
-    0% {
-        transform: translate(-100%, -100%) translate3d(0, 0, 0);
-    }
-
-    25% {
-        transform: translate(-100%, -100%) translate3d(100%, 0, 0);
-    }
-
-    50% {
-        transform: translate(-100%, -100%) translate3d(100%, 100%, 0);
-    }
-
-    75% {
-        transform: translate(-100%, -100%) translate3d(0, 100%, 0);
-    }
-
-    100% {
-        transform: translate(-100%, -100%) translate3d(0, 0, 0);
-    }
-}
-
 /* The inset frosted pane: same 5px inset and radius step as the reference. */
 .canvas-node-glass-frost {
     position: absolute;
     inset: 5px;
     border-radius: 16px;
     background: var(--node-glass-fill, rgba(255, 255, 255, 0.95));
-    /* A light blur keeps a glass feel while still letting the blob's shape show
-       through; a heavy blur would smear it into flat haze. */
+    /* Blurs whatever the node lets through behind the pane (an image node's
+       letterboxed edges, mainly); a heavy blur would smear it into flat haze. */
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     outline: 2px solid var(--node-glass-edge, rgba(255, 255, 255, 0.85));
     outline-offset: -2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .canvas-node-glass-blob {
-        animation: none;
-        transform: translate(0, 0);
-    }
 }
 
 /* Springy entrance for canvas overlays (node panel, hover toolbar, menus).
