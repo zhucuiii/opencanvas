@@ -17,7 +17,7 @@ type CanvasImageCountChipProps = {
 /** 滚轮里每一项的高度（px），吸附步长就是它。 */
 const ROW_HEIGHT = 36;
 /** 滚轮可见高度 = ROW_HEIGHT * WINDOW_ROWS，中间那一行是选中项。 */
-const WINDOW_ROWS = 5;
+const WINDOW_ROWS = 3;
 /*
  * 无限循环的副本数。滚轮把同一份选项拼 LOOP 份，打开时落在中间那份；
  * 滚到边缘份时悄悄跳回中间份的同值位置（同一帧内两次写入，外面看不出跳动）。
@@ -231,9 +231,13 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
                                         }),
                                     )}
                                 </div>
-                                {/* 上下渐隐，遮住滚动边缘。 */}
-                                <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: pad, background: fade, transform: "scaleY(-1)" }} />
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: pad, background: fade }} />
+                                {/*
+                                 * 上下渐隐：两条都是「外缘不透明、往中间淡出」。
+                                 * fade 本身是「上不透明 → 下透明」，所以上面那块直接用、下面那块翻转。
+                                 * （之前 scaleY(-1) 加错了对象，两块都盖在靠中间那一侧，方向正好反了。）
+                                 */}
+                                <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: pad, background: fade }} />
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: pad, background: fade, transform: "scaleY(-1)" }} />
                             </div>
                         </motion.div>
                     ) : null}
