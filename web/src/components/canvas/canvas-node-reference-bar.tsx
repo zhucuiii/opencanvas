@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { FileText, Image as ImageIcon, Music2, Plus, Puzzle, Video, X } from "lucide-react";
 import { Popover } from "antd";
 import { useSyncExternalStore } from "react";
@@ -10,19 +11,52 @@ import { getImagePreviewRevision, previewUrlFor, subscribeImagePreviews } from "
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
-export function CanvasNodeReferenceBar({ nodeId, nodes, connectedNodes, onDisconnect, onStartSelection }: { nodeId: string; nodes: CanvasNodeData[]; connectedNodes: CanvasNodeData[]; onDisconnect?: (fromNodeId: string, toNodeId: string) => void; onStartSelection?: (nodeId: string) => void }) {
+export function CanvasNodeReferenceBar({
+    nodeId,
+    nodes,
+    connectedNodes,
+    onDisconnect,
+    onStartSelection,
+    headerAddButton = false,
+    headerTrailing,
+}: {
+    nodeId: string;
+    nodes: CanvasNodeData[];
+    connectedNodes: CanvasNodeData[];
+    onDisconnect?: (fromNodeId: string, toNodeId: string) => void;
+    onStartSelection?: (nodeId: string) => void;
+    /** 标题行左侧的「＋参考」按钮取代「参考内容」文字，加号不再占缩略图行的一格。 */
+    headerAddButton?: boolean;
+    /** 标题行右侧的附加内容（如放大编辑按钮）。 */
+    headerTrailing?: ReactNode;
+}) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const references = connectedNodes.flatMap((sourceNode) => (sourceNode.type === CanvasNodeType.Group ? getGroupResourceNodes(sourceNode.id, nodes) : [sourceNode]).map((node) => ({ node, sourceNodeId: sourceNode.id })));
+    const showReferenceRow = references.length > 0 || !headerAddButton;
     return (
         <div className="mb-2">
-            <div className="mb-1.5 text-[11px] font-medium" style={{ color: theme.node.muted }}>{t("canvas.references.title")}</div>
-            <div className="thin-scrollbar flex min-h-12 gap-2 overflow-x-auto pb-1">
-                {references.map(({ node, sourceNodeId }) => <ReferenceItem key={`${sourceNodeId}:${node.id}`} node={node} onRemove={() => onDisconnect?.(sourceNodeId, nodeId)} />)}
-                <button type="button" className="grid size-12 shrink-0 place-items-center rounded-xl border bg-transparent transition hover:opacity-70" style={{ borderColor: theme.toolbar.border, color: theme.node.muted }} title={t("canvas.references.select")} onClick={() => onStartSelection?.(nodeId)}>
-                    <Plus className="size-4" />
-                </button>
+            <div className="mb-1.5 flex min-h-7 items-center justify-between gap-2">
+                {headerAddButton ? (
+                    <button type="button" className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border bg-transparent px-2 text-[11px] transition hover:opacity-70" style={{ borderColor: theme.toolbar.border, color: theme.node.muted }} title={t("canvas.references.select")} onMouseDown={(event) => event.stopPropagation()} onClick={() => onStartSelection?.(nodeId)}>
+                        <Plus className="size-3.5" />
+                        {t("canvas.references.add")}
+                    </button>
+                ) : (
+                    <div className="text-[11px] font-medium" style={{ color: theme.node.muted }}>{t("canvas.references.title")}</div>
+                )}
+                {headerTrailing}
             </div>
+            {showReferenceRow ? (
+                <div className="thin-scrollbar flex min-h-12 gap-2 overflow-x-auto pb-1">
+                    {references.map(({ node, sourceNodeId }) => <ReferenceItem key={`${sourceNodeId}:${node.id}`} node={node} onRemove={() => onDisconnect?.(sourceNodeId, nodeId)} />)}
+                    {headerAddButton ? null : (
+                        <button type="button" className="grid size-12 shrink-0 place-items-center rounded-xl border bg-transparent transition hover:opacity-70" style={{ borderColor: theme.toolbar.border, color: theme.node.muted }} title={t("canvas.references.select")} onClick={() => onStartSelection?.(nodeId)}>
+                            <Plus className="size-4" />
+                        </button>
+                    )}
+                </div>
+            ) : null}
         </div>
     );
 }

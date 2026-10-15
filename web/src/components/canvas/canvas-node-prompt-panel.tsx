@@ -80,7 +80,19 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
             onPointerDown={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
         >
-            <CanvasNodeReferenceBar nodeId={node.id} nodes={nodes} connectedNodes={connectedNodes} onDisconnect={onDisconnectReference} onStartSelection={onStartReferenceSelection} />
+            <CanvasNodeReferenceBar
+                nodeId={node.id}
+                nodes={nodes}
+                connectedNodes={connectedNodes}
+                onDisconnect={onDisconnectReference}
+                onStartSelection={onStartReferenceSelection}
+                headerAddButton
+                headerTrailing={
+                    <Tooltip title={t("canvas.promptPanel.expandEditor")}>
+                        <Button type="text" className="!h-7 !w-7 !min-w-7 shrink-0 !rounded-md !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
+                    </Tooltip>
+                }
+            />
             <CanvasPromptChipInput
                 value={prompt}
                 references={mentionReferences}
@@ -93,13 +105,9 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
 
             <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Tooltip title={t("canvas.promptPanel.expandEditor")}>
-                        <Button type="text" className="!h-10 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
-                    </Tooltip>
                     {mode === "image" ? (
                         <>
                             <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true)} className="!h-10 min-w-0 max-w-[190px] flex-1" />
-                            {connectedNodes.some((item) => item.type === CanvasNodeType.Image) ? <CanvasTransferPromptPopover onApply={updatePrompt} /> : null}
                             <CanvasImageSettingsPopover
                                 config={config}
                                 placement="topLeft"
@@ -108,6 +116,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                                 onMissingConfig={() => openConfigDialog(true)}
                                 onOpenChange={onImageSettingsOpenChange}
                             />
+                            {connectedNodes.some((item) => item.type === CanvasNodeType.Image) ? <CanvasTransferPromptPopover onApply={updatePrompt} /> : null}
                         </>
                     ) : mode === "video" ? (
                         <>
