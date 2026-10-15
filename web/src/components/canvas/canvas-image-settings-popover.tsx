@@ -132,6 +132,10 @@ function ImageSettingsPortal({
         boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
         padding: 18,
         overflowY: "auto",
+        // 横向必须裁掉：底下的 gooey 控件用一张比控件大一圈的 canvas 画气泡和水珠，
+        // 不裁的话它会撑出几十像素的横向滚动区 —— 底下多一条滚动条，
+        // 而且点击时浏览器把按钮滚进视口会把整块内容左移，右边空出一条。
+        overflowX: "hidden",
         color: theme.node.text,
     } as const;
 
@@ -144,7 +148,11 @@ function ImageSettingsPortal({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" showCount={false} showQuality={showQuality} />
+            {/* 把 gooey canvas 那圈溢出裁在面板边界上：既保住面板内的气泡和水珠，
+                又不让它撑出滚动区（撑出去的话底部会多一条横向滚动条，内容还会被滚走）。 */}
+            <div className="overflow-hidden">
+                <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" showCount={false} showQuality={showQuality} />
+            </div>
         </div>,
         document.body,
     );
