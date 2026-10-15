@@ -75,7 +75,17 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
                     type="text"
                     className={buttonClassName || "!h-8 !max-w-[180px] !justify-start !rounded-full !px-2.5"}
                     style={{ background: flat ? "transparent" : theme.node.fill, color: theme.node.text }}
-                    icon={flat ? <AspectIcon width={dimensions.width} height={dimensions.height} color={theme.node.text} box={16} thickness={1.5} /> : <Settings2 className="size-3.5" />}
+                    icon={
+                        flat ? (
+                            // 图标槽是按最大尺寸留的，竖构图时图形两边各有约 9px 余白。
+                            // 参考图里这个比例图标明显更靠近右边的文字，所以整体往右挪 4px。
+                            <span className="inline-flex translate-x-1">
+                                <AspectIcon width={dimensions.width} height={dimensions.height} color={theme.node.text} box={16} thickness={1.5} />
+                            </span>
+                        ) : (
+                            <Settings2 className="size-3.5" />
+                        )
+                    }
                     onClick={() => updateOpen(!open)}
                 >
                     {/* 张数和质量都改由底栏的独立控件负责，这里只显示尺寸。 */}
