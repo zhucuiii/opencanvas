@@ -93,11 +93,12 @@ type NodeContentRendererProps = {
  * 宽高和位移一起走同一条曲线，所以两边是同时收尾的，不会一边先到一边还在动。
  * 拖拽和缩放期间必须换成瞬时（见 isInteracting），否则节点会拖着一条尾巴追指针。
  *
- * 曲线用 standard（两端都平缓）：260ms + cubic-bezier(0.4, 0, 0.2, 1)。
- * 之前用的 (0.22, 1, 0.36, 1) 太前倾 —— 前 66ms 就走完 88% 的距离，
- * 看着像「唰一下到位再慢慢蹭」，反而不丝滑。
+ * 曲线用对称的 ease-in-out：300ms + cubic-bezier(0.42, 0, 0.58, 1)。
+ * 对称曲线的峰值速度比 standard 低（起步不会「一顿」就窜出去），观感更滑。
+ * 再往前一版是 (0.22, 1, 0.36, 1) —— 前 66ms 就走完 88% 的距离，
+ * 看着像「唰一下到位再慢慢蹭」，最不丝滑。
  */
-const NODE_MORPH_TRANSITION = "box-shadow 200ms ease, width 260ms cubic-bezier(0.4, 0, 0.2, 1), height 260ms cubic-bezier(0.4, 0, 0.2, 1), transform 260ms cubic-bezier(0.4, 0, 0.2, 1)";
+const NODE_MORPH_TRANSITION = "box-shadow 200ms ease, width 300ms cubic-bezier(0.42, 0, 0.58, 1), height 300ms cubic-bezier(0.42, 0, 0.58, 1), transform 300ms cubic-bezier(0.42, 0, 0.58, 1)";
 
 export const CanvasNode = React.memo(function CanvasNode({
     data,
