@@ -163,6 +163,7 @@ export default {
         configFirst: "Complete the configuration first",
         generationFailed: "Generation failed",
         retrySuccess: "Retry succeeded",
+        replayLog: "Reuse this run's prompt and settings",
     },
     imageWorkbench: {
         title: "Image Studio",

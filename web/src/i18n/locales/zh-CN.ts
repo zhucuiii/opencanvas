@@ -163,6 +163,7 @@ export default {
         configFirst: "请先完成配置",
         generationFailed: "生成失败",
         retrySuccess: "重试成功",
+        replayLog: "复用这次生成的提示词与参数",
     },
     imageWorkbench: {
         title: "生图工作台",
