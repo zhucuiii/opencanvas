@@ -59,7 +59,8 @@ export function AppTopNav() {
                         </nav>
 
                         <div className="flex min-w-0 items-center justify-end gap-2 whitespace-nowrap">
-                            <UserStatusActions />
+                            {/* 设置入口已挪到画布页的底部工具条，这里不再重复放一个。 */}
+                            <UserStatusActions showConfig={false} />
                         </div>
                     </div>
                 </header>
