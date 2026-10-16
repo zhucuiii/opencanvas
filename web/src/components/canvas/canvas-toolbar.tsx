@@ -1,13 +1,14 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Segmented, Switch } from "antd";
-import { CircleDot, Eraser, Grid2x2, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Square, Sun, Trash2, Type, Undo2, Video } from "lucide-react";
+import { CircleDot, Eraser, Grid2x2, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Settings2, Square, Sun, Trash2, Type, Undo2, Video } from "lucide-react";
 
 import "./canvas-dock.css";
 
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { getNodeSpec } from "@/constant/canvas";
+import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { ThemeSwitch } from "@/components/ui/theme-switch";
 import { useTranslation } from "react-i18next";
@@ -87,6 +88,7 @@ export function CanvasToolbar({
     const rootRef = useRef<HTMLDivElement>(null);
     const colorTheme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
+    const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const theme = canvasThemes[colorTheme];
     const [appearanceOpen, setAppearanceOpen] = useState(false);
     const [panelX, setPanelX] = useState(0);
@@ -398,6 +400,9 @@ export function CanvasToolbar({
                     </DockItem>
                 ) : null}
                 <Divider />
+                <DockItem label={t("navigation.config")} onClick={() => openConfigDialog(false)}>
+                    <Settings2 className="size-4.5" />
+                </DockItem>
                 <DockItem
                     label={t("canvas.toolbar.appearance")}
                     active={appearanceOpen}

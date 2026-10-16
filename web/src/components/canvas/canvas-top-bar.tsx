@@ -132,7 +132,8 @@ export function CanvasTopBar({
                 </div>
 
                 <div className="pointer-events-auto flex items-center gap-1.5">
-                    <UserStatusActions variant="canvas" onOpenShortcuts={() => setShortcutsOpen(true)} />
+                    {/* 设置（齿轮）已挪到底部工具条（画布外观前面），这里不再重复放一个。 */}
+                    <UserStatusActions variant="canvas" showConfig={false} onOpenShortcuts={() => setShortcutsOpen(true)} />
                 </div>
             </div>
             <Modal title={t("canvas.shortcuts")} open={shortcutsOpen} onCancel={() => setShortcutsOpen(false)} footer={null} centered>
