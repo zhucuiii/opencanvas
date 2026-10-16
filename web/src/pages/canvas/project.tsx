@@ -258,20 +258,6 @@ function InfiniteCanvasPage() {
     const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
     const [expandedBatchNodeIds, setExpandedBatchNodeIds] = useState<Set<string>>(new Set());
     const [isNodeDragging, setIsNodeDragging] = useState(false);
-    // 刚刚改过配置的那个节点：这一小段时间内它的尺寸变化不走过渡，免得连线脱开（见 handleConfigNodeChange）。
-    const [nodeConfigBurstState, setNodeConfigBurstState] = useState<string | null>(null);
-    const nodeConfigBurstTimer = useRef<number | null>(null);
-    const nodeConfigBurstRef = useRef<string | null>(null);
-    const setNodeConfigBurst = useCallback((nodeId: string) => {
-        nodeConfigBurstRef.current = nodeId;
-        setNodeConfigBurstState(nodeId);
-        if (nodeConfigBurstTimer.current !== null) window.clearTimeout(nodeConfigBurstTimer.current);
-        nodeConfigBurstTimer.current = window.setTimeout(() => {
-            nodeConfigBurstTimer.current = null;
-            nodeConfigBurstRef.current = null;
-            setNodeConfigBurstState(null);
-        }, 80);
-    }, []);
     const [isNodeResizing, setIsNodeResizing] = useState(false);
     const [dropTargetGroupId, setDropTargetGroupId] = useState<string | null>(null);
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
@@ -730,6 +716,44 @@ function InfiniteCanvasPage() {
     );
 
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+
+    /*
+     * 节点形变期间，连线要逐帧跟着节点的实际渲染尺寸走。
+     * 做法：给每个节点挂一个 260ms 的记号（每次改尺寸刷新一次），记号在变就说明还在过渡中；
+     * 只有这时候才让 ConnectionPath 起逐帧重算的循环，静止后自动停掉，不常态占着 RAF。
+     * 值本身不用来算路径，只当「还在动画中」的信号。
+     */
+    const [morphTick, setMorphTick] = useState(0);
+    const morphRafRef = useRef<number | null>(null);
+    const morphDeadlineRef = useRef(0);
+    const previousNodeSizesRef = useRef(new Map<string, string>());
+    useEffect(() => {
+        const sizes = new Map<string, string>();
+        for (const node of nodes) sizes.set(node.id, `${node.width}x${node.height}`);
+        const previous = previousNodeSizesRef.current;
+        let changed = false;
+        for (const [id, size] of sizes) {
+            if (previous.get(id) !== size) changed = true;
+        }
+        if (previous.size !== sizes.size) changed = true;
+        previousNodeSizesRef.current = sizes;
+        if (!changed) return;
+        morphDeadlineRef.current = performance.now() + 400;
+        if (morphRafRef.current !== null) return;
+        const step = () => {
+            if (performance.now() >= morphDeadlineRef.current) {
+                morphRafRef.current = null;
+                setMorphTick(0);
+                return;
+            }
+            setMorphTick((tick) => tick + 1);
+            morphRafRef.current = requestAnimationFrame(step);
+        };
+        morphRafRef.current = requestAnimationFrame(step);
+    }, [nodes]);
+    useEffect(() => () => {
+        if (morphRafRef.current !== null) cancelAnimationFrame(morphRafRef.current);
+    }, []);
 
     // Connections are culled like nodes; a cubic curve stays inside its control-point hull, so endpoint bounds widened by the curvature is a safe test.
     const visibleConnections = useMemo(
@@ -1813,9 +1837,8 @@ function InfiniteCanvasPage() {
     }, []);
 
     const handleConfigNodeChange = useCallback((nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => {
-        // 改配置可能连带改节点尺寸（比如换比例）。连线的端点按数据坐标算、不跟着过渡，
-        // 节点若慢慢形变，这期间连线会从节点边缘脱开一大段（实测能到 145px）。所以这一下瞬时到位。
-        setNodeConfigBurst(nodeId);
+        // 改配置可能连带改节点尺寸（比如换比例）。节点是动画过渡过去的，而连线端点按数据坐标算，
+        // 所以过渡期间要逐帧把连线重算到节点的实际尺寸上（见下面的形变记号与 ConnectionPath）。
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
     }, []);
 
@@ -3224,6 +3247,7 @@ function InfiniteCanvasPage() {
                         {visibleConnections.map(({ connection, from, to }) => (
                             <ConnectionPath
                                 key={connection.id}
+                                morphKey={morphTick ? String(morphTick) : undefined}
                                 connection={connection}
                                 from={from}
                                 to={to}
@@ -3253,7 +3277,7 @@ function InfiniteCanvasPage() {
                             isFocusRelated={activeNodeId === node.id}
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
-                            isInteracting={isNodeDragging || isNodeResizing || nodeConfigBurstState === node.id}
+                            isInteracting={isNodeDragging || isNodeResizing}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
                             showPanel={!isNodeDragging && !isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
