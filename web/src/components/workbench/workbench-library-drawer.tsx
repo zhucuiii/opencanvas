@@ -8,15 +8,22 @@ import type { WorkbenchFolder } from "@/lib/workbench-library";
 
 export type WorkbenchLibraryView = { kind: "all" } | { kind: "favorites" } | { kind: "folder"; id: string };
 
-export function WorkbenchLibraryDrawer({ open, view, imageIds, onClose, onSelect }: { open: boolean; view: WorkbenchLibraryView; imageIds: string[]; onClose: () => void; onSelect: (view: WorkbenchLibraryView) => void }) {
+export function WorkbenchLibraryDrawer({ open, view, imageIds, mediaType = "image", onClose, onSelect }: { open: boolean; view: WorkbenchLibraryView; imageIds: string[]; mediaType?: "image" | "video"; onClose: () => void; onSelect: (view: WorkbenchLibraryView) => void }) {
     const { t } = useTranslation();
     const { message, modal } = App.useApp();
-    const folders = useWorkbenchLibraryStore((state) => state.folders);
+    const imageFoldersList = useWorkbenchLibraryStore((state) => state.folders);
+    const videoFoldersList = useWorkbenchLibraryStore((state) => state.videoLibraryFolders);
+    const folders = mediaType === "video" ? videoFoldersList : imageFoldersList;
     const favoriteIds = useWorkbenchLibraryStore((state) => state.favoriteIds);
     const imageFolders = useWorkbenchLibraryStore((state) => state.imageFolders);
+    const videoFavoriteIds = useWorkbenchLibraryStore((state) => state.videoFavoriteIds);
+    const videoFolders = useWorkbenchLibraryStore((state) => state.videoFolders);
     const createFolder = useWorkbenchLibraryStore((state) => state.createFolder);
     const renameFolder = useWorkbenchLibraryStore((state) => state.renameFolder);
     const removeFolder = useWorkbenchLibraryStore((state) => state.removeFolder);
+    const createVideoFolder = useWorkbenchLibraryStore((state) => state.createVideoFolder);
+    const renameVideoFolder = useWorkbenchLibraryStore((state) => state.renameVideoFolder);
+    const removeVideoFolder = useWorkbenchLibraryStore((state) => state.removeVideoFolder);
     const [name, setName] = useState("");
     const [editing, setEditing] = useState<string | null>(null);
     const [editName, setEditName] = useState("");
@@ -24,9 +31,10 @@ export function WorkbenchLibraryDrawer({ open, view, imageIds, onClose, onSelect
         onSelect(next);
         onClose();
     };
-    const favoriteSet = new Set(favoriteIds);
+    const favoriteSet = new Set(mediaType === "video" ? videoFavoriteIds : favoriteIds);
+    const itemFolders = mediaType === "video" ? videoFolders : imageFolders;
     const commitRename = (id: string) => {
-        if (renameFolder(id, editName)) setEditing(null);
+        if ((mediaType === "video" ? renameVideoFolder(id, editName) : renameFolder(id, editName))) setEditing(null);
         else message.warning(t("imageWorkbench.folderNameInvalid"));
     };
     const confirmDelete = (folder: WorkbenchFolder) =>
@@ -37,7 +45,8 @@ export function WorkbenchLibraryDrawer({ open, view, imageIds, onClose, onSelect
             cancelText: t("common.cancel"),
             okButtonProps: { danger: true },
             onOk: () => {
-                removeFolder(folder.id);
+                if (mediaType === "video") removeVideoFolder(folder.id);
+                else removeFolder(folder.id);
                 if (view.kind === "folder" && view.id === folder.id) onSelect({ kind: "all" });
             },
         });
@@ -88,7 +97,7 @@ export function WorkbenchLibraryDrawer({ open, view, imageIds, onClose, onSelect
                                 <button type="button" className={`${rowClass(view.kind === "folder" && view.id === folder.id)} min-w-0 flex-1`} onClick={() => select({ kind: "folder", id: folder.id })}>
                                     <Folder className="size-4 shrink-0" />
                                     <span className="min-w-0 flex-1 truncate">{folder.name}</span>
-                                    <span className="text-xs tabular-nums opacity-50">{imageIds.filter((id) => imageFolders[id]?.includes(folder.id)).length}</span>
+                    <span className="text-xs tabular-nums opacity-50">{imageIds.filter((id) => itemFolders[id]?.includes(folder.id)).length}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -117,7 +126,7 @@ export function WorkbenchLibraryDrawer({ open, view, imageIds, onClose, onSelect
                     maxLength={40}
                     onChange={(event) => setName(event.target.value)}
                     onPressEnter={() => {
-                        if (createFolder(name)) setName("");
+                        if ((mediaType === "video" ? createVideoFolder(name) : createFolder(name))) setName("");
                     }}
                 />
                 <button
@@ -125,7 +134,7 @@ export function WorkbenchLibraryDrawer({ open, view, imageIds, onClose, onSelect
                     className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-stone-900 !text-white disabled:opacity-30 dark:bg-stone-100 dark:!text-stone-900"
                     disabled={!name.trim()}
                     onClick={() => {
-                        if (createFolder(name)) setName("");
+                        if ((mediaType === "video" ? createVideoFolder(name) : createFolder(name))) setName("");
                     }}
                     aria-label={t("imageWorkbench.newFolder")}
                 >

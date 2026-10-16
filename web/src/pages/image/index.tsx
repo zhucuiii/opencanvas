@@ -61,7 +61,11 @@ const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 
 export default function ImagePage() {
-    return <PopoverGroup><ImageWorkbench /></PopoverGroup>;
+    return (
+        <PopoverGroup>
+            <ImageWorkbench />
+        </PopoverGroup>
+    );
 }
 
 function ImageWorkbench() {
@@ -110,18 +114,22 @@ function ImageWorkbench() {
      */
     const gridItems = useMemo(() => {
         const fromRun = results.map((result, index) => ({ kind: "run" as const, result, index }));
-        const currentIds = new Set(results.flatMap((result) => result.image ? [result.image.id] : []));
+        const currentIds = new Set(results.flatMap((result) => (result.image ? [result.image.id] : [])));
         const history = logs.flatMap((log) => log.images.filter((image) => image.dataUrl && !currentIds.has(image.id)).map((image, index) => ({ kind: "history" as const, log, image, index })));
         return [...fromRun, ...history];
     }, [logs, results]);
     const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
-    const libraryImageIds = useMemo(() => [...new Set(gridItems.map((item) => item.kind === "run" ? item.result.image?.id : item.image.id).filter((id): id is string => Boolean(id)))], [gridItems]);
-    const galleryItems = useMemo(() => gridItems.filter((item) => {
-        if (libraryView.kind === "all") return true;
-        const imageId = item.kind === "run" ? item.result.image?.id : item.image.id;
-        if (!imageId) return false;
-        return libraryView.kind === "favorites" ? favoriteSet.has(imageId) : Boolean(imageFolders[imageId]?.includes(libraryView.id));
-    }), [gridItems, libraryView, favoriteSet, imageFolders]);
+    const libraryImageIds = useMemo(() => [...new Set(gridItems.map((item) => (item.kind === "run" ? item.result.image?.id : item.image.id)).filter((id): id is string => Boolean(id)))], [gridItems]);
+    const galleryItems = useMemo(
+        () =>
+            gridItems.filter((item) => {
+                if (libraryView.kind === "all") return true;
+                const imageId = item.kind === "run" ? item.result.image?.id : item.image.id;
+                if (!imageId) return false;
+                return libraryView.kind === "favorites" ? favoriteSet.has(imageId) : Boolean(imageFolders[imageId]?.includes(libraryView.id));
+            }),
+        [gridItems, libraryView, favoriteSet, imageFolders],
+    );
     const libraryViewLabel = libraryView.kind === "favorites" ? t("imageWorkbench.starred") : libraryView.kind === "folder" ? libraryFolders.find((folder) => folder.id === libraryView.id)?.name : "";
 
     useEffect(() => {
@@ -262,13 +270,25 @@ function ImageWorkbench() {
 
     const saveResultToAssets = async (image: GeneratedImage, index: number, sourcePrompt = prompt) => {
         try {
-            if (!useAssetStore.getState().hydrated) await new Promise<void>((resolve) => {
-                const unsubscribe = useAssetStore.subscribe((state) => { if (state.hydrated) { unsubscribe(); resolve(); } });
-            });
+            if (!useAssetStore.getState().hydrated)
+                await new Promise<void>((resolve) => {
+                    const unsubscribe = useAssetStore.subscribe((state) => {
+                        if (state.hydrated) {
+                            unsubscribe();
+                            resolve();
+                        }
+                    });
+                });
             const existing = () => useAssetStore.getState().assets.some((asset) => asset.kind === "image" && (asset.metadata?.sourceImageId === image.id || Boolean(image.storageKey && asset.data.storageKey === image.storageKey)));
-            if (existing()) { message.info(t("imageWorkbench.alreadySaved")); return; }
+            if (existing()) {
+                message.info(t("imageWorkbench.alreadySaved"));
+                return;
+            }
             const stored = await uploadImage(image.dataUrl);
-            if (existing()) { message.info(t("imageWorkbench.alreadySaved")); return; }
+            if (existing()) {
+                message.info(t("imageWorkbench.alreadySaved"));
+                return;
+            }
             useAssetStore.getState().addAsset({
                 kind: "image",
                 title: sourcePrompt.slice(0, 30) || t("imageWorkbench.resultTitle", { count: index + 1 }),
@@ -344,7 +364,16 @@ function ImageWorkbench() {
             const image = result[0];
             if (!image) throw new Error(t("imageWorkbench.missingResult"));
             const stored = await uploadImage(image.dataUrl);
-            const nextImage: GeneratedImage = { id: image.id, dataUrl: stored.url, ...(stored.storageKey ? { storageKey: stored.storageKey } : {}), durationMs: performance.now() - itemStartedAt, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType };
+            const nextImage: GeneratedImage = {
+                id: image.id,
+                dataUrl: stored.url,
+                ...(stored.storageKey ? { storageKey: stored.storageKey } : {}),
+                durationMs: performance.now() - itemStartedAt,
+                width: stored.width,
+                height: stored.height,
+                bytes: stored.bytes,
+                mimeType: stored.mimeType,
+            };
             setResults((value) => updateResultAt(value, index, { status: "success", image: nextImage }));
             return nextImage;
         } catch (error) {
@@ -398,10 +427,26 @@ function ImageWorkbench() {
                     <h1 className="sr-only">{t("imageWorkbench.title")}</h1>
                     <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
-                            <button type="button" className="shrink-0 cursor-pointer rounded-lg px-1 py-2 hover:!text-stone-800 dark:hover:!text-stone-100" onClick={() => setLibraryView({ kind: "all" })}>{t("imageWorkbench.allImages")}</button>
-                            {libraryView.kind !== "all" ? <><ChevronRight className="size-3 shrink-0" /><span className="truncate text-stone-600 dark:text-stone-200">{libraryViewLabel}</span></> : null}
+                            <button type="button" className="shrink-0 cursor-pointer rounded-lg px-1 py-2 hover:!text-stone-800 dark:hover:!text-stone-100" onClick={() => setLibraryView({ kind: "all" })}>
+                                {t("imageWorkbench.allImages")}
+                            </button>
+                            {libraryView.kind !== "all" ? (
+                                <>
+                                    <ChevronRight className="size-3 shrink-0" />
+                                    <span className="truncate text-stone-600 dark:text-stone-200">{libraryViewLabel}</span>
+                                </>
+                            ) : null}
                         </div>
-                        <button type="button" className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-3 text-xs !text-stone-600 transition-colors hover:bg-white dark:border-stone-800 dark:bg-stone-900/70 dark:!text-stone-300 dark:hover:bg-stone-800" onClick={() => setLibraryOpen(true)} aria-expanded={libraryOpen} aria-label={t("imageWorkbench.library")}><FolderOpen className="size-3.5" />{t("imageWorkbench.library")}</button>
+                        <button
+                            type="button"
+                            className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-3 text-xs !text-stone-600 transition-colors hover:bg-white dark:border-stone-800 dark:bg-stone-900/70 dark:!text-stone-300 dark:hover:bg-stone-800"
+                            onClick={() => setLibraryOpen(true)}
+                            aria-expanded={libraryOpen}
+                            aria-label={t("imageWorkbench.library")}
+                        >
+                            <FolderOpen className="size-3.5" />
+                            {t("imageWorkbench.library")}
+                        </button>
                     </div>
 
                     {galleryItems.length ? (
@@ -440,7 +485,14 @@ function ImageWorkbench() {
                         <div className="flex min-h-[35vh] flex-col items-center justify-center gap-5 text-center" role="status">
                             <ImageIcon className="size-12 text-stone-300/70 dark:text-stone-700" strokeWidth={1.3} />
                             <p className="text-sm text-stone-400 dark:text-stone-500">{libraryView.kind === "all" ? t("imageWorkbench.startPrompt") : t("imageWorkbench.emptyCollection")}</p>
-                            {libraryView.kind !== "all" ? <><p className="max-w-xs px-4 text-xs leading-relaxed text-stone-400">{t("imageWorkbench.emptyCollectionHint")}</p><button type="button" className="cursor-pointer text-xs !text-stone-500 underline underline-offset-4" onClick={() => setLibraryView({ kind: "all" })}>{t("imageWorkbench.allImages")}</button></> : null}
+                            {libraryView.kind !== "all" ? (
+                                <>
+                                    <p className="max-w-xs px-4 text-xs leading-relaxed text-stone-400">{t("imageWorkbench.emptyCollectionHint")}</p>
+                                    <button type="button" className="cursor-pointer text-xs !text-stone-500 underline underline-offset-4" onClick={() => setLibraryView({ kind: "all" })}>
+                                        {t("imageWorkbench.allImages")}
+                                    </button>
+                                </>
+                            ) : null}
                         </div>
                     )}
                 </div>
@@ -449,7 +501,7 @@ function ImageWorkbench() {
             {/* Keep the gallery interactive outside the floating composer. */}
             <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-6 sm:px-4">
                 <div
-                    className={`playground-composer pointer-events-auto mx-auto w-full max-w-5xl rounded-2xl border bg-white/85 p-3 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-stone-900/85 ${isReferenceDragActive ? "border-stone-900 dark:border-stone-100" : "border-stone-200 dark:border-stone-800"}`}
+                    className={`playground-composer pointer-events-auto mx-auto w-full max-w-5xl rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-stone-900/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.38)] ${isReferenceDragActive ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.09]"}`}
                     data-workbench-input-bar
                     onPointerDown={(event) => event.stopPropagation()}
                     // 拖拽参考图：整条卡片都是投放区，拖进来时描边变色给反馈（参考图那行本身可能不占位）。
@@ -474,7 +526,7 @@ function ImageWorkbench() {
                         void addReferences(event.dataTransfer.files);
                     }}
                 >
-                    {/* 参考图缩略图行：没有参考图时整行不占位（加图靠右下那颗 + 钮）。 */}
+                    {/* Reference thumbnails only take space when images are attached. */}
                     <div className={`flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
                         {references.map((item) => (
                             <div key={item.id} className="group relative size-12 shrink-0 overflow-hidden rounded-lg border border-stone-200 dark:border-stone-800">
@@ -510,7 +562,7 @@ function ImageWorkbench() {
                         }}
                         autoSize={{ minRows: 1, maxRows: 4 }}
                         variant="borderless"
-                        className="playground-prompt !rounded-2xl !border !border-stone-200/60 !px-3 !py-3 !text-sm dark:!border-stone-700/50"
+                        className="playground-prompt min-w-0 !border-0 !px-1 !py-2 !text-sm !outline-none !shadow-none focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!outline-none"
                     />
 
                     {/*
@@ -520,21 +572,28 @@ function ImageWorkbench() {
                      */}
                     {isReferenceDragActive && !references.length ? <div className="px-2 pb-1 text-xs text-stone-500">{t("imageWorkbench.dropReferences")}</div> : null}
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-200/80 pt-3 dark:border-white/[0.08] sm:mt-3 sm:gap-2.5">
                         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-                            <ModelPicker flat config={effectiveConfig} value={model} onChange={(next) => updateConfig("imageModel", next)} capability="image" className="!h-8 min-w-0 max-w-[220px] !rounded-full !bg-stone-900/[0.04] !px-3 !text-xs max-sm:w-full max-sm:max-w-none data-[size=default]:!h-8 dark:!bg-white/[0.06]" />
+                            <ModelPicker
+                                flat
+                                showIcon={false}
+                                side="top"
+                                contentClassName="w-[var(--radix-select-trigger-width)] min-w-0"
+                                config={effectiveConfig}
+                                value={model}
+                                onChange={(next) => updateConfig("imageModel", next)}
+                                capability="image"
+                                className="!h-8 min-w-0 max-w-[220px] !rounded-full !border !border-stone-200/80 !bg-white/75 !px-3 !text-xs !font-medium !text-stone-600 !shadow-sm !transition-[color,background-color,border-color] hover:!border-stone-300 hover:!bg-stone-50 hover:!text-stone-900 focus-visible:!outline-2 focus-visible:!outline-offset-2 dark:!border-white/[0.08] dark:!bg-white/[0.04] dark:!text-stone-300 dark:hover:!border-white/15 dark:hover:!bg-white/[0.08] dark:hover:!text-white max-sm:w-full max-sm:max-w-none data-[size=default]:!h-8"
+                            />
                             <WorkbenchSizePill config={effectiveConfig} onChange={(key, value) => updateConfig(key, value)} />
                             <WorkbenchQualityPill quality={effectiveConfig.quality || "auto"} onChange={(quality) => updateConfig("quality", quality)} />
                             <WorkbenchCountPill value={generationCount} onChange={(countValue) => updateConfig("count", String(countValue))} />
                         </div>
-                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
-                            <WorkbenchOutputPills config={effectiveConfig} onChange={updateConfig} />
-                        </div>
-                        <div className="hidden sm:block sm:flex-1" />
+                        <WorkbenchOutputPills config={effectiveConfig} onChange={updateConfig} />
+                        <div className="hidden min-w-4 flex-1 sm:block" />
 
                         {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
 
-                        {/* 加参考图：上传 / 剪切板 / 我的资产三种来源收在一颗圆钮里。 */}
                         <Dropdown
                             trigger={["click"]}
                             placement="topRight"
@@ -556,7 +615,7 @@ function ImageWorkbench() {
                         >
                             <button
                                 type="button"
-                                className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-stone-200/70 text-stone-500 transition-colors hover:bg-stone-300/70 dark:bg-white/10 dark:text-stone-300 dark:hover:bg-white/15"
+                                className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-200/90 bg-white/75 text-stone-600 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-stone-300 dark:hover:bg-white/[0.08] dark:hover:text-white"
                                 aria-label={t("imageWorkbench.addReferenceSource")}
                                 aria-expanded={referenceMenuOpen}
                                 title={t("imageWorkbench.addReferenceSource")}
@@ -568,7 +627,7 @@ function ImageWorkbench() {
                         {/* 发送：圆钮，运行中换成转圈并锁住。 */}
                         <button
                             type="button"
-                            className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-stone-900 !text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:!text-stone-900"
+                            className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-900 !text-white shadow-[0_5px_14px_rgba(15,23,42,0.2)] transition-[transform,opacity,background-color] hover:-translate-y-0.5 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:!text-stone-900 dark:hover:bg-stone-300"
                             disabled={!canGenerate || running}
                             onClick={() => void generate()}
                             aria-label={t("imageWorkbench.generateImage")}

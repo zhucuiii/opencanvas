@@ -8,17 +8,21 @@ import { useWorkbenchLibraryStore } from "@/stores/use-workbench-library-store";
 
 const EMPTY_IDS: string[] = [];
 
-export function WorkbenchFolderPicker({ imageId, onSaveAsset }: { imageId: string; onSaveAsset?: () => Promise<void> }) {
+export function WorkbenchFolderPicker({ imageId, mediaType = "image", onSaveAsset }: { imageId: string; mediaType?: "image" | "video"; onSaveAsset?: () => Promise<void> }) {
     const { t } = useTranslation();
     const [open, setOpen] = useExclusivePopover();
     const [name, setName] = useState("");
     const [saving, setSaving] = useState(false);
-    const folders = useWorkbenchLibraryStore((state) => state.folders);
-    const assigned = useWorkbenchLibraryStore((state) => state.imageFolders[imageId]) || EMPTY_IDS;
+    const imageFolders = useWorkbenchLibraryStore((state) => state.folders);
+    const videoFolders = useWorkbenchLibraryStore((state) => state.videoLibraryFolders);
+    const folders = mediaType === "video" ? videoFolders : imageFolders;
+    const assigned = useWorkbenchLibraryStore((state) => (mediaType === "video" ? state.videoFolders[imageId] : state.imageFolders[imageId])) || EMPTY_IDS;
     const setImageFolder = useWorkbenchLibraryStore((state) => state.setImageFolder);
+    const setVideoFolder = useWorkbenchLibraryStore((state) => state.setVideoFolder);
     const createFolder = useWorkbenchLibraryStore((state) => state.createFolder);
+    const createVideoFolder = useWorkbenchLibraryStore((state) => state.createVideoFolder);
     const createAndAssign = () => {
-        if (createFolder(name, imageId)) setName("");
+        if ((mediaType === "video" ? createVideoFolder(name, imageId) : createFolder(name, imageId))) setName("");
     };
 
     return (
@@ -40,7 +44,7 @@ export function WorkbenchFolderPicker({ imageId, onSaveAsset }: { imageId: strin
                                 aria-label={t("imageWorkbench.folderAssignment", { name: folder.name })}
                                 aria-pressed={assigned.includes(folder.id)}
                                 className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left !text-stone-600 hover:bg-stone-100 dark:!text-stone-300 dark:hover:bg-stone-800"
-                                onClick={() => setImageFolder(imageId, folder.id, !assigned.includes(folder.id))}
+                                onClick={() => (mediaType === "video" ? setVideoFolder : setImageFolder)(imageId, folder.id, !assigned.includes(folder.id))}
                             >
                                 <Folder className="size-3.5 shrink-0" />
                                 <span className="min-w-0 flex-1 truncate">{folder.name}</span>

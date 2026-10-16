@@ -43,10 +43,18 @@ bun run dev
 ```bash
 git clone https://github.com/zhucuii/opencanvas.git
 cd opencanvas
-docker compose up -d
+docker compose up -d app
 ```
 
-运行后默认端口 3000，可访问 `http://localhost:3000`。
+生产实例默认访问 `http://localhost:10086`。测试版本独立运行在 `http://localhost:10087`：
+
+```bash
+# 构建并启动测试实例；验证通过后再更新生产实例
+docker compose up -d --build app-test
+docker compose up -d --no-build app
+```
+
+验证通过后，第二条命令将同一个已测试镜像提升到生产实例。两个实例使用独立容器，测试实例验证期间不会替换正在运行的生产容器。
 
 首次打开后进入右上角配置，填入自己的 OpenAI 兼容 `Base URL` 和 `API Key`。
 

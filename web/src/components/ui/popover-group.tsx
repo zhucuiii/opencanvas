@@ -34,3 +34,8 @@ export function useExclusivePopover(): [boolean, (open: boolean) => void] {
 
     return [group ? group.activeId === id : localOpen, setOpen];
 }
+
+export function useCloseExclusivePopoverGroup() {
+    const group = useContext(PopoverGroupContext);
+    return useCallback(() => group?.setActiveId(null), [group]);
+}

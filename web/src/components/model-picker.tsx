@@ -14,18 +14,24 @@ type ModelPickerProps = {
     onChange: (model: string) => void;
     capability?: ModelCapability;
     className?: string;
+    contentClassName?: string;
     fullWidth?: boolean;
     placeholder?: string;
     onMissingConfig?: () => void;
+    side?: "top" | "bottom";
     /** 画布节点底栏的扁平样式：去掉胶囊的底色和描边，只留图标加文字。 */
     flat?: boolean;
+    showIcon?: boolean;
 };
 
-export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, onMissingConfig, flat = false }: ModelPickerProps) {
+export function ModelPicker({ config, value, onChange, capability, className, contentClassName, fullWidth = false, placeholder, onMissingConfig, flat = false, showIcon = true, side = "bottom" }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
     const [open, setOpen] = useExclusivePopover();
-    const options = useMemo(() => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, value]);
+    const options = useMemo(
+        () => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))),
+        [capability, config, value],
+    );
     const current = value || "";
     const pickerPlaceholder = placeholder || t("settingsPanels.model.select");
 
@@ -64,23 +70,23 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
                 onPointerDown={(event) => event.stopPropagation()}
                 title={current ? modelOptionLabel(config, current) : pickerPlaceholder}
             >
-                <ModelIcon model={current} />
+                {showIcon ? <ModelIcon model={current} /> : null}
                 <span className="canvas-model-picker-text min-w-0 flex-1 truncate text-left">{current ? modelOptionLabel(config, current) : pickerPlaceholder}</span>
             </SelectTrigger>
             <SelectContent
                 data-canvas-no-zoom
-                className="z-[1200] w-80 max-w-[calc(100vw-24px)] rounded-xl border border-border/70 bg-popover p-1 shadow-xl"
+                className={cn("z-[1200] w-80 max-w-[calc(100vw-24px)] rounded-xl border border-border/70 bg-popover p-1 shadow-xl", contentClassName)}
                 position="popper"
                 align="start"
-                side="bottom"
-                sideOffset={6}
+                side={side}
+                sideOffset={12}
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.stopPropagation()}
             >
                 {options.length ? (
                     options.map((model) => (
                         <SelectItem key={model} value={model} textValue={modelOptionLabel(config, model)}>
-                            <ModelLabel config={config} model={model} />
+                            <ModelLabel config={config} model={model} showIcon={showIcon} />
                         </SelectItem>
                     ))
                 ) : (
@@ -99,10 +105,10 @@ function emptyModelLabel(config: AiConfig, capability?: ModelCapability) {
     return config.models.length ? i18n.t("settingsPanels.model.noMatch", { capability: label }) : i18n.t("settingsPanels.model.addFirst");
 }
 
-function ModelLabel({ config, model }: { config: AiConfig; model: string }) {
+function ModelLabel({ config, model, showIcon }: { config: AiConfig; model: string; showIcon: boolean }) {
     return (
         <span className="flex min-w-0 items-center gap-2">
-            <ModelIcon model={model} />
+            {showIcon ? <ModelIcon model={model} /> : null}
             <span className="truncate">{modelOptionLabel(config, model)}</span>
         </span>
     );

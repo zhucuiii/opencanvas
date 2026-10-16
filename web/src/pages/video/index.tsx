@@ -1,15 +1,19 @@
-import { ArrowLeft, ArrowRight, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckSquare, ClipboardPaste, Download, FolderOpen, FolderPlus, LoaderCircle, Plus, Sparkles, Star, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from "react";
-import { App, Button, Checkbox, Drawer, Empty, Input, Modal, Tag, Typography } from "antd";
+import { App, Button, Checkbox, Drawer, Dropdown, Input, Modal, Tag, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
+import { WorkbenchFolderPicker } from "@/components/workbench/workbench-folder-picker";
+import { WorkbenchLibraryDrawer, type WorkbenchLibraryView } from "@/components/workbench/workbench-library-drawer";
+import { PopoverGroup, useCloseExclusivePopoverGroup } from "@/components/ui/popover-group";
 import { ModelPicker } from "@/components/model-picker";
-import { VideoSettingsPanel, normalizeVideoResolutionValue, normalizeVideoSizeValue, videoModeLabel, videoSizeLabel } from "@/components/video-settings-panel";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoModeLabel, videoResolutionLabel, videoResolutionOptions, videoSecondsLabel, videoSecondsRange, videoSizeLabel, videoSizeOptions } from "@/components/video-settings-panel";
+import { WORKBENCH_PILL_CLASS } from "@/components/workbench/workbench-input-pills";
+import { useExclusivePopover } from "@/components/ui/popover-group";
 import { clampVideoSeconds } from "@/lib/media-size";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
@@ -18,7 +22,7 @@ import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
 import { boolConfig, modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { useWorkbenchLibraryStore } from "@/stores/use-workbench-library-store";
 import type { ReferenceImage } from "@/types/image";
 import i18n from "@/i18n";
 
@@ -67,7 +71,12 @@ const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
+    return <PopoverGroup><VideoWorkbench /></PopoverGroup>;
+}
+
+function VideoWorkbench() {
     const { message } = App.useApp();
+    const closeInputPopovers = useCloseExclusivePopoverGroup();
     const { t } = useTranslation();
     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,9 +93,9 @@ export default function VideoPage() {
     const [results, setResults] = useState<GenerationResult[]>([]);
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
-    const [logsOpen, setLogsOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
+    const [libraryOpen, setLibraryOpen] = useState(false);
+    const [libraryView, setLibraryView] = useState<WorkbenchLibraryView>({ kind: "all" });
     const [startedAt, setStartedAt] = useState(0);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
@@ -95,6 +104,8 @@ export default function VideoPage() {
     const [referenceDragTarget, setReferenceDragTarget] = useState(false);
     const [autoRunToken, setAutoRunToken] = useState(0);
     const videoCommand = useWorkbenchAgentStore((state) => state.videoCommand);
+    const videoFavoriteIds = useWorkbenchLibraryStore((state) => state.videoFavoriteIds);
+    const videoFolders = useWorkbenchLibraryStore((state) => state.videoFolders);
     const clearVideoCommand = useWorkbenchAgentStore((state) => state.clearVideoCommand);
     const updateAgentTask = useWorkbenchAgentStore((state) => state.updateTask);
     const processedCommandRef = useRef(0);
@@ -102,6 +113,15 @@ export default function VideoPage() {
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
+    const videoIds = logs.flatMap((log) => log.video ? [log.video.id] : []);
+    const visibleLogs = logs.filter((log) => {
+        if (!log.video) return false;
+        if (libraryView.kind === "favorites") return videoFavoriteIds.includes(log.video.id);
+        if (libraryView.kind === "folder") return Boolean(videoFolders[log.video.id]?.includes(libraryView.id));
+        return true;
+    });
+    const libraryFolders = useWorkbenchLibraryStore((state) => state.folders);
+    const libraryViewLabel = libraryView.kind === "favorites" ? t("imageWorkbench.starred") : libraryView.kind === "folder" ? libraryFolders.find((folder) => folder.id === libraryView.id)?.name : "";
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -354,7 +374,6 @@ export default function VideoPage() {
 
     const previewGenerationLog = (log: GenerationLog) => {
         setPreviewLog(log);
-        setLogsOpen(false);
         setPrompt(log.prompt);
         setReferences(log.references || []);
         if (log.config.videoModel || log.model) updateConfig("videoModel", log.config.videoModel || log.model);
@@ -369,113 +388,82 @@ export default function VideoPage() {
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
-                <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
-                    <LogPanel logs={logs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={createSession} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} />
-                </aside>
-
-                <section className="grid gap-3 lg:min-h-0 lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
-                    <div className="thin-scrollbar flex flex-col rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:min-h-0 lg:overflow-y-auto">
-                        <div className="flex items-start justify-between gap-3">
-                            <h1 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">{t("videoWorkbench.title")}</h1>
-                            <div className="flex shrink-0 gap-2 lg:hidden">
-                                <Button icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
-                                    {t("workbench.logs")}
-                                </Button>
-                                <Button icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
-                                    {t("workbench.settings")}
-                                </Button>
-                            </div>
+            <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-72 sm:px-6 sm:pb-56">
+                <div className="mx-auto w-full max-w-7xl">
+                    <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
+                            <button type="button" className="shrink-0 rounded-lg px-1 py-2 hover:text-stone-800 dark:hover:text-stone-100" onClick={() => setLibraryView({ kind: "all" })}>{t("videoWorkbench.title")}</button>
+                            {libraryView.kind !== "all" ? <><span aria-hidden>›</span><span className="truncate text-stone-600 dark:text-stone-200">{libraryViewLabel}</span></> : null}
                         </div>
-
-                        <div className="mt-6 space-y-5">
-                            <div>
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                    <span className="text-base font-semibold">{t("workbench.prompt")}</span>
-                                    <div className="flex gap-2">
-                                        <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
-                                            {t("workbench.viewAssets")}
-                                        </Button>
-                                    </div>
-                                </div>
-                                <Input.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={7} placeholder={t("videoWorkbench.promptPlaceholder")} />
-                            </div>
-
-                            <div className="min-w-0">
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                    <span className="text-base font-semibold">{t("videoWorkbench.references")}</span>
-                                    <div className="flex gap-2">
-                                        <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()}>
-                                            {t("workbench.clipboard")}
-                                        </Button>
-                                        <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()}>
-                                            {t("workbench.upload")}
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div
-                                    className={`hover-scrollbar hover-scrollbar-hint flex min-h-24 w-full min-w-0 max-w-full gap-2 overflow-x-scroll overflow-y-hidden rounded-lg border border-dashed p-2 pb-3 overscroll-x-contain transition-colors ${referenceDragTarget ? "border-stone-900 bg-stone-100/80 dark:border-stone-100 dark:bg-stone-900/80" : "border-stone-300 dark:border-stone-700"}`}
-                                    onDragEnter={handleReferenceDragEnter}
-                                    onDragOver={(event) => {
-                                        event.preventDefault();
-                                        event.dataTransfer.dropEffect = "copy";
-                                    }}
-                                    onDragLeave={handleReferenceDragLeave}
-                                    onDrop={handleReferenceDrop}
-                                >
-                                    {references.map((item, index) => (
-                                        <div key={item.id} className="group relative size-20 shrink-0 overflow-hidden rounded-md border border-stone-200 dark:border-stone-800">
-                                            <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
-                                            <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">{index + 1}</span>
-                                            <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
-                                            <button type="button" className="absolute right-1 top-1 hidden size-6 items-center justify-center rounded bg-black/60 text-white group-hover:flex" onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))} aria-label={t("videoWorkbench.removeImage")}>
-                                                <Trash2 className="size-3.5" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {!references.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">{referenceDragTarget ? t("videoWorkbench.dropReferences") : t("videoWorkbench.noImages")}</div> : null}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900 sm:hidden">
-                                <span className="truncate text-stone-500 dark:text-stone-400">
-                                    {modelOptionLabel(effectiveConfig, model)} · {normalizeResolution(effectiveConfig.vquality)}p · {videoSizeLabel(effectiveConfig.size)} · {normalizeVideoSeconds(effectiveConfig.videoSeconds)}s · {videoModeLabel(effectiveConfig.videoMode)}
-                                </span>
-                                <Button size="small" type="text" icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
-                                    {t("workbench.adjust")}
-                                </Button>
-                            </div>
-
-                            <div className="hidden gap-4 sm:grid sm:grid-cols-2">
-                                <GenerationSettings config={effectiveConfig} model={model} updateConfig={updateConfig} openConfigDialog={openConfigDialog} />
-                            </div>
-                        </div>
-
-                        <div className="mt-auto pt-6">
-                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} loading={running} disabled={!canGenerate || running} onClick={() => void generate()}>
-                                {t("workbench.generate")}
-                            </Button>
+                        <div className="flex shrink-0 gap-2">
+                            <button type="button" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-3 text-xs text-stone-600 transition-colors hover:bg-white dark:border-stone-800 dark:bg-stone-900/70 dark:text-stone-300 dark:hover:bg-stone-800" onClick={() => setLibraryOpen(true)} aria-expanded={libraryOpen}>
+                                <FolderOpen className="size-3.5" />{t("imageWorkbench.library")}
+                            </button>
                         </div>
                     </div>
-
-                    <div className="thin-scrollbar rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:min-h-0 lg:overflow-y-auto lg:p-5">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <h2 className="text-xl font-semibold">{t("workbench.results")}</h2>
-                            {running ? <Tag className="m-0 px-2 py-1">{t("workbench.waiting", { time: formatDuration(elapsedMs) })}</Tag> : null}
+                    {results.some((result) => result.status !== "success") ? <div className="mb-5 grid gap-4">{results.filter((result) => result.status !== "success").map((result) => result.status === "failed" ? <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} /> : <PendingVideoCard key={result.id} />)}</div> : null}
+                    {visibleLogs.length ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{visibleLogs.map((log) => log.video ? <ResultVideoCard key={log.video.id} video={log.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} /> : null)}</div> : (
+                        <div className="flex min-h-[35vh] flex-col items-center justify-center gap-5 text-center" role="status">
+                            <VideoIcon className="size-12 text-stone-300/70 dark:text-stone-700" strokeWidth={1.3} />
+                            <p className="text-sm text-stone-400 dark:text-stone-500">{libraryView.kind === "all" ? t("videoWorkbench.empty") : t("imageWorkbench.emptyCollection")}</p>
+                            {libraryView.kind !== "all" ? <button type="button" className="text-xs text-stone-500 underline underline-offset-4" onClick={() => setLibraryView({ kind: "all" })}>{t("videoWorkbench.title")}</button> : null}
                         </div>
-                        {results.length ? (
-                            <div className="grid gap-4">
-                                {results.map((result) => (result.status === "success" && result.video ? <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} /> : result.status === "failed" ? <FailedVideoCard key={result.id} error={result.error || t("workbench.generationFailed")} onRetry={retryResult} /> : <PendingVideoCard key={result.id} />))}
-                            </div>
-                        ) : (
-                            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 text-center dark:border-stone-700 lg:min-h-[560px]">
-                                <VideoIcon className="mb-4 size-11 text-stone-400" />
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("videoWorkbench.empty")} />
-                            </div>
-                        )}
-                    </div>
-                </section>
+                    )}
+                </div>
             </main>
+            <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-6 sm:px-4">
+                <div
+                    className={`playground-composer pointer-events-auto mx-auto w-full max-w-5xl rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-stone-900/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.38)] ${referenceDragTarget ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.09]"}`}
+                    onDragEnter={handleReferenceDragEnter}
+                    onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
+                    onDragLeave={handleReferenceDragLeave}
+                    onDrop={handleReferenceDrop}
+                >
+                    <div className={`flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
+                        {references.map((item, index) => (
+                            <div key={item.id} className="group relative size-12 shrink-0 overflow-hidden rounded-lg border border-stone-200 dark:border-stone-800">
+                                <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
+                                <span className="absolute left-0.5 bottom-0.5 rounded bg-black/60 px-1 text-[9px] text-white">{index + 1}</span>
+                                <button type="button" className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded bg-black/60 text-white sm:opacity-0 sm:group-hover:opacity-100" onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))} aria-label={t("videoWorkbench.removeImage")}><Trash2 className="size-3" /></button>
+                            </div>
+                        ))}
+                    </div>
+                    <Input.TextArea
+                        value={prompt}
+                        onChange={(event) => setPrompt(event.target.value)}
+                        onMouseDown={closeInputPopovers}
+                        onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && canGenerate && !running) { event.preventDefault(); void generate(); } }}
+                        onPaste={(event) => { if (Array.from(event.clipboardData.files).some((file) => file.type.startsWith("image/"))) { event.preventDefault(); void addReferences(event.clipboardData.files); } }}
+                        placeholder={t("videoWorkbench.promptPlaceholder")}
+                        aria-label={t("workbench.prompt")}
+                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        variant="borderless"
+                        className="playground-prompt min-w-0 !border-0 !px-1 !py-2 !text-sm !outline-none !shadow-none focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!outline-none"
+                    />
+                    {referenceDragTarget && !references.length ? <div className="px-2 pb-1 text-xs text-stone-500">{t("videoWorkbench.dropReferences")}</div> : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-200/80 pt-3 dark:border-white/[0.08] sm:mt-3 sm:gap-2.5">
+                        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+                            <ModelPicker flat showIcon={false} side="top" contentClassName="w-[var(--radix-select-trigger-width)] min-w-0" config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className="!h-8 min-w-0 max-w-[220px] !rounded-full !border !border-stone-200/80 !bg-white/75 !px-3 !text-xs !font-medium !text-stone-600 !shadow-sm dark:!border-white/[0.08] dark:!bg-white/[0.04] dark:!text-stone-300 max-sm:w-full max-sm:max-w-none data-[size=default]:!h-8" onMissingConfig={() => openConfigDialog(false)} />
+                            <VideoOptionPill label={t("settingsPanels.video.quality")} value={videoResolutionLabel(effectiveConfig.vquality || "720")} options={videoResolutionOptions} onChange={(value) => updateConfig("vquality", value)} />
+                            <VideoOptionPill label={t("settingsPanels.video.ratio")} value={videoSizeLabel(effectiveConfig.size)} options={videoSizeOptions.map((option) => ({ ...option, label: option.label }))} onChange={(value) => updateConfig("size", normalizeVideoSizeValue(value, effectiveConfig.vquality || "720"))} />
+                            <VideoOptionPill label={t("settingsPanels.video.seconds")} value={videoSecondsLabel(String(normalizeVideoSeconds(effectiveConfig.videoSeconds)))} options={Array.from({ length: videoSecondsRange.max - videoSecondsRange.min + 1 }, (_, index) => ({ value: String(videoSecondsRange.max - index), label: `${videoSecondsRange.max - index}s` }))} onChange={(value) => updateConfig("videoSeconds", value)} scrollable />
+                            <VideoOptionPill label={t("settingsPanels.video.mode")} value={videoModeLabel(effectiveConfig.videoMode)} options={[{ value: "frames", label: videoModeLabel("frames") }, { value: "reference", label: videoModeLabel("reference") }]} onChange={(value) => updateConfig("videoMode", value)} autoHeight />
+                        </div>
+                        <div className="hidden min-w-4 flex-1 sm:block" />
+                        {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
+                        <Dropdown trigger={["click"]} placement="topRight" menu={{ items: [
+                            { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
+                            { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
+                            { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
+                        ], onClick: ({ key }) => { if (key === "upload") fileInputRef.current?.click(); else if (key === "clipboard") void addReferencesFromClipboard(); else setAssetPickerOpen(true); } }}>
+                            <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-stone-200/90 bg-white/75 text-stone-600 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-stone-300 dark:hover:bg-white/[0.08]" aria-label={t("imageWorkbench.addReferenceSource")}><Plus className="size-4" /></button>
+                        </Dropdown>
+                        <button type="button" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-900 !text-white shadow-[0_5px_14px_rgba(15,23,42,0.2)] transition-[transform,opacity,background-color] hover:-translate-y-0.5 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:!text-stone-900 dark:hover:bg-stone-300" disabled={!canGenerate || running} onClick={() => void generate()} aria-label={t("workbench.generate")} title={t("workbench.generate")}>
+                            {running ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                        </button>
+                    </div>
+                </div>
+            </div>
             <input
                 ref={fileInputRef}
                 type="file"
@@ -487,14 +475,7 @@ export default function VideoPage() {
                     event.target.value = "";
                 }}
             />
-            <Drawer title={t("workbench.logs")} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
-                <LogPanel logs={logs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={createSession} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} />
-            </Drawer>
-            <Drawer title={t("workbench.settings")} placement="bottom" height="82vh" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
-                <div className="grid grid-cols-2 gap-3 pb-4">
-                    <GenerationSettings config={effectiveConfig} model={model} updateConfig={updateConfig} openConfigDialog={openConfigDialog} />
-                </div>
-            </Drawer>
+            <WorkbenchLibraryDrawer open={libraryOpen} view={libraryView} imageIds={videoIds} mediaType="video" onClose={() => setLibraryOpen(false)} onSelect={setLibraryView} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <Modal title={t("workbench.deleteLogs")} open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={deleteSelectedLogs} okText={t("common.delete")} okButtonProps={{ danger: true }} cancelText={t("common.cancel")}>
                 {t("workbench.deleteLogsConfirm", { count: selectedLogIds.length })}
@@ -503,25 +484,50 @@ export default function VideoPage() {
     );
 }
 
-function GenerationSettings({ config, model, updateConfig, openConfigDialog }: { config: AiConfig; model: string; updateConfig: UpdateAiConfig; openConfigDialog: (shouldPromptContinue?: boolean) => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const { t } = useTranslation();
-
+function VideoOptionPill({ label, value, options, onChange, scrollable = false, autoHeight = false }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; scrollable?: boolean; autoHeight?: boolean }) {
+    const [open, setOpen] = useExclusivePopover();
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const [triggerWidth, setTriggerWidth] = useState<number>();
     return (
-        <>
-            <label className="col-span-2 block min-w-0 sm:col-span-1">
-                <span className="mb-1.5 block text-sm font-semibold sm:mb-2 sm:text-base">{t("workbench.model")}</span>
-                <ModelPicker config={config} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" fullWidth onMissingConfig={() => openConfigDialog(false)} />
-            </label>
-            <div className="col-span-2">
-                <VideoSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4" />
-            </div>
-        </>
+        <Dropdown
+            trigger={["click"]}
+            placement="topLeft"
+            align={{ offset: [0, -12] }}
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (nextOpen && triggerRef.current) setTriggerWidth(triggerRef.current.getBoundingClientRect().width);
+                setOpen(nextOpen);
+            }}
+            popupRender={() => (
+                <div className={`rounded-xl border border-stone-200 bg-white p-1 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900 ${scrollable ? "h-[240px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : autoHeight ? "overflow-hidden" : "h-[240px] overflow-hidden"}`} style={{ width: triggerWidth, minWidth: triggerWidth }}>
+                    <div className={`flex ${scrollable ? "flex-col" : autoHeight ? "flex-col gap-1" : "h-[230px] flex-col justify-between"}`}>
+                        {options.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                aria-pressed={value === option.label}
+                                className={`flex min-h-6 w-full items-center justify-center rounded-lg px-2 py-1 text-center text-xs transition-colors ${value === option.label ? "bg-stone-100 font-medium text-sky-600 dark:bg-white/[0.08] dark:text-sky-400" : "text-stone-600 hover:bg-stone-900/[0.05] hover:text-stone-900 dark:text-stone-300 dark:hover:bg-white/[0.06] dark:hover:text-white"}`}
+                                onClick={() => { onChange(option.value); setOpen(false); }}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        >
+            <button ref={triggerRef} type="button" aria-expanded={open} aria-label={label} title={label} className={WORKBENCH_PILL_CLASS}>
+                <span className="text-stone-400">{label}</span>
+                <span className="truncate">{value}</span>
+            </button>
+        </Dropdown>
     );
 }
 
 function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedVideo; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void }) {
     const { t } = useTranslation();
+    const favorite = useWorkbenchLibraryStore((state) => state.videoFavoriteIds.includes(video.id));
+    const toggleFavorite = useWorkbenchLibraryStore((state) => state.toggleVideoFavorite);
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
             <video src={video.url} controls className="aspect-video w-full bg-black object-contain" />
@@ -534,6 +540,10 @@ function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedV
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
                 <div className="flex shrink-0 gap-1">
+                    <Tooltip title={t(favorite ? "imageWorkbench.unfavorite" : "imageWorkbench.favorite")}>
+                        <Button size="small" type="text" className={favorite ? "!text-amber-500" : ""} icon={<Star className="size-3.5" fill={favorite ? "currentColor" : "none"} />} aria-pressed={favorite} onClick={() => toggleFavorite(video.id)} />
+                    </Tooltip>
+                    <WorkbenchFolderPicker imageId={video.id} mediaType="video" onSaveAsset={() => onSaveAsset(video)} />
                     <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
                         {t("common.addToAssets")}
                     </Button>

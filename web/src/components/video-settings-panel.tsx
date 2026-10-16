@@ -12,6 +12,8 @@ const resolutionOptions = [
     { value: "480", label: "480p" },
     { value: "720", label: "720p" },
     { value: "1080", label: "1080p" },
+    { value: "1440", label: "2K" },
+    { value: "2160", label: "4K" },
 ];
 const videoModeOptions = [
     { value: "frames", labelKey: "frames" },
@@ -106,7 +108,8 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
 }
 
 export function videoResolutionLabel(value: string) {
-    return `${parseVideoResolution(value)}p`;
+    const resolution = parseVideoResolution(value);
+    return resolution === 1440 ? "2K" : resolution === 2160 ? "4K" : `${resolution}p`;
 }
 
 export function videoSizeLabel(value: string) {
