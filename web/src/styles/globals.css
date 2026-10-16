@@ -452,6 +452,57 @@
         top: 21px;
     }
 
+    /*
+     * 配置弹窗：照参考图收紧。tab 贴在标题下、整条分隔线；内容区两侧各 24px。
+     * 滚动条压细一点 —— 默认那条在深色底上很扎眼。
+     */
+    .app-config-modal .ant-modal-content {
+        padding: 24px;
+    }
+
+    .app-config-modal .ant-modal-close {
+        top: 22px;
+    }
+
+    .app-config-modal .ant-modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .app-config-modal .ant-modal-body::-webkit-scrollbar-thumb {
+        background: rgba(120, 113, 108, 0.32);
+        border-radius: 999px;
+    }
+
+    .app-config-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(120, 113, 108, 0.5);
+    }
+
+    /* tab：去掉 antd 默认的上下留白，让它紧贴标题、下面压一条通栏分隔线。 */
+    .app-config-tabs > .ant-tabs-nav {
+        margin: 12px 0 0;
+    }
+
+    .app-config-tabs > .ant-tabs-nav::before {
+        border-color: rgba(120, 113, 108, 0.16);
+    }
+
+    .app-config-tabs .ant-tabs-tab {
+        padding: 11px 0 13px;
+        font-size: 14px;
+    }
+
+    .app-config-tabs .ant-tabs-tab + .ant-tabs-tab {
+        margin-left: 30px;
+    }
+
+    .app-config-tabs .ant-tabs-ink-bar {
+        height: 2px;
+    }
+
+    .app-config-tabs > .ant-tabs-nav .ant-tabs-content-holder {
+        border-top: none;
+    }
+
     @keyframes canvas-batch-child-in {
         from {
             opacity: 0;
