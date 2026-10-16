@@ -1,7 +1,7 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Segmented, Switch } from "antd";
-import { CircleDot, Eraser, Grid2x2, Group, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
+import { CircleDot, Eraser, Grid2x2, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Square, Sun, Trash2, Type, Undo2, Video } from "lucide-react";
 
 import "./canvas-dock.css";
 
@@ -49,11 +49,9 @@ export function CanvasToolbar({
     onAddVideo,
     onAddAudio,
     onAddText,
-    onAddGroup,
     onAddExtensionNode,
     onUndo,
     onRedo,
-    onUpload,
     onDelete,
     onClear,
     onCanvasToolChange,
@@ -72,11 +70,9 @@ export function CanvasToolbar({
     onAddVideo: () => void;
     onAddAudio: () => void;
     onAddText: () => void;
-    onAddGroup: () => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
     onRedo: () => void;
-    onUpload: () => void;
     onDelete: () => void;
     onClear: () => void;
     onCanvasToolChange: (tool: "select" | "pan") => void;
@@ -388,9 +384,6 @@ export function CanvasToolbar({
                 <DockItem label={t("canvas.toolbar.audio")} onClick={onAddAudio}>
                     <Music2 className="size-4.5" />
                 </DockItem>
-                <DockItem label={t("canvas.toolbar.group")} onClick={onAddGroup}>
-                    <Group className="size-4.5" />
-                </DockItem>
                 {extensionDefs.length ? (
                     <DockItem
                         label={t("canvas.toolbar.extensions")}
@@ -404,9 +397,6 @@ export function CanvasToolbar({
                         <Puzzle className="size-4.5" />
                     </DockItem>
                 ) : null}
-                <DockItem label={t("canvas.toolbar.upload")} onClick={onUpload}>
-                    <Upload className="size-4.5" />
-                </DockItem>
                 <Divider />
                 <DockItem
                     label={t("canvas.toolbar.appearance")}

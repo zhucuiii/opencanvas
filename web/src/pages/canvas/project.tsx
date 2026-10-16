@@ -3405,11 +3405,9 @@ function InfiniteCanvasPage() {
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddText={() => createNode(CanvasNodeType.Text)}
-                    onAddGroup={() => createNode(CanvasNodeType.Group)}
                     onAddExtensionNode={(type) => createNode(type)}
                     onUndo={undoCanvas}
                     onRedo={redoCanvas}
-                    onUpload={() => handleUploadRequest()}
                     onDelete={() => deleteNodes(new Set(selectedNodeIds))}
                     onClear={() => setClearConfirmOpen(true)}
                     onCanvasToolChange={setCanvasTool}
