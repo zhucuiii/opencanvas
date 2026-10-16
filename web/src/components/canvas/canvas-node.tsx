@@ -740,9 +740,8 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
     const { t } = useTranslation();
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
-            <div className="flex size-14 items-center justify-center rounded-2xl" style={{ background: theme.toolbar.activeBg }}>
-                <ImageIcon className="size-6 opacity-30" />
-            </div>
+            {/* 不再套一块灰色底块：空节点就是图标加文案，和空视频、空音频保持一致。 */}
+            <ImageIcon className="size-7 opacity-35" />
             <span className="text-[10px] tracking-[0.18em] opacity-50">{t("canvas.node.emptyImage")}</span>
         </div>
     );
