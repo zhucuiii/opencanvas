@@ -16,6 +16,7 @@ import { CanvasTransferPromptPopover } from "./canvas-transfer-prompt-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
+import { AUTO_RATIO } from "@/lib/canvas/canvas-node-size";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import { SlingButton } from "@/components/ui/sling-button";
@@ -214,7 +215,9 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
         model: resolveModelForCapability(globalConfig, node.metadata?.model, mode),
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
-        size: node.metadata?.size || globalConfig.size || defaultConfig.size,
+        // 比例自动时按 16:9 的参照形状显示（参数面板里尺寸框显示的就是它），
+        // 生成仍按「自动」交给模型；这里只决定节点长什么样。
+        size: node.metadata?.size || globalConfig.size || defaultConfig.size || AUTO_RATIO,
         // 分辨率单独读节点自己那一份（面板改的就是它），不回落到全局，否则改完读不回来。
         imageScale: node.metadata?.imageScale || globalConfig.imageScale || defaultConfig.imageScale,
         background: node.metadata?.background ?? globalConfig.background ?? defaultConfig.background,

@@ -5,6 +5,9 @@ export function fitNodeSize(width: number, height: number, maxWidth = 640, maxHe
     return { width: w * scale, height: h * scale };
 }
 
+/** 比例选「自动」时节点按这个形状显示（16:9），和参数面板里尺寸框的参照一致。 */
+export const AUTO_RATIO = "16:9";
+
 export function nodeSizeFromRatio(size: string, baseWidth: number, baseHeight: number) {
     const match = size?.match(/^(\d+)(?:x|:)(\d+)/);
     if (!match) return null;

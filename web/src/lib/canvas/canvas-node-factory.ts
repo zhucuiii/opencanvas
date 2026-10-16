@@ -1,5 +1,5 @@
 import { getNodeSpec, NODE_DEFAULT_SIZE } from "@/constant/canvas";
-import { nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
+import { AUTO_RATIO, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { UploadedImage } from "@/services/image-storage";
 import type { UploadedFile } from "@/services/file-storage";
@@ -66,6 +66,7 @@ export function applyNodeConfigPatch(node: CanvasNodeData, patch: Partial<Canvas
     const safePatch = patch || {};
     const next = { ...node, metadata: { ...node.metadata, ...safePatch } };
     const spec = node.type === CanvasNodeType.Video ? NODE_DEFAULT_SIZE[CanvasNodeType.Video] : NODE_DEFAULT_SIZE[CanvasNodeType.Image];
-    const size = typeof safePatch.size === "string" && !node.metadata?.content ? nodeSizeFromRatio(safePatch.size, spec.width, spec.height) : null;
+    // 比例选「自动」时 size 里没有比例，节点按 16:9 的参照形状显示，和参数面板里尺寸框一致。
+    const size = typeof safePatch.size === "string" && !node.metadata?.content ? nodeSizeFromRatio(safePatch.size === "auto" ? AUTO_RATIO : safePatch.size, spec.width, spec.height) : null;
     return size && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video) ? { ...next, ...size, position: { x: node.position.x + node.width / 2 - size.width / 2, y: node.position.y + node.height / 2 - size.height / 2 } } : next;
 }
