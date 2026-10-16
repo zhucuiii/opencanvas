@@ -166,8 +166,11 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     };
 
     return (
-        <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-stone-800">
+        // 固定高度的 flex 列：头部和 tab 固定，只有 tab 内容滚动，「完成」常驻底部。
+        // 用 h-（确定高度）而不是 max-h-（只是上限）—— 后者内容少时还会缩回去，
+        // 切 tab 时弹窗大小照样跳。可用高度 = 视口 - 顶部留白 - 底部工具条那截。
+        <div className="flex h-[calc(100vh-320px)] min-h-[380px] flex-col">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-stone-800">
                 <div className="text-xs text-stone-500">{t("config.fileSecurity")}</div>
                 <div className="flex gap-2">
                     <Button icon={<Upload className="size-4" />} onClick={() => configInputRef.current?.click()}>
@@ -179,6 +182,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                     <input ref={configInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && void loadConfigFile(event.target.files[0])} />
                 </div>
             </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
             <Tabs
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as ConfigTabKey)}
@@ -350,15 +354,16 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                     },
                 ]}
             />
+            </div>
             {showDoneButton ? (
-                <div className="mt-4 flex justify-end">
+                <div className="flex shrink-0 justify-end pt-4">
                     <Button type="primary" onClick={finishConfig}>
                         {t("common.done")}
                     </Button>
                 </div>
             ) : null}
             <ChannelEditorDrawer open={Boolean(editingChannel)} channel={editingChannel} onSave={saveChannel} onClose={() => setEditingChannelId("")} />
-        </>
+        </div>
     );
 }
 
@@ -381,8 +386,8 @@ export function AppConfigModal() {
             rootClassName="app-config-modal-bottom"
             onCancel={() => setConfigDialogOpen(false)}
             styles={{
-                // 高度跟着视口走、底部留出工具条的位置（工具条高 56 + 底距 20 + 间隙）。
-                body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto", paddingRight: 12 },
+                // 弹窗本体不滚动：高度固定，滚动交给内部的 flex 列（头部 / tab / 内容 / 完成按钮各司其职）。
+                body: { overflow: "hidden", paddingRight: 0 },
             }}
             footer={null}
         >
