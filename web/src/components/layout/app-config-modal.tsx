@@ -235,29 +235,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                 </div>
                                 <div className="mb-2 text-sm font-semibold">{t("config.preferences.generation")}</div>
                                 <div className="grid gap-4 md:grid-cols-4">
-                                    <Form.Item label={t("config.preferences.canvasImageCount")} extra={t("config.preferences.canvasImageCountDescription")} className="mb-4">
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            max={15}
-                                            value={config.canvasImageCount}
-                                            onChange={(event) => updateConfig("canvasImageCount", event.target.value)}
-                                            onBlur={(event) => updateConfig("canvasImageCount", normalizeImageCount(event.target.value))}
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.imageRatio")} className="mb-4">
-                                        <Select
-                                            value={config.imageRatio}
-                                            options={imageAspectOptions}
-                                            onChange={(ratio) => {
-                                                updateConfig("imageRatio", ratio);
-                                                if (ratio !== "auto") updateConfig("size", computeMediaSize(inferMediaScale(config.size), ratio));
-                                            }}
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.imageResolution")} className="mb-4">
-                                        <Select value={inferMediaScale(config.size)} options={imageResolutionOptions} onChange={(scale) => updateConfig("size", computeMediaSize(scale, config.imageRatio))} />
-                                    </Form.Item>
                                     <Form.Item label={t("config.preferences.videoRatio")} className="mb-4">
                                         <Select value={config.videoRatio} options={videoSizeOptions} onChange={(ratio) => updateConfig("videoRatio", ratio)} />
                                     </Form.Item>
@@ -432,10 +409,6 @@ function pickDefaultModel(config: AiConfig, capability: ModelCapability, current
     const options = selectableModelsByCapability(config, capability);
     const normalized = normalizeModelOptionValue(current, config.channels);
     return options.includes(normalized) ? normalized : options[0] || "";
-}
-
-function normalizeImageCount(value: string) {
-    return String(Math.max(1, Math.min(15, Math.floor(Math.abs(Number(value)) || 3))));
 }
 
 function apiFormatLabel(apiFormat: ApiCallFormat) {

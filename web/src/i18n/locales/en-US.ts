@@ -426,8 +426,6 @@ export default {
             imageResolution: "Default image resolution",
             videoRatio: "Default video ratio",
             videoResolution: "Default video resolution",
-            canvasImageCount: "Default canvas image count",
-            canvasImageCountDescription: "Used by new canvas image and configuration nodes. Individual nodes can override it.",
             regenerateBehavior: "When generating on a node that already has content",
             regenerateBehaviorOverwrite: "Regenerate in place (overwrite the node)",
             regenerateBehaviorOverwriteDescription: "Replace the node's content and settings in place without creating a new node. Copy the node first to keep the old result.",

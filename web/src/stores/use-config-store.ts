@@ -58,7 +58,6 @@ export type AiConfig = {
     transferCustomPresets: Array<{ id: string; name: string; prompt: string }>;
     background: string;
     count: string;
-    canvasImageCount: string;
     proxyEnabled: boolean;
     proxyUrl: string;
     nodeRegenerateBehavior: "new-node" | "overwrite";
@@ -133,7 +132,6 @@ export const defaultConfig: AiConfig = {
     transferCustomPresets: [],
     background: "",
     count: "1",
-    canvasImageCount: "3",
     proxyEnabled: false,
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,
     nodeRegenerateBehavior: "new-node",
@@ -297,7 +295,6 @@ export const useConfigStore = create<ConfigStore>()(
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",
-                        canvasImageCount: config.canvasImageCount || "3",
                         proxyEnabled: Boolean(config.proxyEnabled),
                         proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
                         nodeRegenerateBehavior: config.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node",
