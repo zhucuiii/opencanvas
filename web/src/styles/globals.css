@@ -400,10 +400,20 @@
         border-color: #78716c !important;
     }
 
-    /* 芯片胶囊等底栏控件走固定尺寸，鼠标点开时不该亮白边；键盘 Tab 时保留一道低饱和度圆环，让按键操作者有可见焦点。 */
+    /*
+     * 底栏按钮彻底不画焦点环。
+     *
+     * 底栏是固定尺寸的一排胶囊，鼠标点开之后浏览器会一直留着 :focus，而**按下 Shift
+     * 会把它升级成 :focus-visible**（Chrome 的行为）——于是 antd 的 3px 描边冒出来，
+     * 浅色主题下就成了一个白框。用户「点着芯片按 Shift+滚轮平移画布」就会撞上。
+     *
+     * 这里连键盘 Tab 的提示环也不要：这一排控件（模型 / 尺寸 / 质量 / 张数 / 转绘）
+     * 的交互全是鼠标或单键操作，Tab 过去并不能完成什么，留个框反而像误触。
+     */
+    [data-node-panel] button:focus,
     [data-node-panel] button:focus-visible {
         outline: none !important;
-        box-shadow: 0 0 0 2px rgba(245, 245, 244, 0.5) !important;
+        box-shadow: none !important;
     }
 
     .canvas-image-settings-popover .ant-popover-inner {
