@@ -471,6 +471,24 @@
 
 }
 
+/*
+ * 设置弹窗贴底：设置按钮在底部工具条上，弹窗就从底部升起、贴着底边。
+ *
+ * 必须放在 @layer utilities 之外 —— 层内规则的优先级永远低于层外的同名规则，
+ * 而 antd 的 `.ant-modal { top: 100px }` 是层外的，写在层里加了选择器权重也压不住。
+ * antd 6 的 .ant-modal-wrap 是 block 容器，靠 top:100px 把弹窗推下去，
+ * 这里改成 flex + flex-end 贴住底边，再把 top 清零。
+ */
+.app-config-modal-bottom .ant-modal-wrap {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 24px;
+}
+
+.app-config-modal-bottom .ant-modal-wrap .ant-modal {
+    top: auto;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
     animation: none;

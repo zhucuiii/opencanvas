@@ -377,7 +377,10 @@ export function AppConfigModal() {
             }
             open={isConfigOpen}
             width={980}
-            centered
+            // 设置按钮在底部工具条上，弹窗也从底部升起、贴着底边，不再居中。
+            // antd 的 wrap 是 flex 容器，给它 align-items: flex-end 才真正贴底
+            //（只写 top:auto 不行，弹窗会往上溢出、标题被切掉）。
+            rootClassName="app-config-modal-bottom"
             onCancel={() => setConfigDialogOpen(false)}
             styles={{ body: { maxHeight: "72vh", overflowY: "auto", paddingRight: 12 } }}
             footer={null}
