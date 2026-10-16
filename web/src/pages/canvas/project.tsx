@@ -23,6 +23,7 @@ import { captureVideoFrame, type VideoFramePosition } from "@/lib/canvas/canvas-
 import { App, Button, Modal } from "antd";
 import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
 import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas-connections";
+import { startConnectionMorph } from "@/lib/canvas/connection-morph";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
 import { CanvasNodeContextMenu } from "@/components/canvas/canvas-context-menu";
@@ -718,42 +719,22 @@ function InfiniteCanvasPage() {
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
 
     /*
-     * 节点形变期间，连线要逐帧跟着节点的实际渲染尺寸走。
-     * 做法：给每个节点挂一个 260ms 的记号（每次改尺寸刷新一次），记号在变就说明还在过渡中；
-     * 只有这时候才让 ConnectionPath 起逐帧重算的循环，静止后自动停掉，不常态占着 RAF。
-     * 值本身不用来算路径，只当「还在动画中」的信号。
+     * 节点尺寸一变就喊一声，让连线在接下来这段时间里逐帧重算路径。
+     * 刻意不走 React state（早先每帧 setState 当信号，整页每帧重渲染，形变会卡），
+     * 只用一个事件总线，React 完全不参与。
      */
-    const [morphTick, setMorphTick] = useState(0);
-    const morphRafRef = useRef<number | null>(null);
-    const morphDeadlineRef = useRef(0);
     const previousNodeSizesRef = useRef(new Map<string, string>());
     useEffect(() => {
         const sizes = new Map<string, string>();
         for (const node of nodes) sizes.set(node.id, `${node.width}x${node.height}`);
         const previous = previousNodeSizesRef.current;
-        let changed = false;
+        let changed = previous.size !== sizes.size;
         for (const [id, size] of sizes) {
             if (previous.get(id) !== size) changed = true;
         }
-        if (previous.size !== sizes.size) changed = true;
         previousNodeSizesRef.current = sizes;
-        if (!changed) return;
-        morphDeadlineRef.current = performance.now() + 400;
-        if (morphRafRef.current !== null) return;
-        const step = () => {
-            if (performance.now() >= morphDeadlineRef.current) {
-                morphRafRef.current = null;
-                setMorphTick(0);
-                return;
-            }
-            setMorphTick((tick) => tick + 1);
-            morphRafRef.current = requestAnimationFrame(step);
-        };
-        morphRafRef.current = requestAnimationFrame(step);
+        if (changed) startConnectionMorph();
     }, [nodes]);
-    useEffect(() => () => {
-        if (morphRafRef.current !== null) cancelAnimationFrame(morphRafRef.current);
-    }, []);
 
     // Connections are culled like nodes; a cubic curve stays inside its control-point hull, so endpoint bounds widened by the curvature is a safe test.
     const visibleConnections = useMemo(
@@ -3247,7 +3228,6 @@ function InfiniteCanvasPage() {
                         {visibleConnections.map(({ connection, from, to }) => (
                             <ConnectionPath
                                 key={connection.id}
-                                morphKey={morphTick ? String(morphTick) : undefined}
                                 connection={connection}
                                 from={from}
                                 to={to}

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { subscribeConnectionMorph } from "@/lib/canvas/connection-morph";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
@@ -42,12 +43,14 @@ export function ConnectionPath({
     const groupRef = useRef<SVGGElement>(null);
     const pathD = connectionPathD(from.position.x + from.width, from.position.y + from.height / 2, to.position.x, to.position.y + to.height / 2);
     // 数据坐标下的路径直接写 DOM：形变动画期间每帧都要改，走 React state 会拖垮整页。
-    // 用 layout effect 是为了在浏览器绘制前就把第一帧对齐，避免改配置那一下闪一下。
+    // 这个 effect 故意不带依赖：每次渲染都要在**绘制前**重算一次。
+    // 因为尺寸一变 React 就会把「按数据坐标算的」路径写进 d，而节点实际是动画过去的，
+    // 不在这儿当场纠正的话，那一帧会先闪一下旧位置再被总线拉回来。
+    const syncRef = useRef<() => void>(() => {});
     useLayoutEffect(() => {
         const group = groupRef.current;
-        if (!group) return;
-        const svg = group.ownerSVGElement;
-        if (!svg) return;
+        const svg = group?.ownerSVGElement;
+        if (!group || !svg) return;
         // 节点的 getBoundingClientRect 是屏幕坐标，而 path 的 d 写在 SVG 的用户坐标里，
         // 画布又有缩放，所以必须反变换回去（直接写屏幕坐标会整体偏掉）。
         const toUser = (screenX: number, screenY: number) => {
@@ -70,15 +73,11 @@ export function ConnectionPath({
             const d = connectionPathD(s.x, s.y, e.x, e.y);
             for (const path of Array.from(group.children)) path.setAttribute("d", d);
         };
-        // 先同步一次再进逐帧循环。节点过渡是从**当前实际尺寸**起步的（不是数据尺寸），
-        // 如果等下一帧才对齐，改配置那一帧连线会闪一下（实测能到 110px）。
+        syncRef.current = sync;
         sync();
-        let raf = requestAnimationFrame(function step() {
-            sync();
-            raf = requestAnimationFrame(step);
-        });
-        return () => cancelAnimationFrame(raf);
-    }, [connection.fromNodeId, connection.toNodeId, morphKey]);
+    });
+    // 形变期间由事件总线驱动逐帧重算（节点尺寸一变，页面就喊一声）。
+    useLayoutEffect(() => subscribeConnectionMorph(() => syncRef.current()), [connection.fromNodeId, connection.toNodeId]);
     const setGroup = (element: SVGGElement | null) => {
         groupRef.current = element;
     };
