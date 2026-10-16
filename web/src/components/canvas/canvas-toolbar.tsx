@@ -1,7 +1,7 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Segmented, Switch } from "antd";
-import { CircleDot, Eraser, Grid2x2, Group, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Settings2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
+import { CircleDot, Eraser, Grid2x2, Group, Hand, Image as ImageIcon, Info, LocateFixed, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
 
 import "./canvas-dock.css";
 
@@ -49,7 +49,6 @@ export function CanvasToolbar({
     onAddVideo,
     onAddAudio,
     onAddText,
-    onAddConfig,
     onAddGroup,
     onAddExtensionNode,
     onUndo,
@@ -73,7 +72,6 @@ export function CanvasToolbar({
     onAddVideo: () => void;
     onAddAudio: () => void;
     onAddText: () => void;
-    onAddConfig: () => void;
     onAddGroup: () => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
@@ -389,9 +387,6 @@ export function CanvasToolbar({
                 </DockItem>
                 <DockItem label={t("canvas.toolbar.audio")} onClick={onAddAudio}>
                     <Music2 className="size-4.5" />
-                </DockItem>
-                <DockItem label={t("canvas.toolbar.config")} onClick={onAddConfig}>
-                    <Settings2 className="size-4.5" />
                 </DockItem>
                 <DockItem label={t("canvas.toolbar.group")} onClick={onAddGroup}>
                     <Group className="size-4.5" />
