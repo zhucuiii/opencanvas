@@ -167,9 +167,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
 
     return (
         <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs leading-relaxed text-stone-500">{t("config.fileSecurity")}</div>
-                <div className="flex shrink-0 gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-stone-800">
+                <div className="text-xs text-stone-500">{t("config.fileSecurity")}</div>
+                <div className="flex gap-2">
                     <Button icon={<Upload className="size-4" />} onClick={() => configInputRef.current?.click()}>
                         {t("config.import")}
                     </Button>
@@ -180,7 +180,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                 </div>
             </div>
             <Tabs
-                className="app-config-tabs"
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as ConfigTabKey)}
                 items={[
@@ -189,27 +188,26 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         label: t("config.tabs.channels"),
                         children: (
                             <div>
-                                <div className="mb-5 flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex-1 text-xs leading-relaxed text-stone-500">{t("config.channels.description")}</div>
-                                    <Button type="primary" className="shrink-0" icon={<Plus className="size-4" />} onClick={addChannel}>
+                                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                                    <div className="text-xs text-stone-500">{t("config.channels.description")}</div>
+                                    <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
                                         {t("config.channels.add")}
                                     </Button>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {config.channels.map((channel) => (
-                                        <div key={channel.id} className="flex items-center justify-between gap-4 rounded-xl border border-stone-800 bg-stone-900/40 px-5 py-3.5 transition-colors hover:bg-stone-900/70">
+                                        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
                                             <div className="min-w-0">
                                                 <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
                                                 <div className="mt-1 truncate text-xs text-stone-500">
                                                     {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
                                                 </div>
                                             </div>
-                                            <div className="flex shrink-0 items-center gap-2">
+                                            <div className="flex shrink-0 gap-2">
                                                 <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
                                                     {t("common.edit")}
                                                 </Button>
-                                                {/* 参考图里删除是纯图标红，没有文字 */}
-                                                <Button size="small" danger type="text" icon={<Trash2 className="size-3.5" />} aria-label={t("common.delete")} onClick={() => deleteChannel(channel.id)} />
+                                                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
                                             </div>
                                         </div>
                                     ))}
@@ -371,21 +369,17 @@ export function AppConfigModal() {
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
     return (
         <Modal
-            className="app-config-modal"
             title={
                 <div>
-                    <div className="text-lg font-semibold leading-tight">{t("config.title")}</div>
-                    <div className="mt-1.5 text-xs font-normal text-stone-500">{t("config.modalDescription")}</div>
+                    <div className="text-lg font-semibold">{t("config.title")}</div>
+                    <div className="mt-1 text-xs font-normal text-stone-500">{t("config.modalDescription")}</div>
                 </div>
             }
             open={isConfigOpen}
             width={980}
             centered
             onCancel={() => setConfigDialogOpen(false)}
-            styles={{
-                // 内容区左右各留 24px（外层 padding 由 .app-config-modal 的 CSS 管）。
-                body: { maxHeight: "72vh", overflowY: "auto", paddingTop: 4 },
-            }}
+            styles={{ body: { maxHeight: "72vh", overflowY: "auto", paddingRight: 12 } }}
             footer={null}
         >
             <AppConfigPanel showDoneButton initialTab={configTab} />
