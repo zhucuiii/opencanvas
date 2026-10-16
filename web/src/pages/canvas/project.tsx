@@ -258,6 +258,20 @@ function InfiniteCanvasPage() {
     const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
     const [expandedBatchNodeIds, setExpandedBatchNodeIds] = useState<Set<string>>(new Set());
     const [isNodeDragging, setIsNodeDragging] = useState(false);
+    // 刚刚改过配置的那个节点：这一小段时间内它的尺寸变化不走过渡，免得连线脱开（见 handleConfigNodeChange）。
+    const [nodeConfigBurstState, setNodeConfigBurstState] = useState<string | null>(null);
+    const nodeConfigBurstTimer = useRef<number | null>(null);
+    const nodeConfigBurstRef = useRef<string | null>(null);
+    const setNodeConfigBurst = useCallback((nodeId: string) => {
+        nodeConfigBurstRef.current = nodeId;
+        setNodeConfigBurstState(nodeId);
+        if (nodeConfigBurstTimer.current !== null) window.clearTimeout(nodeConfigBurstTimer.current);
+        nodeConfigBurstTimer.current = window.setTimeout(() => {
+            nodeConfigBurstTimer.current = null;
+            nodeConfigBurstRef.current = null;
+            setNodeConfigBurstState(null);
+        }, 80);
+    }, []);
     const [isNodeResizing, setIsNodeResizing] = useState(false);
     const [dropTargetGroupId, setDropTargetGroupId] = useState<string | null>(null);
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
@@ -1799,6 +1813,9 @@ function InfiniteCanvasPage() {
     }, []);
 
     const handleConfigNodeChange = useCallback((nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => {
+        // 改配置可能连带改节点尺寸（比如换比例）。连线的端点按数据坐标算、不跟着过渡，
+        // 节点若慢慢形变，这期间连线会从节点边缘脱开一大段（实测能到 145px）。所以这一下瞬时到位。
+        setNodeConfigBurst(nodeId);
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
     }, []);
 
@@ -3236,7 +3253,7 @@ function InfiniteCanvasPage() {
                             isFocusRelated={activeNodeId === node.id}
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
-                            isInteracting={isNodeDragging || isNodeResizing}
+                            isInteracting={isNodeDragging || isNodeResizing || nodeConfigBurstState === node.id}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
                             showPanel={!isNodeDragging && !isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
