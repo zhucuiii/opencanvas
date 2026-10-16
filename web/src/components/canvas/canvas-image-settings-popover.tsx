@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { AspectIcon, ImageSettingsPanel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
 import { inferMediaRatio, inferMediaScale, readMediaDimensions } from "@/lib/media-size";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -56,10 +57,16 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
         };
 
         syncPosition();
+        // 滚轮平移/缩放不派发 pointerdown，收起得靠画布那边喊一声（见 canvas-popover-dismiss.ts）。
+        const stopDismissing = onCanvasPopoverDismiss(() => {
+            setOpen(false);
+            onOpenChange?.(false);
+        });
         window.addEventListener("resize", syncPosition);
         window.addEventListener("scroll", syncPosition, true);
         window.addEventListener("pointerdown", closeOnOutsidePointer, true);
         return () => {
+            stopDismissing();
             window.removeEventListener("resize", syncPosition);
             window.removeEventListener("scroll", syncPosition, true);
             window.removeEventListener("pointerdown", closeOnOutsidePointer, true);

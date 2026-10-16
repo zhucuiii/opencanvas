@@ -6,6 +6,7 @@ import { Button, Input, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useConfigStore } from "@/stores/use-config-store";
 import { resolveTransferPresets, type TransferPreset } from "@/lib/canvas/transfer-presets";
@@ -59,10 +60,17 @@ export function CanvasTransferPromptPopover({ onApply, buttonClassName, placemen
             setAdding(false);
         };
         syncPosition();
+        // 滚轮平移/缩放不派发 pointerdown，收起得靠画布那边喊一声（见 canvas-popover-dismiss.ts）。
+        const stopDismissing = onCanvasPopoverDismiss(() => {
+            setOpen(false);
+            setEditingId(null);
+            setAdding(false);
+        });
         window.addEventListener("resize", syncPosition);
         window.addEventListener("scroll", syncPosition, true);
         window.addEventListener("pointerdown", closeOnOutsidePointer, true);
         return () => {
+            stopDismissing();
             window.removeEventListener("resize", syncPosition);
             window.removeEventListener("scroll", syncPosition, true);
             window.removeEventListener("pointerdown", closeOnOutsidePointer, true);

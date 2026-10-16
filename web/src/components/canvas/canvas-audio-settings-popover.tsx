@@ -6,6 +6,7 @@ import { Button } from "antd";
 import { AudioSettingsPanel } from "@/components/audio-settings-panel";
 import { audioFormatLabel, audioSpeedLabel, audioVoiceLabel } from "@/lib/audio-generation";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
 
@@ -38,10 +39,13 @@ export function CanvasAudioSettingsPopover({ config, onConfigChange, buttonClass
         };
 
         syncPosition();
+        // 滚轮平移/缩放不派发 pointerdown，收起得靠画布那边喊一声（见 canvas-popover-dismiss.ts）。
+        const stopDismissing = onCanvasPopoverDismiss(() => setOpen(false));
         window.addEventListener("resize", syncPosition);
         window.addEventListener("scroll", syncPosition, true);
         window.addEventListener("pointerdown", closeOnOutsidePointer, true);
         return () => {
+            stopDismissing();
             window.removeEventListener("resize", syncPosition);
             window.removeEventListener("scroll", syncPosition, true);
             window.removeEventListener("pointerdown", closeOnOutsidePointer, true);

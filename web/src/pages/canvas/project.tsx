@@ -19,6 +19,7 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "@/lib/canvas/canvas-image-data";
 import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
+import { dismissCanvasPopovers } from "@/lib/canvas/canvas-popover-dismiss";
 import { captureVideoFrame, type VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
 import { App, Button, Modal } from "antd";
 import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
@@ -3218,6 +3219,9 @@ function InfiniteCanvasPage() {
                     onViewportChange={(next) => {
                         setViewport(next);
                         setContextMenu(null);
+                        // 滚轮平移/缩放不派发 pointerdown，挂在节点底栏的浮层（参数 / 质量 / 张数……）
+                        // 靠不到「点外面」那条路，不收就会停在原地跟芯片错位。
+                        dismissCanvasPopovers();
                     }}
                     onCanvasMouseDown={(event) => {
                         if (!referencePickerNodeId) handleCanvasMouseDown(event);

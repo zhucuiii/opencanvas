@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 type CanvasImageCountChipProps = {
@@ -72,10 +73,13 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
             if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return;
             setOpen(false);
         };
+        // 滚轮平移/缩放不派发 pointerdown，收起得靠画布那边喊一声（见 canvas-popover-dismiss.ts）。
+        const stopDismissing = onCanvasPopoverDismiss(() => setOpen(false));
         window.addEventListener("resize", sync);
         window.addEventListener("scroll", sync, true);
         document.addEventListener("pointerdown", closeOnOutsidePointer, true);
         return () => {
+            stopDismissing();
             window.removeEventListener("resize", sync);
             window.removeEventListener("scroll", sync, true);
             document.removeEventListener("pointerdown", closeOnOutsidePointer, true);

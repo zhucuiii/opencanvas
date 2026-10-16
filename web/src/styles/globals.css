@@ -400,6 +400,12 @@
         border-color: #78716c !important;
     }
 
+    /* 芯片胶囊等底栏控件走固定尺寸，鼠标点开时不该亮白边；键盘 Tab 时保留一道低饱和度圆环，让按键操作者有可见焦点。 */
+    [data-node-panel] button:focus-visible {
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(245, 245, 244, 0.5) !important;
+    }
+
     .canvas-image-settings-popover .ant-popover-inner {
         border-radius: 18px;
         box-shadow: 0 18px 54px rgba(28, 25, 23, 0.16);
