@@ -478,15 +478,37 @@
  * 而 antd 的 `.ant-modal { top: 100px }` 是层外的，写在层里加了选择器权重也压不住。
  * antd 6 的 .ant-modal-wrap 是 block 容器，靠 top:100px 把弹窗推下去，
  * 这里改成 flex + flex-end 贴住底边，再把 top 清零。
+ * 下边距要避开底部工具条（高 56 + bottom-20 + 一点间隙），否则弹窗会盖住它。
  */
 .app-config-modal-bottom .ant-modal-wrap {
     display: flex;
     align-items: flex-end;
-    padding-bottom: 24px;
+    padding-bottom: 96px;
 }
 
 .app-config-modal-bottom .ant-modal-wrap .ant-modal {
     top: auto;
+    /* 从底部升起：缩放 + 上移，和画布上那些弹层同一套弹性曲线。 */
+    animation: app-config-modal-in 0.32s cubic-bezier(0.34, 1.3, 0.64, 1);
+    transform-origin: bottom center;
+}
+
+@keyframes app-config-modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-config-modal-bottom .ant-modal-wrap .ant-modal {
+        animation: app-config-modal-in 0.12s ease-out;
+    }
 }
 
 ::view-transition-old(root),

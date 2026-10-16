@@ -376,13 +376,14 @@ export function AppConfigModal() {
                 </div>
             }
             open={isConfigOpen}
-            width={980}
+            width={880}
             // 设置按钮在底部工具条上，弹窗也从底部升起、贴着底边，不再居中。
-            // antd 的 wrap 是 flex 容器，给它 align-items: flex-end 才真正贴底
-            //（只写 top:auto 不行，弹窗会往上溢出、标题被切掉）。
             rootClassName="app-config-modal-bottom"
             onCancel={() => setConfigDialogOpen(false)}
-            styles={{ body: { maxHeight: "72vh", overflowY: "auto", paddingRight: 12 } }}
+            styles={{
+                // 高度跟着视口走、底部留出工具条的位置（工具条高 56 + 底距 20 + 间隙）。
+                body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto", paddingRight: 12 },
+            }}
             footer={null}
         >
             <AppConfigPanel showDoneButton initialTab={configTab} />
