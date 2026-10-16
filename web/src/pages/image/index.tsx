@@ -522,11 +522,7 @@ export default function ImagePage() {
                         <Dropdown
                             trigger={["click"]}
                             menu={{
-                                selectable: true,
-                                selectedKeys: effectiveConfig.background === "transparent" ? ["transparent"] : [],
                                 items: [
-                                    { key: "transparent", label: t("settingsPanels.image.transparent") },
-                                    { type: "divider" },
                                     { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
                                     { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
                                     { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
@@ -534,8 +530,7 @@ export default function ImagePage() {
                                     { key: "settings", label: t("workbench.settings") },
                                 ],
                                 onClick: ({ key }) => {
-                                    if (key === "transparent") updateConfig("background", effectiveConfig.background === "transparent" ? "" : "transparent");
-                                    else if (key === "upload") fileInputRef.current?.click();
+                                    if (key === "upload") fileInputRef.current?.click();
                                     else if (key === "clipboard") void addReferencesFromClipboard();
                                     else if (key === "assets") setAssetPickerOpen(true);
                                     else if (key === "settings") setSettingsOpen(true);
@@ -546,6 +541,34 @@ export default function ImagePage() {
                                 {t("workbench.more")}
                             </button>
                         </Dropdown>
+
+                        {/* 引用项目：PNG 格式、透明底开关、审核策略常驻为小药丸 */}
+                        <button
+                            type="button"
+                            className={WORKBENCH_PILL_CLASS}
+                            aria-label={t("workbench.formatPng")}
+                            title={t("workbench.formatPng")}
+                        >
+                            {t("workbench.formatPng")}
+                        </button>
+
+                        <button
+                            type="button"
+                            className={WORKBENCH_PILL_CLASS}
+                            onClick={() => updateConfig("background", effectiveConfig.background === "transparent" ? "" : "transparent")}
+                            aria-label={`${t("workbench.transparent")} ${effectiveConfig.background === "transparent" ? t("workbench.transparentTrue") : t("workbench.transparentFalse")}`}                            title={`${t("workbench.transparent")} ${effectiveConfig.background === "transparent" ? t("workbench.transparentTrue") : t("workbench.transparentFalse")}`}
+                        >
+                            {t("workbench.transparent")} {effectiveConfig.background === "transparent" ? t("workbench.transparentTrue") : t("workbench.transparentFalse")}
+                        </button>
+
+                        <button
+                            type="button"
+                            className={WORKBENCH_PILL_CLASS}
+                            aria-label={`${t("workbench.review")} ${t("workbench.reviewAuto")}`}
+                            title={`${t("workbench.review")} ${t("workbench.reviewAuto")}`}
+                        >
+                            {t("workbench.review")} {t("workbench.reviewAuto")}
+                        </button>
 
                         <div className="min-w-0 flex-1" />
 

@@ -165,6 +165,12 @@ export default {
         retrySuccess: "重试成功",
         replayLog: "复用这次生成的提示词与参数",
         more: "更多",
+        formatPng: "PNG",
+        transparent: "透明",
+        transparentTrue: "true",
+        transparentFalse: "false",
+        review: "审核",
+        reviewAuto: "auto",
     },
     imageWorkbench: {
         title: "生图工作台",

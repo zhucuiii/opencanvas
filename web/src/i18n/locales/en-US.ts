@@ -165,6 +165,12 @@ export default {
         retrySuccess: "Retry succeeded",
         replayLog: "Reuse this run's prompt and settings",
         more: "More",
+        formatPng: "PNG",
+        transparent: "Transparent",
+        transparentTrue: "true",
+        transparentFalse: "false",
+        review: "Review",
+        reviewAuto: "auto",
     },
     imageWorkbench: {
         title: "Image Studio",
