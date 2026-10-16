@@ -22,3 +22,6 @@ web/public/plugins
 plugins/canvas/*/dist
 plugins/canvas/*/node_modules
 web/public/plugins
+# 本地验证脚本（内含本机绝对路径 D:\祝\...），不上传
+web/.verify-*.mjs
+web/.verify-*.png

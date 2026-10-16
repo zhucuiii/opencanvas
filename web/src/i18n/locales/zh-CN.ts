@@ -164,6 +164,7 @@ export default {
         generationFailed: "生成失败",
         retrySuccess: "重试成功",
         replayLog: "复用这次生成的提示词与参数",
+        more: "更多",
     },
     imageWorkbench: {
         title: "生图工作台",
@@ -187,6 +188,7 @@ export default {
         empty: "还没有生成图片",
         resultAlt: "生成结果 {{count}}",
         addReference: "加入参考图",
+        addReferenceSource: "添加参考图",
     },
     videoWorkbench: {
         title: "视频创作台",

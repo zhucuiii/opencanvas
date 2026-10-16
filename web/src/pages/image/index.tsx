@@ -1,6 +1,6 @@
-import { ClipboardPaste, FolderPlus, History, ImagePlus, SlidersHorizontal, Sparkles, Trash2, Upload } from "lucide-react";
+import { ArrowUp, ClipboardPaste, FolderPlus, History, ImagePlus, LoaderCircle, Plus, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { App, Button, Empty, Input, Modal, Tag, Tooltip } from "antd";
+import { App, Button, Dropdown, Empty, Input, Modal } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { WorkbenchFailedCard, WorkbenchImageCard, WorkbenchPendingCard, type WorkbenchImage } from "@/components/workbench/workbench-image-card";
 import { WorkbenchHistoryPanel } from "@/components/workbench/workbench-history-panel";
+import { WorkbenchCountPill, WorkbenchQualityPill, WorkbenchSizePill, WORKBENCH_PILL_CLASS } from "@/components/workbench/workbench-input-pills";
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
@@ -443,94 +444,151 @@ export default function ImagePage() {
             {/*
              * 底部悬浮输入条：两层结构 —— 外层 pointer-events-none 铺满、内层 pointer-events-auto 接点击，
              * 这样悬浮条以外的区域照常可交互（照抄 canvas-toolbar.tsx 的做法）。
+             *
+             * 排布照参考项目：上面一行提示词，下面一行左边一排参数胶囊（模型 / 尺寸 / 质量 / 张数 / 更多）、
+             * 右边两颗圆钮（加参考图、发送）。参数胶囊只放每次生成都要看一眼的项，其余收进「更多」和参数弹窗。
              */}
             <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-6 sm:px-4">
                 <div
-                    className="pointer-events-auto rounded-2xl border border-stone-200 bg-white/80 p-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-2xl sm:rounded-3xl sm:p-4 dark:border-stone-800 dark:bg-stone-900/80"
+                    className={`pointer-events-auto mx-auto w-full max-w-3xl rounded-2xl border bg-white/80 p-2.5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-3 dark:bg-stone-900/80 ${isReferenceDragActive ? "border-stone-900 dark:border-stone-100" : "border-stone-200 dark:border-stone-800"}`}
                     data-workbench-input-bar
                     onPointerDown={(event) => event.stopPropagation()}
+                    // 拖拽参考图：整条卡片都是投放区，拖进来时描边变色给反馈（参考图那行本身可能不占位）。
+                    onDragEnter={(event) => {
+                        event.preventDefault();
+                        dragDepthRef.current += 1;
+                        if (event.dataTransfer.types.includes("Files")) setIsReferenceDragActive(true);
+                    }}
+                    onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                    }}
+                    onDragLeave={(event) => {
+                        event.preventDefault();
+                        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+                        if (!dragDepthRef.current) setIsReferenceDragActive(false);
+                    }}
+                    onDrop={(event) => {
+                        event.preventDefault();
+                        dragDepthRef.current = 0;
+                        setIsReferenceDragActive(false);
+                        void addReferences(event.dataTransfer.files);
+                    }}
                 >
-                    <div className="flex items-start gap-2">
-                        <Input.TextArea
-                            value={prompt}
-                            onChange={(event) => setPrompt(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === "Enter" && !event.shiftKey && canGenerate && !running) {
-                                    event.preventDefault();
-                                    void generate();
-                                }
+                    {/* 参考图缩略图行：没有参考图时整行不占位（加图靠右下那颗 + 钮）。 */}
+                    <div className={`flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
+                        {references.map((item) => (
+                            <div key={item.id} className="group relative size-12 shrink-0 overflow-hidden rounded-lg border border-stone-200 dark:border-stone-800">
+                                <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
+                                <button
+                                    type="button"
+                                    className="absolute right-0.5 top-0.5 hidden size-5 cursor-pointer items-center justify-center rounded bg-black/60 text-white group-hover:flex"
+                                    onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))}
+                                    aria-label={t("imageWorkbench.removeReference")}
+                                >
+                                    <Trash2 className="size-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <Input.TextArea
+                        value={prompt}
+                        onChange={(event) => setPrompt(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" && !event.shiftKey && canGenerate && !running) {
+                                event.preventDefault();
+                                void generate();
+                            }
+                        }}
+                        placeholder={t("imageWorkbench.promptPlaceholder")}
+                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        variant="borderless"
+                        className="!px-2 !py-1 text-sm"
+                    />
+
+                    {/*
+                     * 拖拽参考图时的提示只在悬停条上没有参考图时才显示 —— 有缩略图时那一行已经被占住了。
+                     * isReferenceDragActive 由上面那行的拖拽处理置位，但上面那行在没有参考图时是 hidden，
+                     * 所以这里用同一个标志把整条卡片描边切一下，用户拖拽时看得到反馈。
+                     */}
+                    {isReferenceDragActive && !references.length ? <div className="px-2 pb-1 text-xs text-stone-500">{t("imageWorkbench.dropReferences")}</div> : null}
+
+                    <div className="mt-1 flex items-center gap-1">
+                        <ModelPicker flat config={effectiveConfig} value={model} onChange={(next) => updateConfig("imageModel", next)} capability="image" className="min-w-0 max-w-[160px]" />
+                        <WorkbenchSizePill config={effectiveConfig} onChange={(key, value) => updateConfig(key, value)} />
+                        <WorkbenchQualityPill quality={effectiveConfig.quality || "auto"} onChange={(quality) => updateConfig("quality", quality)} />
+                        <WorkbenchCountPill value={generationCount} onChange={(countValue) => updateConfig("count", String(countValue))} />
+                        <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                                selectable: true,
+                                selectedKeys: effectiveConfig.background === "transparent" ? ["transparent"] : [],
+                                items: [
+                                    { key: "transparent", label: t("settingsPanels.image.transparent") },
+                                    { type: "divider" },
+                                    { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
+                                    { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
+                                    { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
+                                    { type: "divider" },
+                                    { key: "settings", label: t("workbench.settings") },
+                                ],
+                                onClick: ({ key }) => {
+                                    if (key === "transparent") updateConfig("background", effectiveConfig.background === "transparent" ? "" : "transparent");
+                                    else if (key === "upload") fileInputRef.current?.click();
+                                    else if (key === "clipboard") void addReferencesFromClipboard();
+                                    else if (key === "assets") setAssetPickerOpen(true);
+                                    else if (key === "settings") setSettingsOpen(true);
+                                },
                             }}
-                            placeholder={t("imageWorkbench.promptPlaceholder")}
-                            autoSize={{ minRows: 1, maxRows: 4 }}
-                            variant="borderless"
-                            className="!px-1 !py-1 text-sm"
-                        />
-                        {running ? <Tag className="m-0 shrink-0 self-center px-2 py-1">{t("workbench.waiting", { time: formatDuration(elapsedMs) })}</Tag> : null}
-                        <div className="flex shrink-0 items-center gap-1 self-center">
-                            <Tooltip title={t("workbench.clipboard")}>
-                                <Button size="small" type="text" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()} aria-label={t("workbench.clipboard")} />
-                            </Tooltip>
-                            <Tooltip title={t("workbench.upload")}>
-                                <Button size="small" type="text" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} aria-label={t("workbench.upload")} />
-                            </Tooltip>
-                            <Tooltip title={t("workbench.viewAssets")}>
-                                <Button size="small" type="text" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)} aria-label={t("workbench.viewAssets")} />
-                            </Tooltip>
-                        </div>
-                    </div>
+                        >
+                            <button type="button" className={WORKBENCH_PILL_CLASS} aria-label={t("workbench.more")} title={t("workbench.more")}>
+                                {t("workbench.more")}
+                            </button>
+                        </Dropdown>
 
-                    <div
-                        className={`mt-2 flex gap-2 overflow-x-auto rounded-lg border border-dashed p-2 ${isReferenceDragActive ? "border-stone-900 bg-stone-100/80 dark:border-stone-100 dark:bg-stone-900/80" : "border-stone-300 dark:border-stone-700"}`}
-                        onDragEnter={(event) => {
-                            event.preventDefault();
-                            dragDepthRef.current += 1;
-                            if (event.dataTransfer.types.includes("Files")) setIsReferenceDragActive(true);
-                        }}
-                        onDragOver={(event) => {
-                            event.preventDefault();
-                            event.dataTransfer.dropEffect = "copy";
-                        }}
-                        onDragLeave={(event) => {
-                            event.preventDefault();
-                            dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-                            if (!dragDepthRef.current) setIsReferenceDragActive(false);
-                        }}
-                        onDrop={(event) => {
-                            event.preventDefault();
-                            dragDepthRef.current = 0;
-                            setIsReferenceDragActive(false);
-                            void addReferences(event.dataTransfer.files);
-                        }}
-                    >
-                            {references.map((item, index) => (
-                                <div key={item.id} className="group relative size-14 shrink-0 overflow-hidden rounded-md border border-stone-200 dark:border-stone-800">
-                                    <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
-                                    <button
-                                        type="button"
-                                        className="absolute right-0.5 top-0.5 hidden size-5 items-center justify-center rounded bg-black/60 text-white group-hover:flex"
-                                        onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))}
-                                        aria-label={t("imageWorkbench.removeReference")}
-                                    >
-                                        <Trash2 className="size-3" />
-                                    </button>
-                                </div>
-                            ))}
-                            {!references.length ? <div className="flex min-w-full items-center justify-center py-1 text-xs text-stone-500">{t("imageWorkbench.dropReferences")}</div> : null}
-                    </div>
+                        <div className="min-w-0 flex-1" />
 
-                    {/* 底栏：常用的（模型 / 张数 / 生成）直接露出，其余参数收进弹窗。 */}
-                    <div className="mt-2 flex items-center gap-2">
-                        <div className="min-w-0 flex-1">
-                            <ModelPicker flat config={effectiveConfig} value={model} onChange={(next) => updateConfig("imageModel", next)} capability="image" className="min-w-0 max-w-[200px]" />
-                        </div>
-                        <span className="h-4 w-px shrink-0" style={{ background: "var(--border)" }} aria-hidden />
-                        <span className="shrink-0 text-xs tabular-nums text-stone-500">{generationCount}×</span>
-                        <Button size="small" icon={<SlidersHorizontal className="size-3.5" />} onClick={() => setSettingsOpen(true)}>
-                            {t("workbench.settings")}
-                        </Button>
-                        <Button type="primary" icon={<Sparkles className="size-4" />} loading={running} disabled={!canGenerate || running} onClick={() => void generate()}>
-                            {t("workbench.generate")}
-                        </Button>
+                        {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
+
+                        {/* 加参考图：上传 / 剪切板 / 我的资产三种来源收在一颗圆钮里。 */}
+                        <Dropdown
+                            trigger={["click"]}
+                            placement="topRight"
+                            menu={{
+                                items: [
+                                    { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
+                                    { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
+                                    { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
+                                ],
+                                onClick: ({ key }) => {
+                                    if (key === "upload") fileInputRef.current?.click();
+                                    else if (key === "clipboard") void addReferencesFromClipboard();
+                                    else setAssetPickerOpen(true);
+                                },
+                            }}
+                        >
+                            <button
+                                type="button"
+                                className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-900/[0.06] dark:text-stone-300 dark:hover:bg-stone-100/10"
+                                aria-label={t("imageWorkbench.addReferenceSource")}
+                                title={t("imageWorkbench.addReferenceSource")}
+                            >
+                                <Plus className="size-4" />
+                            </button>
+                        </Dropdown>
+
+                        {/* 发送：圆钮，运行中换成转圈并锁住。 */}
+                        <button
+                            type="button"
+                            className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-900 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:text-stone-900"
+                            disabled={!canGenerate || running}
+                            onClick={() => void generate()}
+                            aria-label={t("workbench.generate")}
+                            title={t("workbench.generate")}
+                        >
+                            {running ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+                        </button>
                     </div>
                 </div>
             </div>

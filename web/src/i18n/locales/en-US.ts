@@ -164,6 +164,7 @@ export default {
         generationFailed: "Generation failed",
         retrySuccess: "Retry succeeded",
         replayLog: "Reuse this run's prompt and settings",
+        more: "More",
     },
     imageWorkbench: {
         title: "Image Studio",
@@ -187,6 +188,7 @@ export default {
         empty: "No images generated yet",
         resultAlt: "Generated image {{count}}",
         addReference: "Add as reference",
+        addReferenceSource: "Add reference image",
     },
     videoWorkbench: {
         title: "Video Studio",
