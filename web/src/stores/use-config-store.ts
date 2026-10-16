@@ -57,6 +57,8 @@ export type AiConfig = {
     transferPresetOverrides: Record<string, { name?: string; prompt?: string }>;
     transferCustomPresets: Array<{ id: string; name: string; prompt: string }>;
     background: string;
+    imageOutputFormat?: "png" | "jpeg" | "webp";
+    imageModeration?: "auto" | "low";
     count: string;
     proxyEnabled: boolean;
     proxyUrl: string;
@@ -131,6 +133,8 @@ export const defaultConfig: AiConfig = {
     transferPresetOverrides: {},
     transferCustomPresets: [],
     background: "",
+    imageOutputFormat: "png",
+    imageModeration: "auto",
     count: "1",
     proxyEnabled: false,
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,

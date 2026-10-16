@@ -1,24 +1,25 @@
-import { ArrowUp, ClipboardPaste, FolderPlus, History, ImagePlus, LoaderCircle, Plus, Trash2, Upload } from "lucide-react";
+import { ArrowRight, ChevronRight, ClipboardPaste, FolderOpen, FolderPlus, Image as ImageIcon, LoaderCircle, Plus, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { App, Button, Dropdown, Empty, Input, Modal } from "antd";
+import { App, Dropdown, Input } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
-import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { WorkbenchFailedCard, WorkbenchImageCard, WorkbenchPendingCard, type WorkbenchImage } from "@/components/workbench/workbench-image-card";
-import { WorkbenchHistoryPanel } from "@/components/workbench/workbench-history-panel";
-import { WorkbenchCountPill, WorkbenchQualityPill, WorkbenchSizePill, WORKBENCH_PILL_CLASS } from "@/components/workbench/workbench-input-pills";
+import { WorkbenchCountPill, WorkbenchQualityPill, WorkbenchSizePill } from "@/components/workbench/workbench-input-pills";
+import { WorkbenchOutputPills } from "@/components/workbench/workbench-output-pill";
+import { WorkbenchLibraryDrawer, type WorkbenchLibraryView } from "@/components/workbench/workbench-library-drawer";
+import { PopoverGroup, useExclusivePopover } from "@/components/ui/popover-group";
+import { imageDownloadExtension } from "@/lib/workbench-gallery";
 import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { formatBytes, formatDuration } from "@/lib/image-utils";
+import { formatDuration } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
-import { deleteStoredImages, ensureImagePreview, getImagePreviewRevision, previewUrlFor, resolveImageUrl, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
-import { useAssetStore } from "@/stores/use-asset-store";
+import { ensureImagePreview, getImagePreviewRevision, previewUrlFor, resolveImageUrl, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
+import { useWorkbenchLibraryStore } from "@/stores/use-workbench-library-store";
+import { useAssetStore } from "@/stores/use-asset-store";
 import { nanoid } from "nanoid";
 import type { ReferenceImage } from "@/types/image";
 import i18n from "@/i18n";
@@ -52,15 +53,18 @@ type GenerationLog = {
     images: GeneratedImage[];
 };
 
-type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "size" | "count">;
+type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "size" | "count" | "background" | "imageOutputFormat" | "imageModeration">;
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
 const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
-const RESULT_ACTION_BUTTON_CLASS = "min-w-0 px-1.5 [&_.ant-btn-icon]:shrink-0 [&>span:last-child]:min-w-0 [&>span:last-child]:truncate";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 
 export default function ImagePage() {
+    return <PopoverGroup><ImageWorkbench /></PopoverGroup>;
+}
+
+function ImageWorkbench() {
     const { message } = App.useApp();
     const { t } = useTranslation();
     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
@@ -71,23 +75,23 @@ export default function ImagePage() {
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
-    const addAsset = useAssetStore((state) => state.addAsset);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
     const [results, setResults] = useState<GenerationResult[]>([]);
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
-    const [logsOpen, setLogsOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
+    const [referenceMenuOpen, setReferenceMenuOpen] = useExclusivePopover();
+    const [libraryOpen, setLibraryOpen] = useExclusivePopover();
+    const [libraryView, setLibraryView] = useState<WorkbenchLibraryView>({ kind: "all" });
+    const favoriteIds = useWorkbenchLibraryStore((state) => state.favoriteIds);
+    const libraryFolders = useWorkbenchLibraryStore((state) => state.folders);
+    const imageFolders = useWorkbenchLibraryStore((state) => state.imageFolders);
     const [startedAt, setStartedAt] = useState(0);
     const [elapsedMs, setElapsedMs] = useState(0);
-    const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
-    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [isReferenceDragActive, setIsReferenceDragActive] = useState(false);
     const [autoRunToken, setAutoRunToken] = useState(0);
-    const historyAnchorRef = useRef<HTMLDivElement>(null);
     const imageCommand = useWorkbenchAgentStore((state) => state.imageCommand);
     const clearImageCommand = useWorkbenchAgentStore((state) => state.clearImageCommand);
     const updateAgentTask = useWorkbenchAgentStore((state) => state.updateTask);
@@ -97,7 +101,6 @@ export default function ImagePage() {
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(10, Number(config.count) || 1));
-    const themeName = useThemeStore((state) => state.theme);
 
     /*
      * 网格铺开「本次生成 + 所有历史」。
@@ -107,9 +110,19 @@ export default function ImagePage() {
      */
     const gridItems = useMemo(() => {
         const fromRun = results.map((result, index) => ({ kind: "run" as const, result, index }));
-        const history = logs.flatMap((log) => log.images.filter((image) => image.dataUrl).map((image, index) => ({ kind: "history" as const, log, image, index })));
+        const currentIds = new Set(results.flatMap((result) => result.image ? [result.image.id] : []));
+        const history = logs.flatMap((log) => log.images.filter((image) => image.dataUrl && !currentIds.has(image.id)).map((image, index) => ({ kind: "history" as const, log, image, index })));
         return [...fromRun, ...history];
     }, [logs, results]);
+    const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
+    const libraryImageIds = useMemo(() => [...new Set(gridItems.map((item) => item.kind === "run" ? item.result.image?.id : item.image.id).filter((id): id is string => Boolean(id)))], [gridItems]);
+    const galleryItems = useMemo(() => gridItems.filter((item) => {
+        if (libraryView.kind === "all") return true;
+        const imageId = item.kind === "run" ? item.result.image?.id : item.image.id;
+        if (!imageId) return false;
+        return libraryView.kind === "favorites" ? favoriteSet.has(imageId) : Boolean(imageFolders[imageId]?.includes(libraryView.id));
+    }), [gridItems, libraryView, favoriteSet, imageFolders]);
+    const libraryViewLabel = libraryView.kind === "favorites" ? t("imageWorkbench.starred") : libraryView.kind === "folder" ? libraryFolders.find((folder) => folder.id === libraryView.id)?.name : "";
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -154,6 +167,7 @@ export default function ImagePage() {
     };
 
     const generate = async () => {
+        if (running) return;
         const agentTaskId = agentTaskIdRef.current;
         agentTaskIdRef.current = undefined;
         const text = prompt.trim();
@@ -177,6 +191,7 @@ export default function ImagePage() {
 
         setElapsedMs(0);
         setRunning(true);
+        setLibraryView({ kind: "all" });
         if (agentTaskId) updateAgentTask(agentTaskId, { status: "running", error: undefined });
         setPreviewLog(null);
         setResults(Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" })));
@@ -236,27 +251,37 @@ export default function ImagePage() {
     }, [autoRunToken]);
 
     const downloadImage = (image: GeneratedImage, index: number) => {
-        saveAs(image.dataUrl, `image-${index + 1}.png`);
+        saveAs(image.dataUrl, `image-${index + 1}.${imageDownloadExtension(image.mimeType)}`);
     };
 
     const addResultToReferences = async (image: GeneratedImage, index: number) => {
         const stored = await uploadImage(image.dataUrl);
-        setReferences((value) => [...value, { id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }]);
+        setReferences((value) => [...value, { id: nanoid(), name: `result-${index + 1}.${imageDownloadExtension(stored.mimeType)}`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }]);
         message.success(t("imageWorkbench.addedReference"));
     };
 
-    const saveResultToAssets = async (image: GeneratedImage, index: number) => {
-        const stored = await uploadImage(image.dataUrl);
-        addAsset({
-            kind: "image",
-            title: t("imageWorkbench.resultTitle", { count: index + 1 }),
-            coverUrl: stored.url,
-            tags: [],
-            source: t("imageWorkbench.source"),
-            data: { dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType },
-            metadata: { source: "image-page", prompt },
-        });
-        message.success(t("common.addedToAssets"));
+    const saveResultToAssets = async (image: GeneratedImage, index: number, sourcePrompt = prompt) => {
+        try {
+            if (!useAssetStore.getState().hydrated) await new Promise<void>((resolve) => {
+                const unsubscribe = useAssetStore.subscribe((state) => { if (state.hydrated) { unsubscribe(); resolve(); } });
+            });
+            const existing = () => useAssetStore.getState().assets.some((asset) => asset.kind === "image" && (asset.metadata?.sourceImageId === image.id || Boolean(image.storageKey && asset.data.storageKey === image.storageKey)));
+            if (existing()) { message.info(t("imageWorkbench.alreadySaved")); return; }
+            const stored = await uploadImage(image.dataUrl);
+            if (existing()) { message.info(t("imageWorkbench.alreadySaved")); return; }
+            useAssetStore.getState().addAsset({
+                kind: "image",
+                title: sourcePrompt.slice(0, 30) || t("imageWorkbench.resultTitle", { count: index + 1 }),
+                coverUrl: stored.url,
+                tags: [],
+                source: t("imageWorkbench.source"),
+                data: { dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType },
+                metadata: { source: "image-page", sourceImageId: image.id, prompt: sourcePrompt },
+            });
+            message.success(t("common.addedToAssets"));
+        } catch {
+            message.error(t("imageWorkbench.saveAssetFailed"));
+        }
     };
 
     const insertPickedAsset = async (payload: InsertAssetPayload) => {
@@ -271,27 +296,6 @@ export default function ImagePage() {
         setAssetPickerOpen(false);
     };
 
-    const createSession = () => {
-        setPrompt("");
-        setReferences([]);
-        setResults([]);
-        setElapsedMs(0);
-        setStartedAt(0);
-        setSelectedLogIds([]);
-        setPreviewLog(null);
-    };
-
-    const deleteSelectedLogs = () => {
-        const imageKeys = logs.filter((log) => selectedLogIds.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
-        void Promise.all([deleteStoredImages(imageKeys), ...selectedLogIds.map((id) => logStore.removeItem(id))]).then(refreshLogs);
-        if (previewLog && selectedLogIds.includes(previewLog.id)) {
-            setPreviewLog(null);
-            setResults([]);
-        }
-        setSelectedLogIds([]);
-        setDeleteConfirmOpen(false);
-    };
-
     const saveLog = (log: GenerationLog) => {
         void logStore.setItem(log.id, serializeLog(log)).then(refreshLogs);
     };
@@ -303,14 +307,20 @@ export default function ImagePage() {
      * 不再把它的图灌进结果区 —— 网格本来就铺开了所有历史，灌进去反而会重复。
      */
     const previewGenerationLog = async (log: GenerationLog) => {
+        if (running) {
+            message.warning(t("imageWorkbench.busy"));
+            return;
+        }
         setPreviewLog(log);
-        setLogsOpen(false);
         setPrompt(log.prompt);
         setReferences(log.references || []);
         if (log.config.imageModel || log.model) updateConfig("imageModel", log.config.imageModel || log.model);
         if (log.config.quality) updateConfig("quality", log.config.quality);
         if (log.config.size) updateConfig("size", log.config.size);
         if (log.config.count) updateConfig("count", log.config.count);
+        updateConfig("background", log.config.background || "");
+        updateConfig("imageOutputFormat", log.config.imageOutputFormat || "png");
+        updateConfig("imageModeration", log.config.imageModeration || "auto");
     };
 
     const buildRequestSnapshot = () => {
@@ -344,8 +354,13 @@ export default function ImagePage() {
     };
 
     const retryResult = async (index: number) => {
+        if (running) return;
         const snapshot = buildRequestSnapshot();
         if (!snapshot) return;
+        setRunning(true);
+        setLibraryView({ kind: "all" });
+        setStartedAt(performance.now());
+        setElapsedMs(0);
         setPreviewLog(null);
         setResults((value) => updateResultAt(value, index, { status: "pending", error: undefined, image: undefined }));
         const retryStartedAt = performance.now();
@@ -367,42 +382,31 @@ export default function ImagePage() {
             message.success(t("workbench.retrySuccess"));
         } catch {
             // runGenerationSlot has already marked the result as failed.
+        } finally {
+            setRunning(false);
         }
     };
 
     return (
-        <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+        <div className="image-playground flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
             {/*
              * 滚动层：整页滚，pb-48 给底部悬浮输入条腾位（参考项目就是 pb-48）。
              * 网格铺开「本次生成 + 所有历史」，所以进页面就能看到全部产出。
              */}
-            <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-48">
+            <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-72 sm:px-6 sm:pb-56">
                 <div className="mx-auto w-full max-w-7xl">
-                    <header className="mb-4 flex items-center justify-between gap-3">
-                        <h1 className="text-lg font-semibold text-stone-950 dark:text-stone-100 sm:text-xl">{t("imageWorkbench.title")}</h1>
-                        <div className="relative">
-                            <Button icon={<History className="size-4" />} onClick={() => setLogsOpen((value) => !value)}>
-                                {t("workbench.logs")}
-                            </Button>
-                            {logsOpen ? (
-                                <WorkbenchHistoryPanel
-                                    logs={logs}
-                                    selectedLogIds={selectedLogIds}
-                                    activeLogId={previewLog?.id}
-                                    onSelectedLogIdsChange={setSelectedLogIds}
-                                    onCreateSession={() => { createSession(); setLogsOpen(false); }}
-                                    onDeleteSelected={() => { setDeleteConfirmOpen(true); setLogsOpen(false); }}
-                                    onPreviewLog={(log) => void previewGenerationLog(log)}
-                                    onDismiss={() => setLogsOpen(false)}
-                                    anchorRef={historyAnchorRef}
-                                />
-                            ) : null}
+                    <h1 className="sr-only">{t("imageWorkbench.title")}</h1>
+                    <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
+                            <button type="button" className="shrink-0 cursor-pointer rounded-lg px-1 py-2 hover:!text-stone-800 dark:hover:!text-stone-100" onClick={() => setLibraryView({ kind: "all" })}>{t("imageWorkbench.allImages")}</button>
+                            {libraryView.kind !== "all" ? <><ChevronRight className="size-3 shrink-0" /><span className="truncate text-stone-600 dark:text-stone-200">{libraryViewLabel}</span></> : null}
                         </div>
-                    </header>
+                        <button type="button" className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-3 text-xs !text-stone-600 transition-colors hover:bg-white dark:border-stone-800 dark:bg-stone-900/70 dark:!text-stone-300 dark:hover:bg-stone-800" onClick={() => setLibraryOpen(true)} aria-expanded={libraryOpen} aria-label={t("imageWorkbench.library")}><FolderOpen className="size-3.5" />{t("imageWorkbench.library")}</button>
+                    </div>
 
-                    {gridItems.length ? (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {gridItems.map((item) =>
+                    {galleryItems.length ? (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {galleryItems.map((item) =>
                                 item.kind === "run" ? (
                                     item.result.status === "success" && item.result.image ? (
                                         <WorkbenchImageCard
@@ -411,7 +415,7 @@ export default function ImagePage() {
                                             index={item.index}
                                             onAddToReferences={(image) => void addResultToReferences(image, item.index)}
                                             onDownload={(image) => downloadImage(image, item.index)}
-                                            onSaveAsset={(image) => void saveResultToAssets(image, item.index)}
+                                            onSaveAsset={(image) => saveResultToAssets(image, item.index)}
                                         />
                                     ) : item.result.status === "failed" ? (
                                         <WorkbenchFailedCard key={item.result.id} error={item.result.error || t("workbench.generationFailed")} onRetry={() => void retryResult(item.index)} />
@@ -427,30 +431,25 @@ export default function ImagePage() {
                                         onReplay={() => void previewGenerationLog(item.log)}
                                         onAddToReferences={(image) => void addResultToReferences(image, item.index)}
                                         onDownload={(image) => downloadImage(image, item.index)}
-                                        onSaveAsset={(image) => void saveResultToAssets(image, item.index)}
+                                        onSaveAsset={(image) => saveResultToAssets(image, item.index, item.log.prompt)}
                                     />
                                 ),
                             )}
                         </div>
                     ) : (
-                        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 text-center dark:border-stone-700">
-                            <ImagePlus className="mb-4 size-11 text-stone-400" />
-                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("imageWorkbench.empty")} />
+                        <div className="flex min-h-[35vh] flex-col items-center justify-center gap-5 text-center" role="status">
+                            <ImageIcon className="size-12 text-stone-300/70 dark:text-stone-700" strokeWidth={1.3} />
+                            <p className="text-sm text-stone-400 dark:text-stone-500">{libraryView.kind === "all" ? t("imageWorkbench.startPrompt") : t("imageWorkbench.emptyCollection")}</p>
+                            {libraryView.kind !== "all" ? <><p className="max-w-xs px-4 text-xs leading-relaxed text-stone-400">{t("imageWorkbench.emptyCollectionHint")}</p><button type="button" className="cursor-pointer text-xs !text-stone-500 underline underline-offset-4" onClick={() => setLibraryView({ kind: "all" })}>{t("imageWorkbench.allImages")}</button></> : null}
                         </div>
                     )}
                 </div>
             </main>
 
-            {/*
-             * 底部悬浮输入条：两层结构 —— 外层 pointer-events-none 铺满、内层 pointer-events-auto 接点击，
-             * 这样悬浮条以外的区域照常可交互（照抄 canvas-toolbar.tsx 的做法）。
-             *
-             * 排布照参考项目：上面一行提示词，下面一行左边一排参数胶囊（模型 / 尺寸 / 质量 / 张数 / 更多）、
-             * 右边两颗圆钮（加参考图、发送）。参数胶囊只放每次生成都要看一眼的项，其余收进「更多」和参数弹窗。
-             */}
+            {/* Keep the gallery interactive outside the floating composer. */}
             <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-6 sm:px-4">
                 <div
-                    className={`pointer-events-auto mx-auto w-full max-w-3xl rounded-2xl border bg-white/80 p-2.5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-3 dark:bg-stone-900/80 ${isReferenceDragActive ? "border-stone-900 dark:border-stone-100" : "border-stone-200 dark:border-stone-800"}`}
+                    className={`playground-composer pointer-events-auto mx-auto w-full max-w-5xl rounded-2xl border bg-white/85 p-3 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-stone-900/85 ${isReferenceDragActive ? "border-stone-900 dark:border-stone-100" : "border-stone-200 dark:border-stone-800"}`}
                     data-workbench-input-bar
                     onPointerDown={(event) => event.stopPropagation()}
                     // 拖拽参考图：整条卡片都是投放区，拖进来时描边变色给反馈（参考图那行本身可能不占位）。
@@ -482,7 +481,7 @@ export default function ImagePage() {
                                 <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
                                 <button
                                     type="button"
-                                    className="absolute right-0.5 top-0.5 hidden size-5 cursor-pointer items-center justify-center rounded bg-black/60 text-white group-hover:flex"
+                                    className="absolute right-0.5 top-0.5 flex size-5 cursor-pointer items-center justify-center rounded bg-black/60 text-white sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                                     onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))}
                                     aria-label={t("imageWorkbench.removeReference")}
                                 >
@@ -496,15 +495,22 @@ export default function ImagePage() {
                         value={prompt}
                         onChange={(event) => setPrompt(event.target.value)}
                         onKeyDown={(event) => {
-                            if (event.key === "Enter" && !event.shiftKey && canGenerate && !running) {
+                            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && canGenerate && !running) {
                                 event.preventDefault();
                                 void generate();
                             }
                         }}
-                        placeholder={t("imageWorkbench.promptPlaceholder")}
+                        placeholder={t("imageWorkbench.promptHint")}
+                        aria-label={t("workbench.prompt")}
+                        onPaste={(event) => {
+                            if (Array.from(event.clipboardData.files).some((file) => file.type.startsWith("image/"))) {
+                                event.preventDefault();
+                                void addReferences(event.clipboardData.files);
+                            }
+                        }}
                         autoSize={{ minRows: 1, maxRows: 4 }}
                         variant="borderless"
-                        className="!px-2 !py-1 text-sm"
+                        className="playground-prompt !rounded-2xl !border !border-stone-200/60 !px-3 !py-3 !text-sm dark:!border-stone-700/50"
                     />
 
                     {/*
@@ -514,63 +520,17 @@ export default function ImagePage() {
                      */}
                     {isReferenceDragActive && !references.length ? <div className="px-2 pb-1 text-xs text-stone-500">{t("imageWorkbench.dropReferences")}</div> : null}
 
-                    <div className="mt-1 flex items-center gap-1">
-                        <ModelPicker flat config={effectiveConfig} value={model} onChange={(next) => updateConfig("imageModel", next)} capability="image" className="min-w-0 max-w-[160px]" />
-                        <WorkbenchSizePill config={effectiveConfig} onChange={(key, value) => updateConfig(key, value)} />
-                        <WorkbenchQualityPill quality={effectiveConfig.quality || "auto"} onChange={(quality) => updateConfig("quality", quality)} />
-                        <WorkbenchCountPill value={generationCount} onChange={(countValue) => updateConfig("count", String(countValue))} />
-                        <Dropdown
-                            trigger={["click"]}
-                            menu={{
-                                items: [
-                                    { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
-                                    { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
-                                    { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
-                                    { type: "divider" },
-                                    { key: "settings", label: t("workbench.settings") },
-                                ],
-                                onClick: ({ key }) => {
-                                    if (key === "upload") fileInputRef.current?.click();
-                                    else if (key === "clipboard") void addReferencesFromClipboard();
-                                    else if (key === "assets") setAssetPickerOpen(true);
-                                    else if (key === "settings") setSettingsOpen(true);
-                                },
-                            }}
-                        >
-                            <button type="button" className={WORKBENCH_PILL_CLASS} aria-label={t("workbench.more")} title={t("workbench.more")}>
-                                {t("workbench.more")}
-                            </button>
-                        </Dropdown>
-
-                        {/* 引用项目：PNG 格式、透明底开关、审核策略常驻为小药丸 */}
-                        <button
-                            type="button"
-                            className={WORKBENCH_PILL_CLASS}
-                            aria-label={t("workbench.formatPng")}
-                            title={t("workbench.formatPng")}
-                        >
-                            {t("workbench.formatPng")}
-                        </button>
-
-                        <button
-                            type="button"
-                            className={WORKBENCH_PILL_CLASS}
-                            onClick={() => updateConfig("background", effectiveConfig.background === "transparent" ? "" : "transparent")}
-                            aria-label={`${t("workbench.transparent")} ${effectiveConfig.background === "transparent" ? t("workbench.transparentTrue") : t("workbench.transparentFalse")}`}                            title={`${t("workbench.transparent")} ${effectiveConfig.background === "transparent" ? t("workbench.transparentTrue") : t("workbench.transparentFalse")}`}
-                        >
-                            {t("workbench.transparent")} {effectiveConfig.background === "transparent" ? t("workbench.transparentTrue") : t("workbench.transparentFalse")}
-                        </button>
-
-                        <button
-                            type="button"
-                            className={WORKBENCH_PILL_CLASS}
-                            aria-label={`${t("workbench.review")} ${t("workbench.reviewAuto")}`}
-                            title={`${t("workbench.review")} ${t("workbench.reviewAuto")}`}
-                        >
-                            {t("workbench.review")} {t("workbench.reviewAuto")}
-                        </button>
-
-                        <div className="min-w-0 flex-1" />
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+                            <ModelPicker flat config={effectiveConfig} value={model} onChange={(next) => updateConfig("imageModel", next)} capability="image" className="!h-8 min-w-0 max-w-[220px] !rounded-full !bg-stone-900/[0.04] !px-3 !text-xs max-sm:w-full max-sm:max-w-none data-[size=default]:!h-8 dark:!bg-white/[0.06]" />
+                            <WorkbenchSizePill config={effectiveConfig} onChange={(key, value) => updateConfig(key, value)} />
+                            <WorkbenchQualityPill quality={effectiveConfig.quality || "auto"} onChange={(quality) => updateConfig("quality", quality)} />
+                            <WorkbenchCountPill value={generationCount} onChange={(countValue) => updateConfig("count", String(countValue))} />
+                        </div>
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none">
+                            <WorkbenchOutputPills config={effectiveConfig} onChange={updateConfig} />
+                        </div>
+                        <div className="hidden sm:block sm:flex-1" />
 
                         {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
 
@@ -578,6 +538,8 @@ export default function ImagePage() {
                         <Dropdown
                             trigger={["click"]}
                             placement="topRight"
+                            open={referenceMenuOpen}
+                            onOpenChange={setReferenceMenuOpen}
                             menu={{
                                 items: [
                                     { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
@@ -585,6 +547,7 @@ export default function ImagePage() {
                                     { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
                                 ],
                                 onClick: ({ key }) => {
+                                    setReferenceMenuOpen(false);
                                     if (key === "upload") fileInputRef.current?.click();
                                     else if (key === "clipboard") void addReferencesFromClipboard();
                                     else setAssetPickerOpen(true);
@@ -593,8 +556,9 @@ export default function ImagePage() {
                         >
                             <button
                                 type="button"
-                                className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-600 transition-colors hover:bg-stone-900/[0.06] dark:text-stone-300 dark:hover:bg-stone-100/10"
+                                className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-stone-200/70 text-stone-500 transition-colors hover:bg-stone-300/70 dark:bg-white/10 dark:text-stone-300 dark:hover:bg-white/15"
                                 aria-label={t("imageWorkbench.addReferenceSource")}
+                                aria-expanded={referenceMenuOpen}
                                 title={t("imageWorkbench.addReferenceSource")}
                             >
                                 <Plus className="size-4" />
@@ -604,13 +568,13 @@ export default function ImagePage() {
                         {/* 发送：圆钮，运行中换成转圈并锁住。 */}
                         <button
                             type="button"
-                            className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-900 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:text-stone-900"
+                            className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-stone-900 !text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:!text-stone-900"
                             disabled={!canGenerate || running}
                             onClick={() => void generate()}
-                            aria-label={t("workbench.generate")}
-                            title={t("workbench.generate")}
+                            aria-label={t("imageWorkbench.generateImage")}
+                            title={t("imageWorkbench.shortcut")}
                         >
-                            {running ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+                            {running ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
                         </button>
                     </div>
                 </div>
@@ -627,16 +591,8 @@ export default function ImagePage() {
                     event.target.value = "";
                 }}
             />
-            {/* 参数弹窗：张数已经提到悬浮条上，所以 showCount 关掉，避免出现两处。 */}
-            <Modal title={t("workbench.settings")} open={settingsOpen} onCancel={() => setSettingsOpen(false)} footer={null} width={520} destroyOnHidden>
-                <ImageSettingsPanel config={effectiveConfig} onConfigChange={(key, value) => updateConfig(key, value)} theme={canvasThemes[themeName]} showTitle={false} showCount={false} className="space-y-4" />
-            </Modal>
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
-
-            <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
-            <Modal title={t("workbench.deleteLogs")} open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={deleteSelectedLogs} okText={t("common.delete")} okButtonProps={{ danger: true }} cancelText={t("common.cancel")}>
-                {t("workbench.deleteLogsConfirm", { count: selectedLogIds.length })}
-            </Modal>
+            <WorkbenchLibraryDrawer open={libraryOpen} view={libraryView} imageIds={libraryImageIds} onClose={() => setLibraryOpen(false)} onSelect={setLibraryView} />
         </div>
     );
 }
@@ -708,6 +664,9 @@ function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
         quality: log.config?.quality || log.quality || "",
         size: log.config?.size || log.size || "",
         count: log.config?.count || String(log.imageCount || log.successCount || 1),
+        background: log.config?.background || "",
+        imageOutputFormat: log.config?.imageOutputFormat || "png",
+        imageModeration: log.config?.imageModeration || "auto",
     };
 }
 
@@ -738,6 +697,9 @@ function buildLog({
         quality: config.quality,
         size: config.size,
         count: config.count,
+        background: config.background,
+        imageOutputFormat: config.imageOutputFormat || "png",
+        imageModeration: config.imageModeration || "auto",
     };
     return {
         id: nanoid(),

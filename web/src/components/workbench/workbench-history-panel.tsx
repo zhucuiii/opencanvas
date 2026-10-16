@@ -60,7 +60,7 @@ export function WorkbenchHistoryPanel<T extends WorkbenchLogLike>({ logs, select
     return (
         <div
             ref={innerRef}
-            className="absolute top-12 left-0 z-50 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-stone-200 bg-white p-3 shadow-2xl sm:w-96 dark:border-stone-800 dark:bg-stone-900"
+            className="fixed top-32 right-4 left-4 z-50 max-h-[70vh] max-w-[calc(100vw-32px)] overflow-y-auto rounded-xl border border-stone-200 bg-white p-3 shadow-2xl sm:absolute sm:top-12 sm:right-0 sm:left-auto sm:w-96 dark:border-stone-800 dark:bg-stone-900"
         >
             <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold">{t("workbench.logs")}</h2>

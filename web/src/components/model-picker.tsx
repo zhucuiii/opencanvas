@@ -1,9 +1,10 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { useExclusivePopover } from "@/components/ui/popover-group";
 import { cn } from "@/lib/utils";
 import { modelOptionLabel, modelOptionName, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 
@@ -23,7 +24,7 @@ type ModelPickerProps = {
 export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, onMissingConfig, flat = false }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useExclusivePopover();
     const options = useMemo(() => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, value]);
     const current = value || "";
     const pickerPlaceholder = placeholder || t("settingsPanels.model.select");
@@ -34,7 +35,7 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
         };
         window.addEventListener("model-picker-open", closeOtherPicker);
         return () => window.removeEventListener("model-picker-open", closeOtherPicker);
-    }, [pickerId]);
+    }, [pickerId, setOpen]);
 
     return (
         <Select

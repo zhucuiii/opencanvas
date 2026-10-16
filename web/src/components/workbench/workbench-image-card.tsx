@@ -1,4 +1,4 @@
-import { Download, FolderPlus, ImagePlus, Pencil } from "lucide-react";
+import { Download, ImagePlus, Pencil, Star } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { Button, Image, Tooltip, Typography } from "antd";
 import { useTranslation } from "react-i18next";
@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import { ImageGenerationPending } from "@/components/image-generation-pending";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { getImagePreviewRevision, previewUrlFor, subscribeImagePreviews } from "@/services/image-storage";
+import { useWorkbenchLibraryStore } from "@/stores/use-workbench-library-store";
+import { WorkbenchFolderPicker } from "./workbench-folder-picker";
+import { cn } from "@/lib/utils";
 
 /** 生成结果里的一张图。字段和 pages/image 里原本的 GeneratedImage 一致。 */
 export type WorkbenchImage = {
@@ -28,7 +31,7 @@ type WorkbenchImageCardProps = {
     active?: boolean;
     onAddToReferences?: (image: WorkbenchImage) => void;
     onDownload?: (image: WorkbenchImage) => void;
-    onSaveAsset?: (image: WorkbenchImage) => void;
+    onSaveAsset?: (image: WorkbenchImage) => Promise<void>;
 };
 
 /*
@@ -44,9 +47,24 @@ export function WorkbenchImageCard({ image, index, onReplay, active = false, onA
     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
     const { t } = useTranslation();
     const src = previewUrlFor(image.storageKey) || image.dataUrl;
+    const favorite = useWorkbenchLibraryStore((state) => state.favoriteIds.includes(image.id));
+    const toggleFavorite = useWorkbenchLibraryStore((state) => state.toggleFavorite);
+    const details = (
+        <>
+            <span className="truncate">
+                {image.width}×{image.height} · {formatBytes(image.bytes)}
+            </span>
+            <span className="shrink-0 tabular-nums">{formatDuration(image.durationMs)}</span>
+        </>
+    );
+    const detailsClass = "flex w-full items-center justify-between gap-2 px-2.5 py-2 !text-xs !leading-4 !text-stone-500 dark:!text-stone-400";
+    const actionClass = "inline-flex size-7 cursor-pointer items-center justify-center rounded-lg !text-stone-500 transition-colors hover:bg-stone-200/70 dark:!text-stone-400 dark:hover:bg-stone-800";
 
     return (
-        <div className={`group relative overflow-hidden rounded-lg border bg-background transition ${active ? "border-stone-900 dark:border-stone-100" : "border-stone-200 hover:border-stone-400 dark:border-stone-800 dark:hover:border-stone-600"}`} data-workbench-image={image.id}>
+        <div
+            className={`group relative overflow-hidden rounded-2xl border bg-background transition ${active ? "border-stone-900 dark:border-stone-100" : "border-stone-200 hover:border-stone-400 dark:border-stone-800 dark:hover:border-stone-600"}`}
+            data-workbench-image={image.id}
+        >
             <div onClick={(event) => event.stopPropagation()}>
                 <Image
                     src={src}
@@ -58,46 +76,47 @@ export function WorkbenchImageCard({ image, index, onReplay, active = false, onA
                 />
             </div>
 
-            <div className="flex items-center justify-between gap-2 px-2.5 py-2 text-xs text-stone-500 dark:text-stone-400">
-                <span className="truncate">
-                    {image.width}×{image.height} · {formatBytes(image.bytes)}
-                </span>
-                <span className="shrink-0 tabular-nums">{formatDuration(image.durationMs)}</span>
-            </div>
-
-            {/*
-             * 悬停蒙层放操作按钮。
-             * 关键：蒙层本身必须始终 pointer-events:none，只有里面的按钮恢复 auto ——
-             * 否则它会盖在图片上，把 antd 的预览点击整个吃掉（点图片没反应）。
-             */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-9 z-20 flex justify-end gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-                {onSaveAsset ? (
-                    <Tooltip title={t("common.addToAssets")}>
-                        <Button size="small" className="pointer-events-auto" icon={<FolderPlus className="size-3.5" />} onClick={(event) => { event.stopPropagation(); void onSaveAsset(image); }} aria-label={t("common.addToAssets")} />
-                    </Tooltip>
-                ) : null}
-                {onAddToReferences ? (
-                    <Tooltip title={t("imageWorkbench.addReference")}>
-                        <Button size="small" className="pointer-events-auto" icon={<Pencil className="size-3.5" />} onClick={(event) => { event.stopPropagation(); onAddToReferences(image); }} aria-label={t("imageWorkbench.addReference")} />
-                    </Tooltip>
-                ) : null}
-                {onDownload ? (
-                    <Tooltip title={t("common.download")}>
-                        <Button size="small" className="pointer-events-auto" icon={<Download className="size-3.5" />} onClick={(event) => { event.stopPropagation(); onDownload(image); }} aria-label={t("common.download")} />
-                    </Tooltip>
-                ) : null}
-            </div>
-
-            {/*
-             * 历史卡片：点卡片空白处回放参数。
-             * 用 inset-0 铺满会盖在图片上、把 antd 的预览点击吃掉，所以只盖「底部信息条」
-             * 那一行（图片区本身留给预览），z 也压到图片之下。
-             */}
             {onReplay ? (
-                <button type="button" className="absolute inset-x-0 bottom-0 z-10 h-9 cursor-pointer" onClick={onReplay} aria-label={t("workbench.replayLog")}>
-                    <span className="sr-only">{t("workbench.replayLog")}</span>
+                <button type="button" className={`${detailsClass} cursor-pointer text-left hover:bg-stone-50 dark:hover:bg-stone-900`} onClick={onReplay} aria-label={t("workbench.replayLog")}>
+                    {details}
                 </button>
-            ) : null}
+            ) : (
+                <div className={detailsClass}>{details}</div>
+            )}
+
+            {/* Keep all actions below the image, separate from preview and history replay. */}
+            <div className="flex h-10 items-center justify-between border-t border-stone-100 bg-stone-50/70 px-2 dark:border-stone-800 dark:bg-stone-900/50">
+                <div className="flex items-center gap-1">
+                    <Tooltip title={t(favorite ? "imageWorkbench.unfavorite" : "imageWorkbench.favorite")}>
+                        <button
+                            type="button"
+                            className={cn(actionClass, favorite && "!text-amber-500 dark:!text-amber-400")}
+                            onClick={() => toggleFavorite(image.id)}
+                            aria-label={t(favorite ? "imageWorkbench.unfavorite" : "imageWorkbench.favorite")}
+                            aria-pressed={favorite}
+                        >
+                            <Star className="size-3.5" fill={favorite ? "currentColor" : "none"} />
+                        </button>
+                    </Tooltip>
+                    <WorkbenchFolderPicker imageId={image.id} onSaveAsset={onSaveAsset ? () => onSaveAsset(image) : undefined} />
+                </div>
+                <div className="flex items-center gap-1">
+                    {onAddToReferences ? (
+                        <Tooltip title={t("imageWorkbench.addReference")}>
+                            <button type="button" className={actionClass} onClick={() => onAddToReferences(image)} aria-label={t("imageWorkbench.addReference")}>
+                                <Pencil className="size-3.5" />
+                            </button>
+                        </Tooltip>
+                    ) : null}
+                    {onDownload ? (
+                        <Tooltip title={t("common.download")}>
+                            <button type="button" className={actionClass} onClick={() => onDownload(image)} aria-label={t("common.download")}>
+                                <Download className="size-3.5" />
+                            </button>
+                        </Tooltip>
+                    ) : null}
+                </div>
+            </div>
         </div>
     );
 }

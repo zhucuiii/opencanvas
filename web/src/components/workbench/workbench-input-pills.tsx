@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Dropdown } from "antd";
 import { useTranslation } from "react-i18next";
@@ -7,30 +7,30 @@ import { AspectIcon, imageQualityLabel, imageQualityOptions, imageSizeLabel } fr
 import { computeMediaSize, inferMediaRatio, inferMediaScale, mediaRatioOptions, mediaScaleOptions } from "@/lib/media-size";
 import { cn } from "@/lib/utils";
 import type { AiConfig } from "@/stores/use-config-store";
+import { useExclusivePopover } from "@/components/ui/popover-group";
 
 /*
  * 底部悬浮条上的一排小胶囊。
  *
- * 这一排只放「每次生成都要看一眼」的参数：模型 / 尺寸 / 质量 / 张数 / 更多。
- * 尺寸、质量、张数各自点开一个小弹层；参数面板里还有透明底、像素输入这些低频项，
- * 它们在「更多」和参数弹窗里。
+ * 尺寸、质量、张数各自点开一个小弹层，与模型、格式、透明背景和审核并列展示。
  *
  * 三个弹层都用 popupRender 换成自己的网格，而不是 antd 默认的纵向菜单：
  * 默认菜单是一列，18 项要 450px 高，从底部往上弹时会被视口切掉一截，
  * 「分辨率」那一组正好落在看不见的地方（点不到，得先在弹层里滚一道）。
  *
- * 换成 popupRender 之后必须自己受控 open：选项换成普通 button 后 antd 不再知道
- * 「选了一项」，默认菜单那套「点完自动收起」的行为没有了，得自己 setOpen(false)。
+ * 自定义网格使用受控 open：尺寸允许连续调整比例和分辨率，点外部才关闭；
+ * 质量和张数仍然在单次选择后关闭。
  */
 
 /** 胶囊外观：浅底、无描边、悬停加深一档。深浅色各一份。 */
-export const WORKBENCH_PILL_CLASS = "inline-flex h-8 min-w-0 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-900/[0.06] dark:text-stone-300 dark:hover:bg-stone-100/10";
+export const WORKBENCH_PILL_CLASS = "inline-flex h-8 min-w-0 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-stone-900/[0.04] px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-900/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-white/[0.06] dark:text-stone-300 dark:hover:bg-white/10";
 /** 弹层外壳：和工作台卡片同一套 stone 配色。 */
 const POPUP_CLASS = "rounded-2xl border border-stone-200 bg-white p-2.5 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900";
 const SECTION_TITLE_CLASS = "px-0.5 pb-1.5 text-[11px] font-medium text-stone-400 dark:text-stone-500";
 const OPTION_CLASS = "flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 text-xs tabular-nums transition-colors";
-const OPTION_OFF_CLASS = "text-stone-600 hover:bg-stone-900/[0.06] dark:text-stone-300 dark:hover:bg-stone-100/10";
-const OPTION_ON_CLASS = "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900";
+const OPTION_OFF_CLASS = "!text-stone-600 hover:bg-stone-900/[0.06] dark:!text-stone-300 dark:hover:bg-stone-100/10";
+// Ant Design's unlayered button reset otherwise overrides Tailwind's text color.
+const OPTION_ON_CLASS = "bg-stone-900 !text-white dark:bg-stone-100 dark:!text-stone-900";
 
 function Pill({ children, className, ...rest }: { children: ReactNode; className?: string } & React.ComponentPropsWithoutRef<"button">) {
     return (
@@ -46,16 +46,16 @@ function PillChevron() {
 
 function OptionButton({ selected, className, children, ...rest }: { selected: boolean; className?: string; children: ReactNode } & React.ComponentPropsWithoutRef<"button">) {
     return (
-        <button type="button" className={cn(OPTION_CLASS, selected ? OPTION_ON_CLASS : OPTION_OFF_CLASS, className)} {...rest}>
+        <button type="button" aria-pressed={selected} className={cn(OPTION_CLASS, selected ? OPTION_ON_CLASS : OPTION_OFF_CLASS, className)} {...rest}>
             {children}
         </button>
     );
 }
 
-/** 尺寸胶囊：一个弹层里分「宽高比」「分辨率」两组，选完即收起。 */
+/** 尺寸胶囊：允许连续调整两组选项，点击弹层外部再收起。 */
 export function WorkbenchSizePill({ config, onChange }: { config: AiConfig; onChange: (key: "size" | "imageScale", value: string) => void }) {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useExclusivePopover();
     const activeSize = config.size || "auto";
     const selectedScale = inferMediaScale(activeSize, config.imageScale);
     const selectedRatio = inferMediaRatio(activeSize);
@@ -66,7 +66,6 @@ export function WorkbenchSizePill({ config, onChange }: { config: AiConfig; onCh
         if (config.imageScale !== scale) onChange("imageScale", scale);
         const next = computeMediaSize(scale, ratio);
         if (next !== activeSize) onChange("size", next);
-        setOpen(false);
     };
 
     return (
@@ -98,7 +97,8 @@ export function WorkbenchSizePill({ config, onChange }: { config: AiConfig; onCh
                 </div>
             )}
         >
-            <Pill aria-label={t("settingsPanels.image.size")} title={t("settingsPanels.image.size")}>
+            <Pill aria-expanded={open} aria-label={t("settingsPanels.image.size")} title={t("settingsPanels.image.size")}>
+                <span className="text-stone-400">{t("imageWorkbench.sizeLabel")}</span>
                 <span className="truncate">{imageSizeLabel(activeSize, config.imageScale)}</span>
                 <PillChevron />
             </Pill>
@@ -109,7 +109,7 @@ export function WorkbenchSizePill({ config, onChange }: { config: AiConfig; onCh
 /** 质量胶囊：六档质量，3 列排开。 */
 export function WorkbenchQualityPill({ quality, onChange }: { quality: string; onChange: (quality: string) => void }) {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useExclusivePopover();
     const current = quality || "auto";
     return (
         <Dropdown
@@ -138,7 +138,8 @@ export function WorkbenchQualityPill({ quality, onChange }: { quality: string; o
                 </div>
             )}
         >
-            <Pill aria-label={t("settingsPanels.image.quality")} title={t("settingsPanels.image.quality")}>
+            <Pill aria-expanded={open} aria-label={t("settingsPanels.image.quality")} title={t("settingsPanels.image.quality")}>
+                <span className="text-stone-400">{t("imageWorkbench.qualityLabel")}</span>
                 <span className="truncate">{imageQualityLabel(current)}</span>
                 <PillChevron />
             </Pill>
@@ -149,7 +150,7 @@ export function WorkbenchQualityPill({ quality, onChange }: { quality: string; o
 /** 张数胶囊：只露当前张数，点开是 1..max，5 列排开。 */
 export function WorkbenchCountPill({ value, max = 10, onChange }: { value: number; max?: number; onChange: (count: number) => void }) {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useExclusivePopover();
     return (
         <Dropdown
             trigger={["click"]}
@@ -177,7 +178,8 @@ export function WorkbenchCountPill({ value, max = 10, onChange }: { value: numbe
                 </div>
             )}
         >
-            <Pill aria-label={t("settingsPanels.image.count")} title={t("settingsPanels.image.count")}>
+            <Pill aria-expanded={open} aria-label={t("settingsPanels.image.count")} title={t("settingsPanels.image.count")}>
+                <span className="text-stone-400">{t("imageWorkbench.countLabel")}</span>
                 <span className="tabular-nums">{value}</span>
             </Pill>
         </Dropdown>
