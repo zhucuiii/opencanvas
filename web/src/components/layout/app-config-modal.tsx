@@ -168,8 +168,10 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     return (
         // 固定高度的 flex 列：头部和 tab 固定，只有 tab 内容滚动，「完成」常驻底部。
         // 用 h-（确定高度）而不是 max-h-（只是上限）—— 后者内容少时还会缩回去，
-        // 切 tab 时弹窗大小照样跳。可用高度 = 视口 - 顶部留白 - 底部工具条那截。
-        <div className="flex h-[calc(100vh-320px)] min-h-[380px] flex-col">
+        // 切 tab 时弹窗大小照样跳。
+        // 460 是弹窗**内容区**的高度；加上 antd 的标题栏 48 + 上下内边距，整窗约 556，
+        // 和用户截图量的 552 对上。视口不够高时按 100vh - 280 收。
+        <div className="flex h-[460px] max-h-[calc(100vh-280px)] min-h-[320px] flex-col">
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-stone-800">
                 <div className="text-xs text-stone-500">{t("config.fileSecurity")}</div>
                 <div className="flex gap-2">
@@ -381,7 +383,7 @@ export function AppConfigModal() {
                 </div>
             }
             open={isConfigOpen}
-            width={880}
+            width={700}
             // 设置按钮在底部工具条上，弹窗也从底部升起、贴着底边，不再居中。
             rootClassName="app-config-modal-bottom"
             onCancel={() => setConfigDialogOpen(false)}
