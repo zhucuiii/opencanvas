@@ -84,7 +84,7 @@ export const useCanvasStore = create<CanvasStore>()(
                     connections: [],
                     chatSessions: [],
                     activeChatId: null,
-                    backgroundMode: "lines",
+                    backgroundMode: "dots",
                     showImageInfo: false,
                     viewport: initialViewport,
                 };

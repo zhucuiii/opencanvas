@@ -131,7 +131,7 @@ export function WorkbenchLibraryDrawer({ open, view, imageIds, mediaType = "imag
                 />
                 <button
                     type="button"
-                    className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-stone-900 !text-white disabled:opacity-30 dark:bg-stone-100 dark:!text-stone-900"
+                    className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-stone-900 !text-white disabled:opacity-30 dark:bg-[#343438] dark:!text-white"
                     disabled={!name.trim()}
                     onClick={() => {
                         if ((mediaType === "video" ? createVideoFolder(name) : createFolder(name))) setName("");

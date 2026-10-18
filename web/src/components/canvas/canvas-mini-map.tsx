@@ -9,8 +9,8 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
-    const width = 240;
-    const height = 160;
+    const width = 204;
+    const height = 136;
 
     const { worldBounds, scale, offset } = useMemo(() => {
         if (!nodes.length) {
@@ -114,7 +114,7 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
             >
                 {nodes.map((node) => {
                     const pos = toMinimap(node.position.x, node.position.y);
-                    const color = getNodeDefinition(node.type)?.minimapColor || theme.node.muted;
+                    const color = theme === canvasThemes.dark ? "#414149" : getNodeDefinition(node.type)?.minimapColor || theme.node.muted;
                     return (
                         <div
                             key={node.id}
@@ -130,7 +130,7 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
                         />
                     );
                 })}
-                <div className="pointer-events-none absolute border" style={{ left: viewportRect.x, top: viewportRect.y, width: viewportRect.w, height: viewportRect.h, borderColor: theme.node.activeStroke, background: `${theme.node.activeStroke}18` }} />
+                <div className="pointer-events-none absolute rounded-xl border" style={{ left: viewportRect.x, top: viewportRect.y, width: viewportRect.w, height: viewportRect.h, borderColor: theme.node.faint, background: "transparent" }} />
             </div>
         </div>
     );

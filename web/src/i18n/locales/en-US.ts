@@ -139,6 +139,7 @@ export default {
         logs: "Generation history",
         settings: "Settings",
         prompt: "Prompt",
+        mediaType: "Creation type",
         viewAssets: "Browse My Assets",
         clipboard: "Clipboard",
         upload: "Upload",
@@ -172,6 +173,13 @@ export default {
         review: "Review",
         reviewAuto: "auto",
     },
+    studioControls: {
+        parameters: "Generation parameters", ratio: "Aspect ratio", count: "Output count", items: "{{count}} items",
+        duration: "Duration", videoMode: "Generation mode", frames: "First & last frames", reference: "References",
+        provider: "Model keys and providers", modelKey: "Model key", manageKeys: "Manage providers & keys",
+        base64Hint: "Inline reference images as Base64. When off, custom scripts can use public image URLs. Local images and native endpoints still use their required format; video is unaffected.",
+        singleVideo: "The video endpoint creates one task per request.",
+    },
     imageWorkbench: {
         library: "Favorites & folders",
         libraryHint: "Saved in this browser. Removing a folder never deletes its images.",
@@ -204,6 +212,14 @@ export default {
         noMatches: "No matching images",
         resetFilters: "Show all images",
         startPrompt: "Enter a prompt to start creating",
+        emptyHeroTitle: "Turn a thought into an image",
+        emptyHeroSubtitle: "Describe what you imagine, or drop in a reference image.",
+        tryIdea: "Try this idea ↗",
+        ideas: {
+            cinematic: { title: "Cinematic frame", prompt: "A girl with a clear umbrella walks through a neon-lit Tokyo alley after rain, cinematic still, wet pavement reflecting blue and red light, wide composition, 35mm film texture" },
+            character: { title: "Character design", prompt: "Character sheet for a young seaside mechanic, orange workwear, vintage camera and utility belt, front side and back views, clean light-gray background, refined concept art" },
+            product: { title: "Product study", prompt: "A minimalist perfume bottle on black volcanic rock, drifting mist and a cool shaft of side light, generous negative space, premium commercial still life, delicate glass reflections" },
+        },
         promptHint: "Describe the image you want to create, or add reference images…",
         outputFormat: "Format",
         transparentBackground: "Transparent background",
@@ -381,8 +397,9 @@ export default {
     },
     navigation: {
         canvas: "My Canvases",
-        image: "Image Studio",
-        video: "Video Studio",
+        studio: "Studio",
+        image: "Image",
+        video: "Video",
         config: "Settings",
     },
     topNav: {

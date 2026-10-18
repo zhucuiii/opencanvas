@@ -12,6 +12,15 @@ export function nodeBounds(nodes: CanvasNodeData[]) {
     );
 }
 
+// Keep a node created from a handle outside its source, even when the menu is clicked in place.
+export function connectedNodePosition(source: CanvasNodeData | undefined, node: Pick<CanvasNodeData, "width" | "height">, center: { x: number; y: number }, handleType: ConnectionHandle["handleType"]) {
+    const position = { x: center.x - node.width / 2, y: center.y - node.height / 2 };
+    if (!source) return position;
+    const gap = 120;
+    position.x = handleType === "source" ? Math.max(position.x, source.position.x + source.width + gap) : Math.min(position.x, source.position.x - node.width - gap);
+    return position;
+}
+
 function containsCenter(group: CanvasNodeData, node: CanvasNodeData) {
     const centerX = node.position.x + node.width / 2;
     const centerY = node.position.y + node.height / 2;

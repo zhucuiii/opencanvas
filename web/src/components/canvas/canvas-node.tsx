@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Palette, Plus, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
@@ -162,6 +162,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     // Transparent nodes such as SVGs blend into the canvas while retaining outlines for selected or related states.
     const transparentBg = Boolean(definition?.transparentBackground);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
+    const outlineColor = isSelected && !isConnectionTarget ? "#f5f5f5" : selectionBlue;
     const imageBorderColor = isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : "transparent";
     // 批量图片节点的卡片堆叠会铺到节点框之外，而选中描边只套住节点本身，
     // 看上去就是一圈多余的方框，所以这一类节点不画选中描边。
@@ -342,8 +343,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                 else onContextMenu(event, data.id);
             }}
         >
-            {!referenceSelectionState && (isSelected || hovered || isEditingTitle) && (
-                <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+            {!referenceSelectionState && (
+                <div className="absolute left-0 top-[-28px] z-[65] max-w-full" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
                             ref={titleInputRef}
@@ -364,7 +365,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     ) : (
                         <button
                             type="button"
-                            className="block max-w-full truncate border-b border-dashed border-transparent px-0 py-0.5 text-left text-xs font-medium opacity-75 transition hover:border-current hover:opacity-100"
+                            className="flex max-w-full items-center gap-2 truncate border-b border-dashed border-transparent px-0 py-0.5 text-left text-xs font-medium opacity-65 transition hover:border-current hover:opacity-100"
                             style={{ color: theme.node.text }}
                             title={t("canvas.node.renameHint")}
                             onDoubleClick={(event) => {
@@ -372,6 +373,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                                 setIsEditingTitle(true);
                             }}
                         >
+                            {data.type === CanvasNodeType.Image ? <Palette className="size-4 shrink-0" /> : null}
                             {data.title || t("canvas.node.untitled")}
                         </button>
                     )}
@@ -379,20 +381,34 @@ export const CanvasNode = React.memo(function CanvasNode({
             )}
 
             <div
-                className="relative h-full w-full overflow-visible rounded-3xl border-2"
+                className="atelier-node-frame relative h-full w-full overflow-visible rounded-[18px] border"
                 style={{
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
-                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? (isBatchImage ? "transparent" : imageBorderColor) : isActive ? theme.node.activeStroke : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
+                    borderColor: isGroup
+                        ? isGroupDropTarget || isActive
+                            ? isSelected ? "#f5f5f5" : selectionBlue
+                            : theme.node.stroke
+                        : hasImageContent
+                          ? isBatchImage
+                              ? "transparent"
+                              : imageBorderColor
+                          : isActive
+                            ? outlineColor
+                            : isRelated
+                              ? theme.node.muted
+                              : transparentBg
+                                ? "transparent"
+                                : theme.node.stroke,
                     borderStyle: isGroup ? "dashed" : "solid",
                     boxShadow: isGroupDropTarget
                         ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10`
                         : isActive && !isBatchImage
-                          ? `0 0 0 1px ${theme.node.activeStroke}, 0 0 16px ${theme.node.activeStroke}40, inset 0 0 0 1px rgba(255,255,255,.2)`
+                          ? `0 0 0 1px ${outlineColor}`
                           : isRelated && !isBatchImage
-                            ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)`
+                            ? `0 0 0 1px ${theme.node.muted}55`
                             : isGroup || hasImageContent || hasVideoContent || transparentBg
                               ? undefined
-                              : `10px 10px 26px ${theme.node.shadowDark}, -10px -10px 26px ${theme.node.shadowLight}`,
+                              : undefined,
                 }}
                 onMouseDown={(event) => {
                     if (!referenceSelectionState) onMouseDown(event, data.id);
@@ -420,21 +436,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                     setIsEditingContent(true);
                 }}
             >
-                {!isGroup ? (
-                    <div
-                        className="canvas-node-glass"
-                        style={{
-                            // The frosted pane only; the orbiting blob that used to sit
-                            // behind it was dropped, it read as a stray light patch on
-                            // the empty nodes.
-                            ["--node-glass-fill" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.72)" : "rgba(14,12,11,.56)",
-                            ["--node-glass-edge" as string]: theme === canvasThemes.light ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.2)",
-                        }}
-                    >
-                        <span className="canvas-node-glass-frost" />
-                    </div>
-                ) : null}
-
                 <div
                     className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${isBatchRoot ? "overflow-visible" : "overflow-hidden"}`}
                     style={
@@ -474,11 +475,23 @@ export const CanvasNode = React.memo(function CanvasNode({
 
                 {showImageInfo && hasImageContent ? <ImageInfoBar node={data} /> : null}
 
-                {!isGroup && !hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
+                {!isGroup && !hasImageContent && !hasVideoContent && !hasAudioContent ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} />
+                ) : null}
 
                 {referenceSelectionState && (referenceSelectionState !== "available" || hovered) ? (
-                    <div className="pointer-events-none absolute inset-0 z-[60] grid place-items-center rounded-[inherit]" style={{ background: `color-mix(in srgb, ${theme.canvas.background} ${referenceSelectionState === "target" ? 78 : referenceSelectionState === "disabled" ? 60 : 34}%, transparent)`, boxShadow: referenceSelectionState === "available" ? `inset 0 0 0 2px ${selectionBlue}` : undefined }}>
-                        {referenceSelectionState !== "disabled" ? <span className="rounded-lg px-3 py-2 text-sm font-medium shadow-sm" style={{ background: theme.toolbar.panel, color: theme.node.text }}>{t(referenceSelectionState === "target" ? "canvas.references.selecting" : "canvas.references.choose")}</span> : null}
+                    <div
+                        className="pointer-events-none absolute inset-0 z-[60] grid place-items-center rounded-[inherit]"
+                        style={{
+                            background: `color-mix(in srgb, ${theme.canvas.background} ${referenceSelectionState === "target" ? 78 : referenceSelectionState === "disabled" ? 60 : 34}%, transparent)`,
+                            boxShadow: referenceSelectionState === "available" ? `inset 0 0 0 2px ${selectionBlue}` : undefined,
+                        }}
+                    >
+                        {referenceSelectionState !== "disabled" ? (
+                            <span className="rounded-lg px-3 py-2 text-sm font-medium shadow-sm" style={{ background: theme.toolbar.panel, color: theme.node.text }}>
+                                {t(referenceSelectionState === "target" ? "canvas.references.selecting" : "canvas.references.choose")}
+                            </span>
+                        ) : null}
                     </div>
                 ) : null}
 
@@ -488,12 +501,16 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {!referenceSelectionState ? <ResizeHandle corner="bottom-right" onMouseDown={handleResizeMouseDown} /> : null}
             </div>
 
-            {!referenceSelectionState && !isGroup ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
-            {!referenceSelectionState && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config ? <ConnectionHandleDot side="right" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "source")} /> : null}
+            {!referenceSelectionState && !isGroup ? (
+                <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} scale={scale} onMouseDown={(event) => onConnectStart(event, data.id, "target")} />
+            ) : null}
+            {!referenceSelectionState && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config ? (
+                <ConnectionHandleDot side="right" visible={hovered || isSelected || isConnecting} scale={scale} onMouseDown={(event) => onConnectStart(event, data.id, "source")} />
+            ) : null}
 
             {/* Counter-scale the panel so its on-screen size stays constant while the canvas zooms. */}
             {showPanel && !isGroup && renderPanel ? (
-                <div className="absolute left-1/2 top-full z-[70] w-[720px] pt-4" style={{ transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: "top center" }} data-node-panel={data.id}>
+                <div className="absolute left-1/2 top-full z-[70] pt-3" style={{ width: "min(760px, calc(100vw - 80px))", transform: `scale(${1 / scale}) translateX(-50%)`, transformOrigin: "top left" }} data-node-panel={data.id}>
                     {/* Separate wrapper so the entrance animation does not fight the
                         counter-scale transform on the element above. */}
                     <div className="canvas-pop-in">{renderPanel(data)}</div>
@@ -601,11 +618,7 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
 
     return (
         <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded}>
-            {batchExpanded
-                ? texts
-                      .filter((text) => text.id !== primaryTextId)
-                      .map((text, index) => <ExpandedTextCard key={text.id} node={node} text={text} index={index} onSetPrimary={() => onSetBatchPrimary?.(text.id)} />)
-                : null}
+            {batchExpanded ? texts.filter((text) => text.id !== primaryTextId).map((text, index) => <ExpandedTextCard key={text.id} node={node} text={text} index={index} onSetPrimary={() => onSetBatchPrimary?.(text.id)} />) : null}
             <div className="flex h-full w-full flex-col overflow-hidden rounded-3xl">
                 {isEditingContent ? (
                     <CanvasResourceMentionTextarea
@@ -693,7 +706,12 @@ function ExpandedTextCard({ node, text, index, onSetPrimary }: { node: CanvasNod
                     <div className="thin-scrollbar h-full overflow-y-auto whitespace-pre-wrap break-words px-4 pb-4 pt-14 font-mono text-sm leading-6" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
                         {text.content}
                     </div>
-                    <button type="button" className="pointer-events-none absolute right-2.5 top-2.5 flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium opacity-0 transition duration-150 hover:bg-black/5 group-hover/node:pointer-events-auto group-hover/node:opacity-100 dark:hover:bg-white/10" style={{ color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onSetPrimary())}>
+                    <button
+                        type="button"
+                        className="pointer-events-none absolute right-2.5 top-2.5 flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium opacity-0 transition duration-150 hover:bg-black/5 group-hover/node:pointer-events-auto group-hover/node:opacity-100 dark:hover:bg-white/10"
+                        style={{ color: theme.node.text }}
+                        onClick={(event) => (event.stopPropagation(), onSetPrimary())}
+                    >
                         <Star className="size-3.5" style={{ color: selectionBlue }} />
                         {t("canvas.node.setPrimaryText")}
                     </button>
@@ -741,8 +759,7 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
             {/* 不再套一块灰色底块：空节点就是图标加文案，和空视频、空音频保持一致。 */}
-            <ImageIcon className="size-7 opacity-35" />
-            <span className="text-[10px] tracking-[0.18em] opacity-50">{t("canvas.node.emptyImage")}</span>
+            <Palette className="size-10 opacity-35" aria-label={t("canvas.node.emptyImage")} />
         </div>
     );
 }
@@ -848,7 +865,21 @@ function ImageContent({
             {batchExpanded
                 ? images
                       .filter((image) => image.id !== primaryImageId)
-                      .map((image, index) => <ExpandedImageCard key={image.id} node={node} image={image} index={index} scale={scale} onView={() => onViewBatchImage?.(image.id)} onSetPrimary={() => onSetBatchPrimary?.(image.id)} onDuplicate={() => onDuplicateBatchImage?.(image.id)} onDownload={() => onDownloadBatchImage?.(image.id)} onRetry={() => onRetryBatchImage?.(image.id)} onDelete={() => onDeleteBatchImage?.(image.id)} />)
+                      .map((image, index) => (
+                          <ExpandedImageCard
+                              key={image.id}
+                              node={node}
+                              image={image}
+                              index={index}
+                              scale={scale}
+                              onView={() => onViewBatchImage?.(image.id)}
+                              onSetPrimary={() => onSetBatchPrimary?.(image.id)}
+                              onDuplicate={() => onDuplicateBatchImage?.(image.id)}
+                              onDownload={() => onDownloadBatchImage?.(image.id)}
+                              onRetry={() => onRetryBatchImage?.(image.id)}
+                              onDelete={() => onDeleteBatchImage?.(image.id)}
+                          />
+                      ))
                 : null}
             {stacked ? (
                 <ImageStack className="h-full w-full" layout="fan" radius={24} sendToBackOnClick draggableCards={false} cards={stackCards} />
@@ -893,7 +924,29 @@ function ImageContent({
     );
 }
 
-function ExpandedImageCard({ node, image, index, scale, onView, onSetPrimary, onDuplicate, onDownload, onRetry, onDelete }: { node: CanvasNodeData; image: CanvasNodeImage; index: number; scale: number; onView: () => void; onSetPrimary: () => void; onDuplicate: () => void; onDownload: () => void; onRetry: () => void; onDelete: () => void }) {
+function ExpandedImageCard({
+    node,
+    image,
+    index,
+    scale,
+    onView,
+    onSetPrimary,
+    onDuplicate,
+    onDownload,
+    onRetry,
+    onDelete,
+}: {
+    node: CanvasNodeData;
+    image: CanvasNodeImage;
+    index: number;
+    scale: number;
+    onView: () => void;
+    onSetPrimary: () => void;
+    onDuplicate: () => void;
+    onDownload: () => void;
+    onRetry: () => void;
+    onDelete: () => void;
+}) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
@@ -946,15 +999,33 @@ function ExpandedImageCard({ node, image, index, scale, onView, onSetPrimary, on
             {image.content ? <img src={source} alt={node.title} draggable={false} className="pointer-events-none h-full w-full select-none object-contain" /> : <ImageSlotStatus image={image} />}
             {image.content ? (
                 <div className="pointer-events-none absolute inset-x-2 top-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/node:pointer-events-auto group-hover/node:opacity-100">
-                    <button type="button" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }} title={t("common.download")} onClick={(event) => (event.stopPropagation(), onDownload())}>
+                    <button
+                        type="button"
+                        className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]"
+                        style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }}
+                        title={t("common.download")}
+                        onClick={(event) => (event.stopPropagation(), onDownload())}
+                    >
                         <Download className="size-3 shrink-0" />
                         <span className="truncate">{t("common.download")}</span>
                     </button>
-                    <button type="button" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }} title={t("canvas.node.createCopy")} onClick={(event) => (event.stopPropagation(), onDuplicate())}>
+                    <button
+                        type="button"
+                        className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]"
+                        style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }}
+                        title={t("canvas.node.createCopy")}
+                        onClick={(event) => (event.stopPropagation(), onDuplicate())}
+                    >
                         <Copy className="size-3 shrink-0" />
                         <span className="truncate">{t("canvas.node.createCopy")}</span>
                     </button>
-                    <button type="button" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }} title={t("canvas.node.setPrimary")} onClick={(event) => (event.stopPropagation(), onSetPrimary())}>
+                    <button
+                        type="button"
+                        className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]"
+                        style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }}
+                        title={t("canvas.node.setPrimary")}
+                        onClick={(event) => (event.stopPropagation(), onSetPrimary())}
+                    >
                         <Star className="size-3 shrink-0" style={{ color: selectionBlue }} />
                         <span className="truncate">{t("canvas.node.setPrimary")}</span>
                     </button>
@@ -970,11 +1041,23 @@ function BatchImageFailureActions({ placement, onRetry, onDelete }: { placement:
     const { t } = useTranslation();
     return (
         <div className={`absolute top-3 z-30 flex items-center gap-1.5 ${placement === "left" ? "left-3" : "right-3"}`}>
-            <button type="button" className="flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium shadow-sm transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onRetry())}>
+            <button
+                type="button"
+                className="flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium shadow-sm transition hover:scale-[1.02]"
+                style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
+                onClick={(event) => (event.stopPropagation(), onRetry())}
+            >
                 <RefreshCw className="size-3.5" />
                 {t("canvas.node.retry")}
             </button>
-            <button type="button" className="grid size-8 place-items-center rounded-lg border shadow-sm transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onDelete())} aria-label={t("common.delete")} title={t("common.delete")}>
+            <button
+                type="button"
+                className="grid size-8 place-items-center rounded-lg border shadow-sm transition hover:scale-[1.02]"
+                style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
+                onClick={(event) => (event.stopPropagation(), onDelete())}
+                aria-label={t("common.delete")}
+                title={t("common.delete")}
+            >
                 <Trash2 className="size-3.5" />
             </button>
         </div>
@@ -1049,17 +1132,159 @@ function ResizeHandle({ corner, onMouseDown }: { corner: ResizeCorner; onMouseDo
     return <div className={`absolute z-50 size-7 ${positionClass}`} onMouseDown={(event) => onMouseDown(event, corner)} />;
 }
 
-function ConnectionHandleDot({ side, visible, onMouseDown }: { side: "left" | "right"; visible: boolean; onMouseDown: (event: React.MouseEvent) => void }) {
+const CONNECTOR_MAGNET_RANGES = {
+    right: { left: 24, right: 40, top: 40, bottom: 40 },
+    left: { left: 40, right: 24, top: 40, bottom: 40 },
+} as const;
+const CONNECTOR_MAGNET_ENTER_TRANSITION = "transform 250ms cubic-bezier(0.34, 1.8, 0.64, 1)";
+const CONNECTOR_MAGNET_LEAVE_TRANSITION = "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+function useConnectorMagnet(side: "left" | "right", scale: number) {
+    const dotRef = useRef<HTMLSpanElement>(null);
+    const hitRectRef = useRef<DOMRect | null>(null);
+    const frameRef = useRef<number | null>(null);
+    const settleTimerRef = useRef<number | null>(null);
+    const pointerInsideRef = useRef(false);
+    const firstMoveRef = useRef(true);
+    const nextOffsetRef = useRef({ x: 0, y: 0 });
+    const updateOffsetRef = useRef<(clientX: number, clientY: number) => void>(() => {});
+
+    const setOffset = useCallback((x: number, y: number, transition?: string) => {
+        const dot = dotRef.current;
+        if (!dot) return;
+        if (transition !== undefined) dot.style.transition = transition;
+        else if (x === 0 && y === 0) {
+            dot.style.transform = "";
+            return;
+        }
+        dot.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }, []);
+
+    const updateOffset = useCallback(
+        (clientX: number, clientY: number) => {
+            const rect = hitRectRef.current;
+            if (!rect) return;
+            const zoom = Math.max(scale, 0.05);
+            const x = (clientX - (rect.left + rect.width / 2)) / zoom;
+            const y = (clientY - (rect.top + rect.height / 2)) / zoom;
+            const range = CONNECTOR_MAGNET_RANGES[side];
+            if (x < -range.left || x > range.right || y < -range.top || y > range.bottom) {
+                setOffset(0, 0, CONNECTOR_MAGNET_LEAVE_TRANSITION);
+                return;
+            }
+
+            if (firstMoveRef.current) {
+                firstMoveRef.current = false;
+                setOffset(x, y, CONNECTOR_MAGNET_ENTER_TRANSITION);
+                if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+                settleTimerRef.current = window.setTimeout(() => {
+                    settleTimerRef.current = null;
+                    if (dotRef.current) dotRef.current.style.transition = "none";
+                }, 250);
+                return;
+            }
+
+            nextOffsetRef.current = { x, y };
+            if (frameRef.current !== null) return;
+            frameRef.current = window.requestAnimationFrame(() => {
+                frameRef.current = null;
+                const next = nextOffsetRef.current;
+                setOffset(next.x, next.y);
+            });
+        },
+        [scale, setOffset, side],
+    );
+
+    useEffect(() => {
+        updateOffsetRef.current = updateOffset;
+    }, [updateOffset]);
+
+    const handleWindowMouseMove = useCallback((event: MouseEvent) => {
+        if (pointerInsideRef.current) updateOffsetRef.current(event.clientX, event.clientY);
+    }, []);
+
+    const handleMouseEnter = useCallback(
+        (event: React.MouseEvent<HTMLButtonElement>) => {
+            hitRectRef.current = event.currentTarget.getBoundingClientRect();
+            pointerInsideRef.current = true;
+            firstMoveRef.current = true;
+            const dot = dotRef.current;
+            if (dot) {
+                dot.style.transition = "none";
+                dot.style.transform = "translate3d(0px, 0px, 0)";
+            }
+            window.addEventListener("mousemove", handleWindowMouseMove);
+            updateOffsetRef.current(event.clientX, event.clientY);
+        },
+        [handleWindowMouseMove],
+    );
+
+    const handleMouseLeave = useCallback(() => {
+        pointerInsideRef.current = false;
+        hitRectRef.current = null;
+        firstMoveRef.current = true;
+        window.removeEventListener("mousemove", handleWindowMouseMove);
+        if (frameRef.current !== null) {
+            window.cancelAnimationFrame(frameRef.current);
+            frameRef.current = null;
+        }
+        if (settleTimerRef.current !== null) {
+            window.clearTimeout(settleTimerRef.current);
+            settleTimerRef.current = null;
+        }
+        setOffset(0, 0, CONNECTOR_MAGNET_LEAVE_TRANSITION);
+    }, [handleWindowMouseMove, setOffset]);
+
+    useEffect(
+        () => () => {
+            window.removeEventListener("mousemove", handleWindowMouseMove);
+            if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+            if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+        },
+        [handleWindowMouseMove],
+    );
+
+    return { dotRef, handleMouseEnter, handleMouseLeave };
+}
+
+function ConnectionHandleDot({
+    side,
+    visible,
+    scale,
+    onMouseDown,
+}: {
+    side: "left" | "right";
+    visible: boolean;
+    scale: number;
+    onMouseDown: (event: React.MouseEvent) => void;
+}) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const { dotRef, handleMouseEnter, handleMouseLeave } = useConnectorMagnet(side, scale);
 
     return (
-        <div
-            className={`absolute top-1/2 z-30 flex size-12 -translate-y-1/2 cursor-crosshair items-center justify-center transition-opacity duration-150 ${
-                side === "left" ? "-left-6" : "-right-6"
-            } ${visible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+        <button
+            type="button"
+            aria-label={side === "left" ? "从左侧拖拽连接上游节点" : "从右侧拖拽连接下游节点"}
+            title="拖拽连接节点，或点击创建关联节点"
+            data-connector-side={side}
+            className={`atelier-connector-hit atelier-connector-hit--${side} absolute top-1/2 z-30 flex -translate-y-1/2 touch-none cursor-crosshair items-center justify-center ${visible ? "is-visible" : ""}`}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             onMouseDown={onMouseDown}
         >
-            <div className="size-3 rounded-full border-2 transition-all hover:scale-125" style={{ background: theme.node.panel, borderColor: theme.node.muted }} />
-        </div>
+            <span className="atelier-connector-slide">
+                <span
+                    ref={dotRef}
+                    className="atelier-connector-dot grid place-items-center rounded-full border"
+                    style={{
+                        background: theme.canvas.background,
+                        borderColor: theme.node.faint,
+                        color: theme.node.muted,
+                    }}
+                >
+                    <Plus className="size-4" />
+                </span>
+            </span>
+        </button>
     );
 }

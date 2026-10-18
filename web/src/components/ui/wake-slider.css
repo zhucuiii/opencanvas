@@ -99,6 +99,14 @@
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
 }
+.wake-slider__handle:focus,
+.wake-slider__handle:focus-visible,
+.wake-slider__track:focus,
+.wake-slider__track:focus-visible,
+.wake-slider:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+}
 
 .wake-slider__value {
     min-width: 3ch;

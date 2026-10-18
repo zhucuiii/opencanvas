@@ -11,9 +11,8 @@ import { WorkbenchFolderPicker } from "@/components/workbench/workbench-folder-p
 import { WorkbenchLibraryDrawer, type WorkbenchLibraryView } from "@/components/workbench/workbench-library-drawer";
 import { PopoverGroup, useCloseExclusivePopoverGroup } from "@/components/ui/popover-group";
 import { ModelPicker } from "@/components/model-picker";
-import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoModeLabel, videoResolutionLabel, videoResolutionOptions, videoSecondsLabel, videoSecondsRange, videoSizeLabel, videoSizeOptions } from "@/components/video-settings-panel";
-import { WORKBENCH_PILL_CLASS } from "@/components/workbench/workbench-input-pills";
-import { useExclusivePopover } from "@/components/ui/popover-group";
+import { normalizeVideoResolutionValue, normalizeVideoSizeValue } from "@/components/video-settings-panel";
+import { WorkbenchGenerationControls } from "@/components/workbench/workbench-generation-controls";
 import { clampVideoSeconds } from "@/lib/media-size";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
@@ -387,8 +386,8 @@ function VideoWorkbench() {
     };
 
     return (
-        <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-            <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-72 sm:px-6 sm:pb-56">
+        <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-black dark:text-stone-100">
+            <main className="min-h-0 flex-1 overflow-y-auto bg-stone-50 px-4 pt-5 pb-72 dark:bg-black sm:px-6 sm:pb-56">
                 <div className="mx-auto w-full max-w-7xl">
                     <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
@@ -411,15 +410,16 @@ function VideoWorkbench() {
                     )}
                 </div>
             </main>
-            <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-6 sm:px-4">
+            <div className="pointer-events-none fixed bottom-3 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-5 sm:px-4">
+                <div className="workbench-composer-stack mx-auto w-full max-w-5xl">
                 <div
-                    className={`playground-composer pointer-events-auto mx-auto w-full max-w-5xl rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-stone-900/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.38)] ${referenceDragTarget ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.09]"}`}
+                    className={`playground-composer pointer-events-auto mx-auto w-full rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-[#1b1c20] dark:shadow-[0_20px_60px_rgba(0,0,0,0.55)] ${referenceDragTarget ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.10]"}`}
                     onDragEnter={handleReferenceDragEnter}
                     onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
                     onDragLeave={handleReferenceDragLeave}
                     onDrop={handleReferenceDrop}
                 >
-                    <div className={`flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
+                    <div className={`workbench-reference-strip flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
                         {references.map((item, index) => (
                             <div key={item.id} className="group relative size-12 shrink-0 overflow-hidden rounded-lg border border-stone-200 dark:border-stone-800">
                                 <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
@@ -436,32 +436,32 @@ function VideoWorkbench() {
                         onPaste={(event) => { if (Array.from(event.clipboardData.files).some((file) => file.type.startsWith("image/"))) { event.preventDefault(); void addReferences(event.clipboardData.files); } }}
                         placeholder={t("videoWorkbench.promptPlaceholder")}
                         aria-label={t("workbench.prompt")}
-                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        autoSize={false}
+                        rows={3}
                         variant="borderless"
                         className="playground-prompt min-w-0 !border-0 !px-1 !py-2 !text-sm !outline-none !shadow-none focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!outline-none"
                     />
                     {referenceDragTarget && !references.length ? <div className="px-2 pb-1 text-xs text-stone-500">{t("videoWorkbench.dropReferences")}</div> : null}
-                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-200/80 pt-3 dark:border-white/[0.08] sm:mt-3 sm:gap-2.5">
-                        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-                            <ModelPicker flat showIcon={false} side="top" contentClassName="w-[var(--radix-select-trigger-width)] min-w-0" config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className="!h-8 min-w-0 max-w-[220px] !rounded-full !border !border-stone-200/80 !bg-white/75 !px-3 !text-xs !font-medium !text-stone-600 !shadow-sm dark:!border-white/[0.08] dark:!bg-white/[0.04] dark:!text-stone-300 max-sm:w-full max-sm:max-w-none data-[size=default]:!h-8" onMissingConfig={() => openConfigDialog(false)} />
-                            <VideoOptionPill label={t("settingsPanels.video.quality")} value={videoResolutionLabel(effectiveConfig.vquality || "720")} options={videoResolutionOptions} onChange={(value) => updateConfig("vquality", value)} />
-                            <VideoOptionPill label={t("settingsPanels.video.ratio")} value={videoSizeLabel(effectiveConfig.size)} options={videoSizeOptions.map((option) => ({ ...option, label: option.label }))} onChange={(value) => updateConfig("size", normalizeVideoSizeValue(value, effectiveConfig.vquality || "720"))} />
-                            <VideoOptionPill label={t("settingsPanels.video.seconds")} value={videoSecondsLabel(String(normalizeVideoSeconds(effectiveConfig.videoSeconds)))} options={Array.from({ length: videoSecondsRange.max - videoSecondsRange.min + 1 }, (_, index) => ({ value: String(videoSecondsRange.max - index), label: `${videoSecondsRange.max - index}s` }))} onChange={(value) => updateConfig("videoSeconds", value)} scrollable />
-                            <VideoOptionPill label={t("settingsPanels.video.mode")} value={videoModeLabel(effectiveConfig.videoMode)} options={[{ value: "frames", label: videoModeLabel("frames") }, { value: "reference", label: videoModeLabel("reference") }]} onChange={(value) => updateConfig("videoMode", value)} autoHeight />
-                        </div>
-                        <div className="hidden min-w-4 flex-1 sm:block" />
-                        {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
+                    <div className="workbench-composer-actions flex items-center gap-2 sm:gap-2.5">
                         <Dropdown trigger={["click"]} placement="topRight" menu={{ items: [
                             { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
                             { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
                             { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
                         ], onClick: ({ key }) => { if (key === "upload") fileInputRef.current?.click(); else if (key === "clipboard") void addReferencesFromClipboard(); else setAssetPickerOpen(true); } }}>
-                            <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-stone-200/90 bg-white/75 text-stone-600 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-stone-300 dark:hover:bg-white/[0.08]" aria-label={t("imageWorkbench.addReferenceSource")}><Plus className="size-4" /></button>
+                            <button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-white/[0.08] dark:hover:text-white" aria-label={t("imageWorkbench.addReferenceSource")}><Plus className="size-4" /></button>
                         </Dropdown>
-                        <button type="button" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-900 !text-white shadow-[0_5px_14px_rgba(15,23,42,0.2)] transition-[transform,opacity,background-color] hover:-translate-y-0.5 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:!text-stone-900 dark:hover:bg-stone-300" disabled={!canGenerate || running} onClick={() => void generate()} aria-label={t("workbench.generate")} title={t("workbench.generate")}>
+                        <ModelPicker flat side="top" config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className="!h-8 min-w-0 max-w-[220px] !rounded-full !border-0 !bg-transparent !px-2 !text-xs !font-semibold !text-stone-700 !shadow-none hover:!bg-stone-100 dark:!text-stone-200 dark:hover:!bg-white/[0.08] max-sm:max-w-[180px] data-[size=default]:!h-8" onMissingConfig={() => openConfigDialog(false)} />
+                        <div className="min-w-0 flex-1" />
+                        {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
+                        <button type="button" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-900 !text-white shadow-[0_5px_14px_rgba(15,23,42,0.2)] transition-[transform,opacity,background-color] hover:-translate-y-0.5 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[#303034] dark:!text-white dark:hover:bg-[#414145]" disabled={!canGenerate || running} onClick={() => void generate()} aria-label={t("workbench.generate")} title={t("workbench.generate")}>
                             {running ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                         </button>
                     </div>
+                </div>
+                <div className="playground-settings-rail pointer-events-auto relative z-20 mx-auto -mt-px flex min-h-12 items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-100/95 px-3 py-1.5 shadow-[0_14px_36px_rgba(15,23,42,0.12)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101116] dark:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:mx-4 sm:min-h-11 sm:px-3.5">
+                    <WorkbenchGenerationControls mode="video" config={effectiveConfig} model={model} onChange={updateConfig} />
+                    <div className="workbench-mode-spacer" aria-hidden="true" />
+                </div>
                 </div>
             </div>
             <input
@@ -481,46 +481,6 @@ function VideoWorkbench() {
                 {t("workbench.deleteLogsConfirm", { count: selectedLogIds.length })}
             </Modal>
         </div>
-    );
-}
-
-function VideoOptionPill({ label, value, options, onChange, scrollable = false, autoHeight = false }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; scrollable?: boolean; autoHeight?: boolean }) {
-    const [open, setOpen] = useExclusivePopover();
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const [triggerWidth, setTriggerWidth] = useState<number>();
-    return (
-        <Dropdown
-            trigger={["click"]}
-            placement="topLeft"
-            align={{ offset: [0, -12] }}
-            open={open}
-            onOpenChange={(nextOpen) => {
-                if (nextOpen && triggerRef.current) setTriggerWidth(triggerRef.current.getBoundingClientRect().width);
-                setOpen(nextOpen);
-            }}
-            popupRender={() => (
-                <div className={`rounded-xl border border-stone-200 bg-white p-1 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900 ${scrollable ? "h-[240px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : autoHeight ? "overflow-hidden" : "h-[240px] overflow-hidden"}`} style={{ width: triggerWidth, minWidth: triggerWidth }}>
-                    <div className={`flex ${scrollable ? "flex-col" : autoHeight ? "flex-col gap-1" : "h-[230px] flex-col justify-between"}`}>
-                        {options.map((option) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                aria-pressed={value === option.label}
-                                className={`flex min-h-6 w-full items-center justify-center rounded-lg px-2 py-1 text-center text-xs transition-colors ${value === option.label ? "bg-stone-100 font-medium text-sky-600 dark:bg-white/[0.08] dark:text-sky-400" : "text-stone-600 hover:bg-stone-900/[0.05] hover:text-stone-900 dark:text-stone-300 dark:hover:bg-white/[0.06] dark:hover:text-white"}`}
-                                onClick={() => { onChange(option.value); setOpen(false); }}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-        >
-            <button ref={triggerRef} type="button" aria-expanded={open} aria-label={label} title={label} className={WORKBENCH_PILL_CLASS}>
-                <span className="text-stone-400">{label}</span>
-                <span className="truncate">{value}</span>
-            </button>
-        </Dropdown>
     );
 }
 

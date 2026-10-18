@@ -28,12 +28,12 @@ export const WORKBENCH_PILL_CLASS =
 export const WORKBENCH_POPOVER_HEIGHT_CLASS = "h-[240px]";
 export const WORKBENCH_POPOVER_ALIGN = { offset: [0, -12] };
 /** 弹层外壳：和工作台卡片同一套 stone 配色。 */
-const POPUP_CLASS = "rounded-2xl border border-stone-200 bg-white p-2.5 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900";
+const POPUP_CLASS = "rounded-2xl border border-stone-200 bg-white p-2.5 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-[#303034] dark:bg-[#19191b] dark:shadow-[0_18px_54px_rgba(0,0,0,0.56)]";
 const SECTION_TITLE_CLASS = "px-0.5 pb-1.5 text-[11px] font-medium text-stone-400 dark:text-stone-500";
 const OPTION_CLASS = "flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 text-xs tabular-nums transition-colors";
 const OPTION_OFF_CLASS = "!text-stone-600 hover:bg-stone-900/[0.06] dark:!text-stone-300 dark:hover:bg-stone-100/10";
 // Ant Design's unlayered button reset otherwise overrides Tailwind's text color.
-const OPTION_ON_CLASS = "bg-stone-900 !text-white dark:bg-stone-100 dark:!text-stone-900";
+const OPTION_ON_CLASS = "bg-stone-900 !text-white dark:bg-[#3a3a3e] dark:!text-white";
 
 function Pill({ children, className, ...rest }: { children: ReactNode; className?: string } & React.ComponentPropsWithoutRef<"button">) {
     return (
@@ -129,7 +129,7 @@ export function WorkbenchQualityPill({ quality, onChange }: { quality: string; o
             open={open}
             onOpenChange={setOpen}
             popupRender={() => (
-                <div className="h-[240px] w-[92px] rounded-xl border border-stone-200 bg-white p-1 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900">
+                <div className="h-[240px] w-[92px] rounded-xl border border-stone-200 bg-white p-1 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-[#303034] dark:bg-[#19191b] dark:shadow-[0_18px_54px_rgba(0,0,0,0.56)]">
                     <div className="space-y-0.5">
                         {imageQualityOptions.map((item) => (
                             <button
@@ -171,7 +171,7 @@ export function WorkbenchCountPill({ value, max = 8, onChange }: { value: number
             open={open}
             onOpenChange={setOpen}
             popupRender={() => (
-                <div className="h-[240px] w-[64px] rounded-xl border border-stone-200 bg-white p-1 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900">
+                <div className="h-[240px] w-[64px] rounded-xl border border-stone-200 bg-white p-1 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-[#303034] dark:bg-[#19191b] dark:shadow-[0_18px_54px_rgba(0,0,0,0.56)]">
                     <div className="flex h-full flex-col justify-between">
                         {Array.from({ length: max }, (_, index) => max - index).map((count) => (
                             <button

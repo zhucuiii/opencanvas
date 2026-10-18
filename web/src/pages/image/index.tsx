@@ -7,8 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { WorkbenchFailedCard, WorkbenchImageCard, WorkbenchPendingCard, type WorkbenchImage } from "@/components/workbench/workbench-image-card";
-import { WorkbenchCountPill, WorkbenchQualityPill, WorkbenchSizePill } from "@/components/workbench/workbench-input-pills";
-import { WorkbenchOutputPills } from "@/components/workbench/workbench-output-pill";
+import { WorkbenchGenerationControls } from "@/components/workbench/workbench-generation-controls";
 import { WorkbenchLibraryDrawer, type WorkbenchLibraryView } from "@/components/workbench/workbench-library-drawer";
 import { PopoverGroup, useExclusivePopover } from "@/components/ui/popover-group";
 import { imageDownloadExtension } from "@/lib/workbench-gallery";
@@ -53,7 +52,7 @@ type GenerationLog = {
     images: GeneratedImage[];
 };
 
-type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "size" | "count" | "background" | "imageOutputFormat" | "imageModeration">;
+type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "size" | "count" | "background" | "imageOutputFormat" | "imageModeration" | "imageReferencesAsBase64">;
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
@@ -341,6 +340,7 @@ function ImageWorkbench() {
         updateConfig("background", log.config.background || "");
         updateConfig("imageOutputFormat", log.config.imageOutputFormat || "png");
         updateConfig("imageModeration", log.config.imageModeration || "auto");
+        updateConfig("imageReferencesAsBase64", log.config.imageReferencesAsBase64 !== false);
     };
 
     const buildRequestSnapshot = () => {
@@ -417,12 +417,12 @@ function ImageWorkbench() {
     };
 
     return (
-        <div className="image-playground flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+        <div className="image-playground flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-black dark:text-stone-100">
             {/*
              * 滚动层：整页滚，pb-48 给底部悬浮输入条腾位（参考项目就是 pb-48）。
              * 网格铺开「本次生成 + 所有历史」，所以进页面就能看到全部产出。
              */}
-            <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-72 sm:px-6 sm:pb-56">
+            <main className="min-h-0 flex-1 overflow-y-auto bg-stone-50 px-4 pt-5 pb-72 dark:bg-black sm:px-6 sm:pb-56">
                 <div className="mx-auto w-full max-w-7xl">
                     <h1 className="sr-only">{t("imageWorkbench.title")}</h1>
                     <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
@@ -499,9 +499,10 @@ function ImageWorkbench() {
             </main>
 
             {/* Keep the gallery interactive outside the floating composer. */}
-            <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-6 sm:px-4">
+            <div className="pointer-events-none fixed bottom-3 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-5 sm:px-4">
+                <div className="workbench-composer-stack mx-auto w-full max-w-5xl">
                 <div
-                    className={`playground-composer pointer-events-auto mx-auto w-full max-w-5xl rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-stone-900/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.38)] ${isReferenceDragActive ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.09]"}`}
+                    className={`playground-composer pointer-events-auto relative z-10 mx-auto w-full rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-[#1b1c20] dark:shadow-[0_20px_60px_rgba(0,0,0,0.55)] ${isReferenceDragActive ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.10]"}`}
                     data-workbench-input-bar
                     onPointerDown={(event) => event.stopPropagation()}
                     // 拖拽参考图：整条卡片都是投放区，拖进来时描边变色给反馈（参考图那行本身可能不占位）。
@@ -527,7 +528,7 @@ function ImageWorkbench() {
                     }}
                 >
                     {/* Reference thumbnails only take space when images are attached. */}
-                    <div className={`flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
+                    <div className={`workbench-reference-strip flex gap-2 overflow-x-auto ${references.length ? "mb-2" : "hidden"}`}>
                         {references.map((item) => (
                             <div key={item.id} className="group relative size-12 shrink-0 overflow-hidden rounded-lg border border-stone-200 dark:border-stone-800">
                                 <img src={previewUrlFor(item.storageKey) || item.dataUrl} alt={item.name} className="size-full object-cover" />
@@ -560,7 +561,8 @@ function ImageWorkbench() {
                                 void addReferences(event.clipboardData.files);
                             }
                         }}
-                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        autoSize={false}
+                        rows={3}
                         variant="borderless"
                         className="playground-prompt min-w-0 !border-0 !px-1 !py-2 !text-sm !outline-none !shadow-none focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!outline-none"
                     />
@@ -572,62 +574,52 @@ function ImageWorkbench() {
                      */}
                     {isReferenceDragActive && !references.length ? <div className="px-2 pb-1 text-xs text-stone-500">{t("imageWorkbench.dropReferences")}</div> : null}
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-200/80 pt-3 dark:border-white/[0.08] sm:mt-3 sm:gap-2.5">
-                        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+                    <div className="workbench-composer-actions flex items-center gap-2 sm:gap-2.5">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <Dropdown
+                                trigger={["click"]}
+                                placement="topRight"
+                                open={referenceMenuOpen}
+                                onOpenChange={setReferenceMenuOpen}
+                                menu={{
+                                    items: [
+                                        { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
+                                        { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
+                                        { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
+                                    ],
+                                    onClick: ({ key }) => {
+                                        setReferenceMenuOpen(false);
+                                        if (key === "upload") fileInputRef.current?.click();
+                                        else if (key === "clipboard") void addReferencesFromClipboard();
+                                        else setAssetPickerOpen(true);
+                                    },
+                                }}
+                            >
+                                <button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-white/[0.08] dark:hover:text-white" aria-label={t("imageWorkbench.addReferenceSource")} aria-expanded={referenceMenuOpen} title={t("imageWorkbench.addReferenceSource")}>
+                                    <Plus className="size-4" />
+                                </button>
+                            </Dropdown>
+                            <button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-white/[0.08] dark:hover:text-white" onClick={() => fileInputRef.current?.click()} aria-label={t("workbench.upload")} title={t("workbench.upload")}>
+                                <ImageIcon className="size-4" />
+                            </button>
+                            <span className="h-5 w-px shrink-0 bg-stone-200 dark:bg-white/[0.12]" aria-hidden />
                             <ModelPicker
                                 flat
-                                showIcon={false}
                                 side="top"
-                                contentClassName="w-[var(--radix-select-trigger-width)] min-w-0"
                                 config={effectiveConfig}
                                 value={model}
                                 onChange={(next) => updateConfig("imageModel", next)}
                                 capability="image"
-                                className="!h-8 min-w-0 max-w-[220px] !rounded-full !border !border-stone-200/80 !bg-white/75 !px-3 !text-xs !font-medium !text-stone-600 !shadow-sm !transition-[color,background-color,border-color] hover:!border-stone-300 hover:!bg-stone-50 hover:!text-stone-900 focus-visible:!outline-2 focus-visible:!outline-offset-2 dark:!border-white/[0.08] dark:!bg-white/[0.04] dark:!text-stone-300 dark:hover:!border-white/15 dark:hover:!bg-white/[0.08] dark:hover:!text-white max-sm:w-full max-sm:max-w-none data-[size=default]:!h-8"
+                                className="!h-8 min-w-0 max-w-[190px] !rounded-full !border-0 !bg-transparent !px-2 !text-xs !font-semibold !text-stone-700 !shadow-none hover:!bg-stone-100 focus-visible:!outline-2 focus-visible:!outline-offset-2 dark:!text-stone-200 dark:hover:!bg-white/[0.08] max-sm:max-w-[150px] data-[size=default]:!h-8"
                             />
-                            <WorkbenchSizePill config={effectiveConfig} onChange={(key, value) => updateConfig(key, value)} />
-                            <WorkbenchQualityPill quality={effectiveConfig.quality || "auto"} onChange={(quality) => updateConfig("quality", quality)} />
-                            <WorkbenchCountPill value={generationCount} onChange={(countValue) => updateConfig("count", String(countValue))} />
                         </div>
-                        <WorkbenchOutputPills config={effectiveConfig} onChange={updateConfig} />
-                        <div className="hidden min-w-4 flex-1 sm:block" />
 
                         {running ? <span className="shrink-0 text-xs tabular-nums text-stone-500">{formatDuration(elapsedMs)}</span> : null}
-
-                        <Dropdown
-                            trigger={["click"]}
-                            placement="topRight"
-                            open={referenceMenuOpen}
-                            onOpenChange={setReferenceMenuOpen}
-                            menu={{
-                                items: [
-                                    { key: "upload", label: t("workbench.upload"), icon: <Upload className="size-3.5" /> },
-                                    { key: "clipboard", label: t("workbench.clipboard"), icon: <ClipboardPaste className="size-3.5" /> },
-                                    { key: "assets", label: t("workbench.viewAssets"), icon: <FolderPlus className="size-3.5" /> },
-                                ],
-                                onClick: ({ key }) => {
-                                    setReferenceMenuOpen(false);
-                                    if (key === "upload") fileInputRef.current?.click();
-                                    else if (key === "clipboard") void addReferencesFromClipboard();
-                                    else setAssetPickerOpen(true);
-                                },
-                            }}
-                        >
-                            <button
-                                type="button"
-                                className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-200/90 bg-white/75 text-stone-600 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-stone-300 dark:hover:bg-white/[0.08] dark:hover:text-white"
-                                aria-label={t("imageWorkbench.addReferenceSource")}
-                                aria-expanded={referenceMenuOpen}
-                                title={t("imageWorkbench.addReferenceSource")}
-                            >
-                                <Plus className="size-4" />
-                            </button>
-                        </Dropdown>
 
                         {/* 发送：圆钮，运行中换成转圈并锁住。 */}
                         <button
                             type="button"
-                            className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-900 !text-white shadow-[0_5px_14px_rgba(15,23,42,0.2)] transition-[transform,opacity,background-color] hover:-translate-y-0.5 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-stone-100 dark:!text-stone-900 dark:hover:bg-stone-300"
+                            className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-900 !text-white shadow-[0_5px_14px_rgba(15,23,42,0.2)] transition-[transform,opacity,background-color] hover:-translate-y-0.5 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[#303034] dark:!text-white dark:hover:bg-[#414145]"
                             disabled={!canGenerate || running}
                             onClick={() => void generate()}
                             aria-label={t("imageWorkbench.generateImage")}
@@ -636,6 +628,11 @@ function ImageWorkbench() {
                             {running ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
                         </button>
                     </div>
+                </div>
+                <div className="playground-settings-rail pointer-events-auto relative z-20 mx-auto -mt-px flex min-h-12 items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-100/95 px-3 py-1.5 shadow-[0_14px_36px_rgba(15,23,42,0.12)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101116] dark:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:mx-4 sm:min-h-11 sm:px-3.5">
+                    <WorkbenchGenerationControls mode="image" config={effectiveConfig} model={model} onChange={updateConfig} />
+                    <div className="workbench-mode-spacer" aria-hidden="true" />
+                </div>
                 </div>
             </div>
 
@@ -726,6 +723,7 @@ function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
         background: log.config?.background || "",
         imageOutputFormat: log.config?.imageOutputFormat || "png",
         imageModeration: log.config?.imageModeration || "auto",
+        imageReferencesAsBase64: log.config?.imageReferencesAsBase64 !== false,
     };
 }
 
@@ -759,6 +757,7 @@ function buildLog({
         background: config.background,
         imageOutputFormat: config.imageOutputFormat || "png",
         imageModeration: config.imageModeration || "auto",
+        imageReferencesAsBase64: config.imageReferencesAsBase64 !== false,
     };
     return {
         id: nanoid(),

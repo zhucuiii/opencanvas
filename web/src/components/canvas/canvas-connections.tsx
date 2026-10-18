@@ -61,7 +61,7 @@ export function ConnectionPath({
             return inverse ? point.matrixTransform(inverse) : point;
         };
         const nodeRect = (id: string) => {
-            const element = svg.parentElement?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"] div.rounded-3xl`);
+            const element = svg.parentElement?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"] .atelier-node-frame`);
             return element ? element.getBoundingClientRect() : null;
         };
         const sync = () => {
@@ -101,30 +101,12 @@ export function ConnectionPath({
                     onContextMenu?.(event);
                 }}
             />
-            <path
-                d={pathD}
-                stroke={active ? theme.node.activeStroke : theme.node.muted}
-                strokeWidth={active ? 3 : 2}
-                strokeOpacity={active ? 1 : 0.82}
-                fill="none"
-                style={{ filter: active ? `drop-shadow(0 0 8px ${theme.node.activeStroke}66)` : undefined, pointerEvents: "none" }}
-            />
-            <path
-                d={pathD}
-                className="canvas-connection-flow"
-                stroke={theme.connection.flow}
-                strokeWidth={active ? 1.6 : 1.3}
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray="12 56"
-                style={{ filter: `blur(.5px) drop-shadow(0 0 4px ${theme.connection.flow})`, pointerEvents: "none" }}
-            />
+            <path d={pathD} stroke={active ? "#2f80ff" : theme.node.faint} strokeWidth={active ? 2 : 1.5} strokeOpacity={active ? 1 : 0.82} fill="none" style={{ pointerEvents: "none" }} />
         </g>
     );
 }
 
 export function ActiveConnectionPath({ node, handle, mouseWorld, target }: { node?: CanvasNodeData; handle: ConnectionHandle; mouseWorld: Position; target?: CanvasNodeData }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
     if (!node) return null;
 
     const startX = handle.handleType === "source" ? node.position.x + node.width : mouseWorld.x;
@@ -135,8 +117,7 @@ export function ActiveConnectionPath({ node, handle, mouseWorld, target }: { nod
     const snappedStartY = handle.handleType === "target" && target ? target.position.y + target.height / 2 : startY;
     const snappedEndX = handle.handleType === "source" && target ? target.position.x : endX;
     const snappedEndY = handle.handleType === "source" && target ? target.position.y + target.height / 2 : endY;
-    const distance = Math.abs(snappedEndX - snappedStartX);
-    const pathD = `M ${snappedStartX} ${snappedStartY} C ${snappedStartX + distance * 0.5} ${snappedStartY}, ${snappedEndX - distance * 0.5} ${snappedEndY}, ${snappedEndX} ${snappedEndY}`;
+    const pathD = connectionPathD(snappedStartX, snappedStartY, snappedEndX, snappedEndY);
 
-    return <path d={pathD} stroke={theme.node.activeStroke} strokeWidth="2" fill="none" strokeDasharray="5,5" />;
+    return <path d={pathD} stroke="#b1b1b7" strokeWidth="1" strokeLinecap="butt" strokeLinejoin="round" fill="none" />;
 }

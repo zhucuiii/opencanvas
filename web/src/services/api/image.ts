@@ -10,6 +10,7 @@ import { imageToDataUrl } from "@/services/image-storage";
 import { imageSizePresets, inferMediaScale } from "@/lib/media-size";
 import type { ReferenceImage } from "@/types/image";
 import { base64ImageSource, imageOutputOptions } from "@/lib/image-output";
+import { canSendReferenceUrl } from "@/lib/image-reference-encoding";
 
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
@@ -760,7 +761,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         const quality = normalizeQuality(config.quality);
         const requestSize = resolveRequestSize(config.size);
         const background = normalizeBackground(imageOutputOptions(config).background);
-        const refs = await Promise.all(references.map((image) => imageToDataUrl(image)));
+        const refs = await Promise.all(references.map((image) => canSendReferenceUrl(image.dataUrl, config.imageReferencesAsBase64 !== false) ? image.dataUrl : imageToDataUrl(image)));
         try {
             const result = await runModelPlugin({
                 capability: "image",

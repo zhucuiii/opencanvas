@@ -184,7 +184,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                     <input ref={configInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && void loadConfigFile(event.target.files[0])} />
                 </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="config-scroll-area hide-scrollbar min-h-0 flex-1 overflow-y-auto">
             <Tabs
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as ConfigTabKey)}

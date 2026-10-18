@@ -33,7 +33,7 @@ export function WorkbenchFolderPicker({ imageId, mediaType = "image", onSaveAsse
             onOpenChange={setOpen}
             transitionName="workbench-output-motion"
             popupRender={() => (
-                <div className="w-64 max-w-[calc(100vw-32px)] rounded-2xl border border-stone-200 bg-white p-3 text-xs shadow-xl dark:border-stone-700 dark:bg-stone-900" onClick={(event) => event.stopPropagation()}>
+                <div className="w-64 max-w-[calc(100vw-32px)] rounded-2xl border border-stone-200 bg-white p-3 text-xs shadow-xl dark:border-[#303034] dark:bg-[#19191b] dark:shadow-[0_18px_54px_rgba(0,0,0,0.56)]" onClick={(event) => event.stopPropagation()}>
                     <p className="mb-2 px-1 font-medium text-stone-700 dark:text-stone-200">{t("imageWorkbench.organizeImage")}</p>
                     <div className="max-h-48 space-y-1 overflow-y-auto" role="group" aria-label={t("imageWorkbench.folders")}>
                         {!folders.length ? <p className="px-1 py-3 leading-relaxed text-stone-400">{t("imageWorkbench.noFoldersHint")}</p> : null}

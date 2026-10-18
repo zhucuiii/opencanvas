@@ -21,6 +21,21 @@ const MODERATION_OPTIONS = [
     { value: "low", label: "low" },
 ];
 
+export function WorkbenchOutputOptions({ config, onChange }: { config: AiConfig; onChange: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void }) {
+    const { t } = useTranslation();
+    const format = config.imageOutputFormat || "png";
+    return (
+        <div className="space-y-2.5">
+            <OutputOptionRow label={t("imageWorkbench.outputFormat")} value={format} options={FORMAT_OPTIONS} onChange={(next) => {
+                onChange("imageOutputFormat", next as NonNullable<AiConfig["imageOutputFormat"]>);
+                if (next === "jpeg") onChange("background", "");
+            }} />
+            <OutputOptionRow label={t("imageWorkbench.transparentBackground")} value={String(format !== "jpeg" && config.background === "transparent")} options={TRANSPARENCY_OPTIONS} disabled={format === "jpeg"} onChange={(next) => onChange("background", next === "true" ? "transparent" : "")} />
+            <OutputOptionRow label={t("workbench.review")} value={config.imageModeration || "auto"} options={MODERATION_OPTIONS} onChange={(next) => onChange("imageModeration", next as "auto" | "low")} />
+        </div>
+    );
+}
+
 function OutputOptionRow({ label, value, options, disabled = false, onChange }: { label: string; value: string; options: { value: string; label: string }[]; disabled?: boolean; onChange: (value: string) => void }) {
     return (
         <div className="flex items-center justify-between gap-4">
@@ -36,7 +51,7 @@ function OutputOptionRow({ label, value, options, disabled = false, onChange }: 
                         className={`relative min-w-12 overflow-hidden rounded-full px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${value === option.value ? "text-stone-900 dark:text-white" : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white"}`}
                         onClick={() => onChange(option.value)}
                     >
-                        {value === option.value ? <motion.span layoutId={`output-option-${label}`} transition={{ type: "spring", stiffness: 500, damping: 38 }} className="absolute inset-0 rounded-full bg-white shadow-sm dark:bg-stone-700" /> : null}
+                        {value === option.value ? <motion.span layoutId={`output-option-${label}`} transition={{ type: "spring", stiffness: 500, damping: 38 }} className="absolute inset-0 rounded-full bg-white shadow-sm dark:bg-[#343438]" /> : null}
                         <span className="relative z-10">{option.label}</span>
                     </button>
                 ))}
@@ -60,7 +75,7 @@ export function WorkbenchOutputPills({ config, onChange }: { config: AiConfig; o
             open={open}
             onOpenChange={setOpen}
             popupRender={() => (
-                <motion.div className={`${WORKBENCH_POPOVER_HEIGHT_CLASS} w-[280px] rounded-2xl border border-stone-200 bg-white p-3 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-stone-700 dark:bg-stone-900`}>
+                <motion.div className={`${WORKBENCH_POPOVER_HEIGHT_CLASS} w-[280px] rounded-2xl border border-stone-200 bg-white p-3 shadow-[0_18px_54px_rgba(28,25,23,0.18)] dark:border-[#303034] dark:bg-[#19191b] dark:shadow-[0_18px_54px_rgba(0,0,0,0.56)]`}>
                     <div className="mb-3 text-[11px] font-medium text-stone-400 dark:text-stone-500">{t("workbench.more")}</div>
                     <div className="space-y-2.5">
                         <OutputOptionRow

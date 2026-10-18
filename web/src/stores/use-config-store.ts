@@ -57,6 +57,7 @@ export type AiConfig = {
     transferPresetOverrides: Record<string, { name?: string; prompt?: string }>;
     transferCustomPresets: Array<{ id: string; name: string; prompt: string }>;
     background: string;
+    imageReferencesAsBase64?: boolean;
     imageOutputFormat?: "png" | "jpeg" | "webp";
     imageModeration?: "auto" | "low";
     count: string;

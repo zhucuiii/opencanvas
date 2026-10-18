@@ -20,8 +20,7 @@ type CanvasImageQualityPopoverProps = {
 
 /*
  * 提示词面板底栏的质量控件：胶囊显示当前质量（自动 / 低 / 中 / 高 / 极高 / 最高），
- * 点击向上弹出六档宫格。数据仍走节点的 config.quality，只是从「参数」弹层挪到了
- * 底栏、放在转绘按钮前面——质量和尺寸一样是每次生成都要看一眼的参数。
+ * 点击向下弹出六档宫格。数据仍走节点的 config.quality，放在比例和词库之间。
  * 选定即收起：这里只有一个字段，没有继续改别的的必要。
  */
 export function CanvasImageQualityPopover({ quality, onChange, buttonClassName, flat = false }: CanvasImageQualityPopoverProps) {
@@ -105,7 +104,7 @@ function QualityPortal({
 }) {
     const { t } = useTranslation();
     const reduce = useReducedMotion();
-    const width = 240;
+    const width = 204;
     const gap = 8;
     const margin = 12;
     if (!buttonRect) return null;
@@ -119,9 +118,10 @@ function QualityPortal({
         maxHeight: Math.max(200, window.innerHeight - buttonRect.bottom - gap - margin),
         overflowY: "auto",
         background: theme.toolbar.panel,
-        borderRadius: 18,
-        boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
-        padding: 14,
+        border: `1px solid ${theme.toolbar.border}`,
+        borderRadius: 14,
+        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.24)",
+        padding: 10,
         color: theme.node.text,
     } as const;
 
@@ -139,10 +139,10 @@ function QualityPortal({
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                 >
-                    <div className="mb-2 px-1 text-sm font-medium" style={{ color: theme.node.muted }}>
+                    <div className="mb-1.5 px-1 text-xs font-medium" style={{ color: theme.node.muted }}>
                         {t("settingsPanels.image.quality")}
                     </div>
-                    <ImageQualityGrid quality={quality} theme={theme} onChange={onChange} className="grid grid-cols-3 gap-2" />
+                    <ImageQualityGrid quality={quality} theme={theme} onChange={onChange} className="grid grid-cols-3 gap-1.5" />
                 </motion.div>
             ) : null}
         </AnimatePresence>,

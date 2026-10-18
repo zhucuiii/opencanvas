@@ -8,8 +8,10 @@ export const CANVAS_SIDE_PANEL_DEFAULT_WIDTH = 280;
 const WIDTH_KEY = "canvas-side-panel-width";
 const OPEN_KEY = "canvas-side-panel-open";
 const NODE_VIEW_KEY = "canvas-side-panel-node-view";
+const TOOLBAR_DOCK_KEY = "canvas-tool-dock";
 
 export type CanvasNodeViewMode = "list" | "grid";
+export type CanvasToolbarDock = "left" | "bottom";
 
 function initialWidth() {
     if (typeof window === "undefined") return CANVAS_SIDE_PANEL_DEFAULT_WIDTH;
@@ -28,14 +30,22 @@ function initialNodeView(): CanvasNodeViewMode {
     return localStorage.getItem(NODE_VIEW_KEY) === "grid" ? "grid" : "list";
 }
 
+function initialToolbarDock(): CanvasToolbarDock {
+    if (typeof window === "undefined") return "left";
+    return localStorage.getItem(TOOLBAR_DOCK_KEY) === "bottom" ? "bottom" : "left";
+}
+
 type CanvasSidePanelStore = {
     width: number;
     panelOpen: boolean;
     panelMounted: boolean;
     panelClosing: boolean;
     nodeViewMode: CanvasNodeViewMode;
+    toolbarDock: CanvasToolbarDock;
     setWidth: (width: number) => void;
     setNodeViewMode: (mode: CanvasNodeViewMode) => void;
+    setToolbarDock: (dock: CanvasToolbarDock) => void;
+    toggleToolbarDock: () => void;
     openPanel: () => void;
     closePanel: () => void;
     togglePanel: () => void;
@@ -47,10 +57,20 @@ export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) =
     panelMounted: initialOpen(),
     panelClosing: false,
     nodeViewMode: initialNodeView(),
+    toolbarDock: initialToolbarDock(),
     setWidth: (width) => set({ width }),
     setNodeViewMode: (mode) => {
         if (typeof window !== "undefined") localStorage.setItem(NODE_VIEW_KEY, mode);
         set({ nodeViewMode: mode });
+    },
+    setToolbarDock: (dock) => {
+        if (typeof window !== "undefined") localStorage.setItem(TOOLBAR_DOCK_KEY, dock);
+        set({ toolbarDock: dock });
+    },
+    toggleToolbarDock: () => {
+        const dock = get().toolbarDock === "bottom" ? "left" : "bottom";
+        if (typeof window !== "undefined") localStorage.setItem(TOOLBAR_DOCK_KEY, dock);
+        set({ toolbarDock: dock });
     },
     openPanel: () => {
         if (typeof window !== "undefined") localStorage.setItem(OPEN_KEY, "1");

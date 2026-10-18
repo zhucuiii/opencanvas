@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Brush, ImageIcon, List, Music2, Video, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Brush, ChevronRight, ImageIcon, List, Music2, Video, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -26,30 +26,35 @@ export function ConnectionCreateMenu({
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
+    const [showMore, setShowMore] = useState(false);
     return (
         <div
-            className="absolute z-[120] w-[240px] rounded-2xl border p-2 shadow-2xl backdrop-blur"
+            className="canvas-node-menu sketch-menu canvas-command-menu atelier-connection-create absolute z-[120] w-[240px] rounded-[18px] border p-2 shadow-2xl backdrop-blur"
             data-connection-create-menu
             style={{ left: pending.position.x, top: pending.position.y, transform: `scale(${1 / scale})`, transformOrigin: "top left", background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
             {/* Inner wrapper animates without overriding the counter-scale above. */}
-            <div className="canvas-pop-in">
-            <div className="mb-1.5 flex items-center justify-between px-1">
-                <span className="text-sm font-medium" style={{ color: theme.node.muted }}>
-                    {t("canvas.createMenu.fromNode")}
-                </span>
-                <button type="button" className="grid size-7 place-items-center rounded-lg text-base opacity-55 transition hover:bg-white/10 hover:opacity-100" onClick={onClose} aria-label={t("canvas.createMenu.close")}>
-                    ×
-                </button>
-            </div>
-            <div className="grid gap-0.5">
-                <ConnectionCreateOption theme={theme} icon={<List className="size-4" />} title={t("canvas.createMenu.text")} description={t("canvas.createMenu.textDescription")} onClick={() => onCreate(CanvasNodeType.Text)} />
+            <div className="canvas-create-menu-pop-in sketch-menu-inner">
+            <div className="sketch-menu-inner grid gap-0.5">
+                <ConnectionCreateOption theme={theme} icon={<List className="size-4" />} title={t("canvas.createMenu.text")} onClick={() => onCreate(CanvasNodeType.Text)} />
                 <ConnectionCreateOption theme={theme} icon={<ImageIcon className="size-4" />} title={t("canvas.createMenu.image")} onClick={() => onCreate(CanvasNodeType.Image)} />
-                <ConnectionCreateOption theme={theme} icon={<Brush className="size-4" />} title={t("canvas.createMenu.transfer")} description={t("canvas.createMenu.transferDescription")} onClick={() => onCreate("transfer")} />
                 <ConnectionCreateOption theme={theme} icon={<Video className="size-4" />} title={t("canvas.createMenu.video")} onClick={() => onCreate(CanvasNodeType.Video)} />
                 <ConnectionCreateOption theme={theme} icon={<Music2 className="size-4" />} title={t("canvas.createMenu.audio")} onClick={() => onCreate(CanvasNodeType.Audio)} />
+                {showMore ? <ConnectionCreateOption theme={theme} icon={<Brush className="size-4" />} title={t("canvas.createMenu.transfer")} onClick={() => onCreate("transfer")} /> : null}
+                <button
+                    type="button"
+                    className="sketch-menu-item sketch-menu-item--node atelier-show-more flex h-12 w-full items-center gap-2.5 rounded-xl px-2 text-left transition"
+                    data-menu-item
+                    style={{ color: theme.node.text }}
+                    onClick={() => setShowMore((current) => !current)}
+                >
+                    <span className="sketch-menu-item-icon-box grid size-9 shrink-0 place-items-center rounded-lg" style={{ background: theme.node.fill, color: theme.node.muted }}>
+                        <ChevronRight className={`size-4 transition-transform ${showMore ? "rotate-90" : ""}`} />
+                    </span>
+                    <span className="sketch-menu-item-label text-sm font-medium leading-5">{showMore ? "收起更多选项" : "显示更多选项"}</span>
+                </button>
             </div>
             </div>
         </div>
@@ -60,23 +65,15 @@ export function ConnectionCreateOption({ theme, icon, title, description, onClic
     return (
         <button
             type="button"
-            className="flex h-12 w-full cursor-pointer items-center gap-2.5 rounded-xl px-2 text-left transition"
+            className="sketch-menu-item sketch-menu-item--node flex h-14 w-full cursor-pointer items-center gap-2.5 rounded-xl px-2 text-left transition"
+            data-menu-item
             style={{ color: theme.node.text }}
             onClick={onClick}
-            onMouseEnter={(event) => (event.currentTarget.style.background = theme.node.fill)}
-            onMouseLeave={(event) => (event.currentTarget.style.background = "transparent")}
         >
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ background: theme.node.fill, color: theme.node.muted }}>
+            <span className="sketch-menu-item-icon-box grid size-9 shrink-0 place-items-center rounded-lg" style={{ background: theme.node.fill, color: theme.node.muted }}>
                 {icon}
             </span>
-            <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 text-sm font-medium leading-5">{title}</span>
-                {description ? (
-                    <span className="mt-0.5 block truncate text-xs" style={{ color: theme.node.muted }}>
-                        {description}
-                    </span>
-                ) : null}
-            </span>
+            <span className="sketch-menu-item-label min-w-0 flex-1 truncate text-sm font-medium leading-5">{title}</span>
         </button>
     );
 }
@@ -98,22 +95,19 @@ export function NodeCreateMenu({ position, scale = 1, onCreate, onClose }: { pos
     return (
         <div
             ref={menuRef}
-            className="absolute z-[120] max-h-[70vh] w-[240px] overflow-y-auto rounded-2xl border p-2 shadow-2xl backdrop-blur thin-scrollbar"
+            className="canvas-node-menu sketch-menu canvas-command-menu atelier-node-create-menu absolute z-[120] max-h-[70vh] w-[240px] overflow-y-auto rounded-[18px] border p-2 shadow-2xl backdrop-blur thin-scrollbar"
             data-canvas-no-zoom
             style={{ left: position.x, top: position.y, transform: `scale(${1 / scale})`, transformOrigin: "top left", background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
             onPointerDown={(event) => event.stopPropagation()}
         >
             {/* Inner wrapper animates without overriding the counter-scale above. */}
-            <div className="canvas-pop-in">
-            <div className="mb-1.5 flex items-center justify-between px-1">
+            <div className="canvas-create-menu-pop-in sketch-menu-inner">
+            <div className="atelier-node-create-header mb-1.5 flex items-center px-1">
                 <span className="text-sm font-medium" style={{ color: theme.node.muted }}>
                     {t("canvas.createMenu.select")}
                 </span>
-                <button type="button" className="grid size-7 place-items-center rounded-lg opacity-55 transition hover:opacity-100" onClick={onClose} aria-label={t("canvas.createMenu.close")}>
-                    <X className="size-4" />
-                </button>
             </div>
-            <div className="grid gap-0.5">
+            <div className="sketch-menu-inner grid gap-0.5">
                 {definitions.map((def) => (
                     <ConnectionCreateOption key={def.type} theme={theme} icon={def.icon} title={getNodeSpec(def.type).title} description={def.description} onClick={() => onCreate(def.type)} />
                 ))}

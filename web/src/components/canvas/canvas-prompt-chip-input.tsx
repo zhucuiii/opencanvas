@@ -35,6 +35,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
+    const [isComposing, setIsComposing] = useState(false);
     // Track the last value emitted to the parent. An identical focused value is this component's own echo,
     // so skip rebuilding to preserve the caret and IME. Rebuild external changes even while focused.
     const lastEmittedRef = useRef(value);
@@ -124,12 +125,13 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         emit(serializeEditor(editor));
     };
 
-    const showPlaceholder = !value.trim();
+    // Hide the overlay placeholder while an IME has uncommitted text in the editor.
+    const showPlaceholder = !value.trim() && !isComposing;
 
     return (
-        <div className="relative w-full">
+        <div className="atelier-prompt-input relative w-full">
             {showPlaceholder && placeholder ? (
-                <div className="pointer-events-none absolute left-3 top-2 text-sm leading-5" style={{ color: theme.node.placeholder }}>
+                <div className="atelier-prompt-placeholder pointer-events-none absolute text-sm" style={{ color: theme.node.placeholder }}>
                     {placeholder}
                 </div>
             ) : null}
@@ -146,9 +148,11 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                 }}
                 onCompositionStart={() => {
                     composingRef.current = true;
+                    setIsComposing(true);
                 }}
                 onCompositionEnd={() => {
                     composingRef.current = false;
+                    setIsComposing(false);
                     syncFromEditor();
                 }}
                 onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
