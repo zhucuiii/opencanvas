@@ -10,6 +10,14 @@ export type ApiCallFormat = "openai" | "gemini";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
+export type ApiProtocolPresetId = "openai" | "openai-compatible" | "gemini";
+
+export type ApiProtocolPreset = {
+    id: ApiProtocolPresetId;
+    apiFormat: ApiCallFormat;
+    baseUrl: string;
+};
+
 export type ChannelModel = {
     name: string;
     capability: ModelCapability;
@@ -88,6 +96,12 @@ const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 export const LOCAL_PROXY_PACKAGE = "@basketikun/canvas-proxy";
 export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
+
+export const API_PROTOCOL_PRESETS: ApiProtocolPreset[] = [
+    { id: "openai", apiFormat: "openai", baseUrl: OPENAI_BASE_URL },
+    { id: "openai-compatible", apiFormat: "openai", baseUrl: "" },
+    { id: "gemini", apiFormat: "gemini", baseUrl: GEMINI_BASE_URL },
+];
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
@@ -344,10 +358,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
     };
 }
 
-export function upsertChannelCredentials(
-    config: AiConfig,
-    input: { baseUrl?: string | null; apiKey?: string | null },
-): ChannelCredentialsImportResult & { config: AiConfig } {
+export function upsertChannelCredentials(config: AiConfig, input: { baseUrl?: string | null; apiKey?: string | null }): ChannelCredentialsImportResult & { config: AiConfig } {
     const rawBaseUrl = input.baseUrl?.trim() || "";
     if (!rawBaseUrl) return { status: "missing-base-url", config };
     if (!isHttpBaseUrl(rawBaseUrl)) return { status: "invalid-base-url", config };
@@ -453,7 +464,18 @@ export function resolveModelChannel(config: AiConfig, value: string) {
     const decoded = decodeChannelModel(value);
     const model = decoded?.model || value;
     const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
+    return (
+        matched ||
+        config.channels[0] ||
+        createModelChannel({
+            id: "default",
+            name: i18n.t("config.channels.defaultName"),
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            apiFormat: config.apiFormat,
+            models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })),
+        })
+    );
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {
@@ -495,6 +517,29 @@ function normalizeChannels(config: AiConfig) {
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
     if (apiFormat === "gemini") return GEMINI_BASE_URL;
     return OPENAI_BASE_URL;
+}
+
+export function apiProtocolPresetForChannel(channel: Pick<ModelChannel, "apiFormat" | "baseUrl">): ApiProtocolPreset | null {
+    const baseUrl = normalizePresetBaseUrl(channel.baseUrl);
+    if (channel.apiFormat === "gemini") return API_PROTOCOL_PRESETS.find((preset) => preset.apiFormat === "gemini" && normalizePresetBaseUrl(preset.baseUrl) === baseUrl) || null;
+    if (baseUrl === normalizePresetBaseUrl(OPENAI_BASE_URL)) return API_PROTOCOL_PRESETS[0];
+    return baseUrl ? API_PROTOCOL_PRESETS[1] : null;
+}
+
+/**
+ * Apply a protocol preset without touching credentials or model mappings.
+ * The generic OpenAI-compatible preset keeps an existing endpoint when one is
+ * already set, because the address is necessarily provider-specific.
+ */
+export function applyApiProtocolPreset(channel: ModelChannel, presetId: ApiProtocolPresetId): ModelChannel {
+    const preset = API_PROTOCOL_PRESETS.find((item) => item.id === presetId);
+    if (!preset) return channel;
+    const baseUrl = preset.id === "openai-compatible" && channel.baseUrl.trim() ? channel.baseUrl : preset.baseUrl;
+    return { ...channel, apiFormat: preset.apiFormat, baseUrl };
+}
+
+function normalizePresetBaseUrl(baseUrl: string) {
+    return baseUrl.trim().replace(/\/+$/, "").toLowerCase();
 }
 
 function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {

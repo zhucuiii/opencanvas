@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { ChevronDown, Cpu } from "lucide-react";
+import { Check, ChevronDown, Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
@@ -46,9 +46,16 @@ export function ModelPicker({ config, value, onChange, capability, className, co
         if (unassigned.length) groups.push({ id: "__local__", name: "API", options: unassigned });
         return groups;
     }, [config.channels, options]);
+    const displayGroups = useMemo(() => {
+        if (channelGroups.length !== 1) return channelGroups;
+        const only = channelGroups[0];
+        if (only.id === "__local__" || /^\d+$/.test(only.name || "")) return [{ ...only, name: "API", id: "__local__" }];
+        return channelGroups;
+    }, [channelGroups]);
     const [activeChannelId, setActiveChannelId] = useState("");
-    const activeGroup = channelGroups.find((group) => group.id === activeChannelId) || channelGroups[0];
-    const currentLabel = current ? (channelGroups.length > 1 ? modelOptionName(current) : modelOptionLabel(config, current)) : pickerPlaceholder;
+    const activeGroup = displayGroups.find((group) => group.id === activeChannelId) || displayGroups[0];
+    const activeGroupId = activeGroup?.id || "";
+    const currentLabel = current ? (displayGroups.length > 1 ? modelOptionName(current) : modelOptionLabel(config, current)) : pickerPlaceholder;
 
     useEffect(() => {
         const closeOtherPicker = (event: Event) => {
@@ -65,7 +72,7 @@ export function ModelPicker({ config, value, onChange, capability, className, co
             onOpenChange={(nextOpen) => {
                 if (nextOpen && !options.length && config.channelMode === "local") onMissingConfig?.();
                 if (nextOpen) window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
-                if (nextOpen) setActiveChannelId((currentId) => (channelGroups.some((group) => group.id === currentId) ? currentId : channelGroups[0]?.id || ""));
+                if (nextOpen) setActiveChannelId((currentId) => (displayGroups.some((group) => group.id === currentId) ? currentId : displayGroups[0]?.id || ""));
                 setOpen(nextOpen);
             }}
             onValueChange={onChange}
@@ -95,7 +102,7 @@ export function ModelPicker({ config, value, onChange, capability, className, co
                 data-canvas-no-zoom
                 className={cn(
                     "canvas-model-menu z-[1200] max-w-[calc(100vw-24px)] !bg-[#252525] !p-2",
-                    flat ? "w-[346px] !rounded-[17px] !border-[#474747] !shadow-[0_14px_34px_rgba(0,0,0,0.48)]" : "w-80 rounded-xl border border-border/70 bg-popover shadow-xl",
+                    flat ? "w-[382px] !rounded-[18px] !border-[#474747] !shadow-[0_18px_42px_rgba(0,0,0,0.55)]" : "w-80 rounded-xl border border-border/70 bg-popover shadow-xl",
                     contentClassName,
                 )}
                 position="popper"
@@ -107,26 +114,48 @@ export function ModelPicker({ config, value, onChange, capability, className, co
                 onMouseDown={(event) => event.stopPropagation()}
             >
                 {options.length ? (
-                    <div className="overflow-hidden rounded-[12px] bg-white p-1 dark:bg-[#1f1f20]">
-                        {channelGroups.length ? (
-                            <div className="mb-1 grid grid-flow-col auto-cols-fr gap-0.5 rounded-[9px] bg-stone-100 p-0.5 dark:bg-[#29292b]">
-                                {channelGroups.map((group) => (
+                    <div className={cn("overflow-hidden rounded-[14px]", flat ? "bg-[#303030] p-1" : "bg-white p-1 dark:bg-[#1f1f20]")}>
+                        {displayGroups.length ? (
+                            <div className={cn("mb-2 grid grid-flow-col auto-cols-fr gap-1 rounded-[11px] p-1", flat ? "bg-[#262626]" : "bg-stone-100 dark:bg-[#29292b]")}>
+                                {displayGroups.map((group) => (
                                     <button
                                         key={group.id}
                                         type="button"
-                                        className={cn("h-7 min-w-0 truncate rounded-[8px] px-2 text-[11px] text-stone-500 transition-colors hover:text-stone-900 dark:text-[#b7b7ba] dark:hover:text-white", activeGroup?.id === group.id && "bg-white font-medium text-stone-900 shadow-sm dark:bg-[#3a3a3d] dark:text-white")}
+                                        className={cn(
+                                            "h-9 min-w-0 truncate rounded-[9px] px-2 text-[12px] transition-colors",
+                                            flat
+                                                ? activeGroupId === group.id
+                                                    ? "bg-[#414141] font-medium text-white"
+                                                    : "text-[#a6a6a8] hover:text-white"
+                                                : activeGroupId === group.id
+                                                  ? "bg-white font-medium text-stone-900 shadow-sm dark:bg-[#3a3a3d] dark:text-white"
+                                                  : "text-stone-500 hover:text-stone-900 dark:text-[#b7b7ba] dark:hover:text-white",
+                                        )}
                                         onPointerDown={(event) => event.preventDefault()}
                                         onClick={() => setActiveChannelId(group.id)}
                                     >
-                                        {group.name}
+                                        {group.id === "__local__" ? "API" : group.name || "API"}
                                     </button>
                                 ))}
                             </div>
                         ) : null}
-                        <div className="max-h-[260px] overflow-y-auto px-0.5 [scrollbar-width:thin] [scrollbar-color:#b8b8b8_transparent] dark:[scrollbar-color:#454549_transparent]">
+                        <div className={cn("overflow-y-auto px-1 pb-1", flat ? "max-h-[334px] [scrollbar-width:thin] [scrollbar-color:#555_transparent]" : "max-h-[260px] px-0.5 [scrollbar-width:thin] [scrollbar-color:#b8b8b8_transparent] dark:[scrollbar-color:#454549_transparent]")}>
                             {(activeGroup?.options || options).map((model) => (
-                                <SelectItem key={model} value={model} textValue={channelGroups.length > 1 ? modelOptionName(model) : modelOptionLabel(config, model)} className="my-0.5 min-h-8 rounded-[9px] px-2 text-[12px] text-stone-700 data-[highlighted]:bg-stone-100 data-[highlighted]:text-stone-950 dark:text-[#d8d8da] data-[state=checked]:!bg-transparent dark:data-[highlighted]:bg-[#303034] dark:data-[highlighted]:text-white">
-                                    <ModelLabel config={config} model={model} showIcon={showIcon} hideChannel={channelGroups.length > 1} />
+                                <SelectItem
+                                    key={model}
+                                    value={model}
+                                    textValue={displayGroups.length > 1 ? modelOptionName(model) : modelOptionLabel(config, model)}
+                                    className={cn(
+                                        "group/model my-0.5 min-h-10 rounded-[10px] px-3 pr-4 text-[13px] transition-colors",
+                                        flat
+                                            ? "text-[#e7e7e8] data-[highlighted]:bg-[#414141] data-[highlighted]:text-white data-[state=checked]:bg-[#3c3c3e]"
+                                            : "text-stone-700 data-[highlighted]:bg-stone-100 data-[highlighted]:text-stone-950 dark:text-[#d8d8da] data-[state=checked]:!bg-transparent dark:data-[highlighted]:bg-[#303034] dark:data-[highlighted]:text-white",
+                                    )}
+                                >
+                                    <span className="flex min-w-0 items-center gap-2.5">
+                                        <span className="truncate">{displayGroups.length > 1 ? modelOptionName(model) : modelOptionLabel(config, model)}</span>
+                                    </span>
+                                    {model === current ? <Check className="pointer-events-none absolute right-3 size-4 text-[#a7a7aa]" /> : null}
                                 </SelectItem>
                             ))}
                         </div>

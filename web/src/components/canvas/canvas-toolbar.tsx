@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { ChevronDown, ChevronLeft, Plus, Type, Image as ImageIcon, Video, Music2, Undo2, Redo2, Settings2, MousePointer2, Hand, Trash2, LocateFixed, Puzzle, Eraser, Grid2x2, Sun, Moon, FolderOpen } from "lucide-react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import { ChevronDown, ChevronLeft, Plus, Type, Image as ImageIcon, Video, Music2, Undo2, Redo2, Settings2, MousePointer2, Hand, Puzzle, Eraser, Grid2x2, Sun, Moon, Info, Scan } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -24,7 +24,6 @@ export function CanvasToolbar({
     onAddExtensionNode,
     onUndo,
     onRedo,
-    onDelete,
     onClear,
     onCanvasToolChange,
     onBackgroundModeChange,
@@ -45,7 +44,6 @@ export function CanvasToolbar({
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
     onRedo: () => void;
-    onDelete: () => void;
     onClear: () => void;
     onCanvasToolChange: (tool: "select" | "pan") => void;
     onBackgroundModeChange: (mode: CanvasBackgroundMode) => void;
@@ -57,14 +55,14 @@ export function CanvasToolbar({
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const colorTheme = useThemeStore((state) => state.theme);
-    const setTheme = useThemeStore((state) => state.setTheme);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
-    const toggleSidePanel = useCanvasSidePanelStore((state) => state.togglePanel);
     const toolbarDock = useCanvasSidePanelStore((state) => state.toolbarDock);
     const setToolbarDock = useCanvasSidePanelStore((state) => state.setToolbarDock);
     const [dockTransition, setDockTransition] = useState<"idle" | "exit-left" | "enter-bottom" | "exit-bottom" | "enter-left">("idle");
     const dockTransitionTimers = useRef<number[]>([]);
-    const [menu, setMenu] = useState<"create" | "history" | "settings" | "background" | null>(null);
+    type ToolbarMenu = "create" | "settings";
+    const [menu, setMenu] = useState<ToolbarMenu | null>(null);
+    const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     useNodeRegistryVersion();
     const extensions = listNodeDefinitions().filter((def) => def.showInCreateMenu !== false && getNodePluginId(def.type) !== "builtin");
@@ -92,7 +90,22 @@ export function CanvasToolbar({
             window.removeEventListener("keydown", key);
         };
     }, [menu]);
-    const toggle = (value: typeof menu) => setMenu((current) => (current === value ? null : value));
+    const toggle = (value: ToolbarMenu, event: ReactMouseEvent<HTMLButtonElement>) => {
+        if (menu === value) {
+            setMenu(null);
+            return;
+        }
+        const root = rootRef.current;
+        if (root) {
+            const rootRect = root.getBoundingClientRect();
+            const triggerRect = event.currentTarget.getBoundingClientRect();
+            setMenuAnchor({
+                x: triggerRect.left + triggerRect.width / 2 - rootRect.left,
+                y: triggerRect.top + triggerRect.height / 2 - rootRect.top,
+            });
+        }
+        setMenu(value);
+    };
     const switchToolbarDock = () => {
         if (dockTransition !== "idle") return;
         setMenu(null);
@@ -131,24 +144,51 @@ export function CanvasToolbar({
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
-            <button type="button" className="atelier-tool atelier-tool-add" aria-label="更多工具" title="更多工具" aria-expanded={menu === "create"} onClick={() => toggle("create")}>
-                <Plus size={21} />
-            </button>
-            <button type="button" className="atelier-tool" aria-label="切换选择与移动" title={t("canvas.toolbar." + canvasTool)} aria-pressed={canvasTool === "select"} onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
-                {canvasTool === "select" ? <MousePointer2 size={18} /> : <Hand size={18} />}
-            </button>
-            <button type="button" className="atelier-tool" aria-label="操作历史" title="操作历史" aria-expanded={menu === "history"} onClick={() => toggle("history")}>
-                <Undo2 size={18} />
-            </button>
-            <button type="button" className="atelier-tool" aria-label={t("navigation.config")} title={t("navigation.config")} onClick={() => openConfigDialog(false)}>
-                <Settings2 size={18} />
-            </button>
-            <button type="button" className="atelier-tool" aria-label="画布背景" title="画布背景" aria-expanded={menu === "background"} onClick={() => toggle("background")}>
-                <Grid2x2 size={18} />
-            </button>
-            <button type="button" className="atelier-tool" aria-label="画布选项" title="画布选项" aria-expanded={menu === "settings"} onClick={() => toggle("settings")}>
-                <LocateFixed size={18} />
-            </button>
+            <div className="atelier-tools-primary">
+                <button type="button" className="atelier-tool atelier-tool-add" aria-label="更多工具" title="更多工具" aria-expanded={menu === "create"} onClick={(event) => toggle("create", event)}>
+                    <Plus size={21} />
+                </button>
+                <button type="button" className="atelier-tool" aria-label="切换选择与移动" title={t("canvas.toolbar." + canvasTool)} aria-pressed={canvasTool === "select"} onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
+                    {canvasTool === "select" ? <MousePointer2 size={18} /> : <Hand size={18} />}
+                </button>
+                <button type="button" className="atelier-tool" aria-label={t("canvas.undo")} title={t("canvas.undo")} disabled={!canUndo} onClick={onUndo}>
+                    <Undo2 size={18} />
+                </button>
+                <button type="button" className="atelier-tool" aria-label={t("canvas.redo")} title={t("canvas.redo")} disabled={!canRedo} onClick={onRedo}>
+                    <Redo2 size={18} />
+                </button>
+                <button type="button" className="atelier-tool" aria-label={t("navigation.config")} title={t("navigation.config")} onClick={() => openConfigDialog(false)}>
+                    <Settings2 size={18} />
+                </button>
+                <button
+                    type="button"
+                    className="atelier-tool"
+                    aria-label="画布选项"
+                    title={`主题：${colorTheme === "dark" ? "深色" : "浅色"} · 画布选项`}
+                    aria-expanded={menu === "settings"}
+                    onClick={(event) => toggle("settings", event)}
+                >
+                    {colorTheme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+                </button>
+            </div>
+            <div className="atelier-tools-extra">
+                <button type="button" className="atelier-tool" aria-label={t("canvas.toolbar.focus")} title={t("canvas.toolbar.focus")} disabled={!selectedCount} onClick={onFocusSelected}>
+                    <Scan size={18} />
+                </button>
+                <button type="button" className="atelier-tool" aria-label={t("canvas.toolbar.clear")} title={t("canvas.toolbar.clear")} onClick={onClear}>
+                    <Eraser size={18} />
+                </button>
+                <button
+                    type="button"
+                    className="atelier-tool atelier-tool-toggle"
+                    aria-label={t("canvas.toolbar.imageInfo")}
+                    title={`${t("canvas.toolbar.imageInfo")}：${showImageInfo ? "已开启" : "已关闭"}`}
+                    aria-pressed={showImageInfo}
+                    onClick={() => onShowImageInfoChange(!showImageInfo)}
+                >
+                    <Info size={18} />
+                </button>
+            </div>
             <button
                 type="button"
                 className="atelier-tool atelier-tool-dock"
@@ -159,58 +199,48 @@ export function CanvasToolbar({
                 {toolbarDock === "bottom" ? <ChevronLeft size={17} /> : <ChevronDown size={17} />}
             </button>
             {menu ? (
-                <div className="atelier-tool-menu" role="menu" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
-                    <div className="atelier-menu-caption">{menu === "create" ? "添加节点" : menu === "history" ? "操作历史" : menu === "background" ? "画布背景" : "画布选项"}</div>
-                    {menu === "create" ? (
-                        <>
-                            {row(t("canvas.toolbar.image"), <ImageIcon size={16} />, onAddImage)}
-                            {row(t("canvas.toolbar.video"), <Video size={16} />, onAddVideo)}
-                            {row(t("canvas.toolbar.text"), <Type size={16} />, onAddText)}
-                            {row(t("canvas.toolbar.audio"), <Music2 size={16} />, onAddAudio)}
-                            {extensions.map((def) => (
-                                <div key={def.type}>{row(getNodeSpec(def.type).title, <Puzzle size={16} />, () => onAddExtensionNode(def.type))}</div>
-                            ))}
-                        </>
-                    ) : null}
-                    {menu === "history" ? (
-                        <>
-                            {row(t("canvas.undo"), <Undo2 size={16} />, onUndo, !canUndo)}
-                            {row(t("canvas.redo"), <Redo2 size={16} />, onRedo, !canRedo)}
-                        </>
-                    ) : null}
-                    {menu === "background" ? (
-                        <>
-                            {(["dots", "lines", "blank"] as const).map((mode) => (
-                                <button
-                                    key={mode}
-                                    type="button"
-                                    className="atelier-menu-row"
-                                    aria-pressed={backgroundMode === mode}
-                                    onClick={() => {
-                                        onBackgroundModeChange(mode);
-                                        setMenu(null);
-                                    }}
-                                >
-                                    <Grid2x2 size={16} />
-                                    <span>{mode === "dots" ? "点阵背景" : mode === "lines" ? "网格背景" : "纯色背景"}</span>
-                                    {backgroundMode === mode ? <span className="ml-auto text-xs opacity-60">当前</span> : null}
-                                </button>
-                            ))}
-                        </>
-                    ) : null}
-                    {menu === "settings" ? (
-                        <>
-                            {row("素材库", <FolderOpen size={16} />, toggleSidePanel)}
-                            {row(colorTheme === "dark" ? "切换到浅色主题" : "切换到深色主题", colorTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />, () => setTheme(colorTheme === "dark" ? "light" : "dark"))}
-                            {row(t("canvas.toolbar.focus"), <LocateFixed size={16} />, onFocusSelected, !selectedCount)}
-                            <label className="atelier-menu-row">
-                                <input type="checkbox" checked={showImageInfo} onChange={(event) => onShowImageInfoChange(event.target.checked)} />
-                                <span>{t("canvas.toolbar.imageInfo")}</span>
-                            </label>
-                            {row(t("canvas.deleteSelected"), <Trash2 size={16} />, onDelete, !selectedCount)}
-                            {row(t("canvas.toolbar.clear"), <Eraser size={16} />, onClear)}
-                        </>
-                    ) : null}
+                <div
+                    className="atelier-tool-menu-anchor"
+                    style={
+                        {
+                            "--atelier-menu-anchor-x": `${menuAnchor?.x ?? 0}px`,
+                            "--atelier-menu-anchor-y": `${menuAnchor?.y ?? 0}px`,
+                        } as CSSProperties
+                    }
+                >
+                    <div className="atelier-tool-menu" role="menu" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
+                        <div className="atelier-menu-caption">{menu === "create" ? "添加节点" : "画布选项"}</div>
+                        {menu === "create" ? (
+                            <>
+                                {row(t("canvas.toolbar.image"), <ImageIcon size={16} />, onAddImage)}
+                                {row(t("canvas.toolbar.video"), <Video size={16} />, onAddVideo)}
+                                {row(t("canvas.toolbar.text"), <Type size={16} />, onAddText)}
+                                {row(t("canvas.toolbar.audio"), <Music2 size={16} />, onAddAudio)}
+                                {extensions.map((def) => (
+                                    <div key={def.type}>{row(getNodeSpec(def.type).title, <Puzzle size={16} />, () => onAddExtensionNode(def.type))}</div>
+                                ))}
+                            </>
+                        ) : null}
+                        {menu === "settings" ? (
+                            <>
+                                {(["dots", "lines", "blank"] as const).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        type="button"
+                                        className="atelier-menu-row"
+                                        aria-pressed={backgroundMode === mode}
+                                        onClick={() => {
+                                            action(() => onBackgroundModeChange(mode));
+                                        }}
+                                    >
+                                        <Grid2x2 size={16} />
+                                        <span>{mode === "dots" ? "点阵背景" : mode === "lines" ? "网格背景" : "纯色背景"}</span>
+                                        {backgroundMode === mode ? <span className="atelier-menu-current">当前</span> : null}
+                                    </button>
+                                ))}
+                            </>
+                        ) : null}
+                    </div>
                 </div>
             ) : null}
         </div>

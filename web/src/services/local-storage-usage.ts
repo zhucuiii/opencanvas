@@ -1,10 +1,23 @@
 export type IndexedDbStoreUsage = { name: string; records: number; bytes: number };
 export type IndexedDbDatabaseUsage = { name: string; version: number; bytes: number; stores: IndexedDbStoreUsage[] };
 export type LocalStorageUsage = { usage: number; quota: number | null; contentBytes: number; databases: IndexedDbDatabaseUsage[] };
+export type LocalMediaUsage = { images: number; imageBytes: number; media: number; mediaBytes: number };
 
 export async function readLocalStorageUsage(): Promise<LocalStorageUsage> {
     const [estimate, database] = await Promise.all([readStorageEstimate(), readDatabaseUsage("infinite-canvas")]);
     return { usage: estimate?.usage ?? database.bytes, quota: estimate?.quota ?? null, contentBytes: database.bytes, databases: [database] };
+}
+
+export function localMediaUsage(database: IndexedDbDatabaseUsage | undefined): LocalMediaUsage {
+    const store = (name: string) => database?.stores.find((item) => item.name === name);
+    const images = store("image_files");
+    const media = store("media_files");
+    return {
+        images: images?.records ?? 0,
+        imageBytes: images?.bytes ?? 0,
+        media: media?.records ?? 0,
+        mediaBytes: media?.bytes ?? 0,
+    };
 }
 
 async function readStorageEstimate() {

@@ -9,6 +9,7 @@ import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob, getImagePreviewRevision, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { cn } from "@/lib/utils";
+import { AssetStorageSummary } from "@/components/assets/asset-storage-summary";
 import { assetCoverUrl, useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 
@@ -219,6 +220,10 @@ export default function AssetsPage() {
                                 setKeyword(value);
                             }}
                         />
+                    </div>
+
+                    <div className="mx-auto mt-4 max-w-6xl">
+                        <AssetStorageSummary />
                     </div>
 
                     <div className="mx-auto mt-6 grid max-w-6xl gap-3 text-left">

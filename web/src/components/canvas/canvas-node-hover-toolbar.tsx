@@ -1,11 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { App, Modal, Segmented } from "antd";
 import { Download, Ellipsis, FolderPlus, Image as ImageIcon, Info, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Trash2, Ungroup, Upload, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { WarmTooltip, WarmTooltipGroup } from "@/components/ui/warm-tooltip";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { subscribeConnectionMorph } from "@/lib/canvas/connection-morph";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { formatBytes, getDataUrlByteSize } from "@/lib/image-utils";
 import { useCopyText } from "@/hooks/use-copy-text";
@@ -80,22 +79,6 @@ export function CanvasNodeHoverToolbar({
     onUngroup,
     extraTools = [],
 }: CanvasNodeHoverToolbarProps) {
-    const positionRef = useRef<HTMLDivElement>(null);
-    useLayoutEffect(() => {
-        if (!node) return;
-        const sync = () => {
-            const toolbar = positionRef.current;
-            const frame = toolbar?.parentElement?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(node.id)}"] .atelier-node-frame`);
-            const parent = toolbar?.offsetParent;
-            if (!toolbar || !frame || !(parent instanceof HTMLElement)) return;
-            const rect = frame.getBoundingClientRect();
-            const host = parent.getBoundingClientRect();
-            toolbar.style.left = `${rect.left + rect.width / 2 - host.left}px`;
-            toolbar.style.top = `${rect.top - host.top - 28 * viewport.k - 8}px`;
-        };
-        sync();
-        return subscribeConnectionMorph(sync);
-    });
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
     const [showImageToolLabels, setShowImageToolLabels] = useState(false);
@@ -126,10 +109,6 @@ export function CanvasNodeHoverToolbar({
     if (!node) return null;
 
     const activeNode = node;
-    const left = viewport.x + (node.position.x + node.width / 2) * viewport.k;
-    // The node title sits 28px above the node in world space and scales with the
-    // canvas, so clear it in screen space before applying the fixed gap.
-    const top = viewport.y + node.position.y * viewport.k - 28 * viewport.k - 8;
     const isImage = node.type === CanvasNodeType.Image;
     const isVideo = node.type === CanvasNodeType.Video;
     const isAudio = node.type === CanvasNodeType.Audio;
@@ -235,9 +214,6 @@ export function CanvasNodeHoverToolbar({
 
     return (
         <>
-            {/* Outer div positions the toolbar; the inner one runs the entrance
-                animation, so the keyframe transform never overrides the offset. */}
-            <div ref={positionRef} className="absolute z-[70]" style={{ left, top, transform: "translate(-50%, -100%)" }}>
                 <div
                     className="canvas-pop-in-up flex h-10 items-center overflow-visible rounded-xl border text-[13px]"
                     style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
@@ -267,7 +243,6 @@ export function CanvasNodeHoverToolbar({
                         ) : null}
                     </WarmTooltipGroup>
                 </div>
-            </div>
             {hasImage ? (
                 <ImageToolSettingsModal
                     open={imageToolSettingsOpen}

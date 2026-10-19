@@ -37,6 +37,7 @@ type CanvasNodeProps = {
     pluginHost?: CanvasPluginHost;
     registryVersion?: number;
     renderPanel?: (node: CanvasNodeData) => ReactNode;
+    renderHoverToolbar?: (node: CanvasNodeData) => ReactNode;
     renderNodeContent?: (node: CanvasNodeData) => ReactNode;
     groupChildCount?: number;
     isGroupDropTarget?: boolean;
@@ -115,6 +116,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     mentionReferences = [],
     pluginHost,
     renderPanel,
+    renderHoverToolbar,
     renderNodeContent,
     groupChildCount = 0,
     isGroupDropTarget = false,
@@ -506,6 +508,18 @@ export const CanvasNode = React.memo(function CanvasNode({
             ) : null}
             {!referenceSelectionState && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config ? (
                 <ConnectionHandleDot side="right" visible={hovered || isSelected || isConnecting} scale={scale} onMouseDown={(event) => onConnectStart(event, data.id, "source")} />
+            ) : null}
+
+            {renderHoverToolbar ? (
+                <div
+                    className="absolute left-1/2 top-0 z-[70]"
+                    style={{
+                        transform: `translate(-50%, calc(-100% - ${28 / scale + 8}px)) scale(${1 / scale})`,
+                        transformOrigin: "center bottom",
+                    }}
+                >
+                    {renderHoverToolbar(data)}
+                </div>
             ) : null}
 
             {/* Counter-scale the panel so its on-screen size stays constant while the canvas zooms. */}

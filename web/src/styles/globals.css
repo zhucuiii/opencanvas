@@ -697,8 +697,933 @@
 }
 
 .app-config-modal-bottom .ant-modal-wrap .ant-modal {
+    max-height: calc(100vh - 120px);
+}
+
+.app-config-modal-bottom .ant-modal-wrap .ant-modal {
     top: auto;
     transform-origin: bottom center;
+}
+
+.app-config-modal-bottom .ant-modal-mask {
+    animation: app-config-modal-mask-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-config-modal-bottom .ant-modal-wrap .ant-modal .ant-modal-container {
+    display: flex;
+    max-height: calc(100vh - 120px);
+    flex-direction: column;
+    transform-origin: bottom center;
+    animation: app-config-modal-bottom-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-config-modal-bottom.is-closing .ant-modal-mask {
+    animation: app-config-modal-mask-out 0.15s ease-in both;
+}
+
+.app-config-modal-bottom.is-closing .ant-modal-wrap .ant-modal .ant-modal-container {
+    animation: app-config-modal-bottom-out 0.15s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/*
+ * 侧边工具栏上打开设置时，弹窗贴着工具栏右侧、垂直居中，
+ * 让配置按钮与弹窗横向相邻。底部停靠仍沿用上面的贴底布局。
+ */
+.app-config-modal-left .ant-modal-wrap {
+    padding: 0;
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal,
+.app-config-modal-bottom .ant-modal-wrap .ant-modal {
+    height: min(720px, calc(100vh - 48px));
+}
+
+.app-config-modal-bottom .ant-modal-wrap .ant-modal {
+    height: min(720px, calc(100vh - 168px));
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal .ant-modal-container,
+.app-config-modal-bottom .ant-modal-wrap .ant-modal .ant-modal-container {
+    height: 100%;
+}
+
+.app-config-modal-left .ant-modal-content,
+.app-config-modal-bottom .ant-modal-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.app-config-modal-left .ant-modal-content {
+    height: min(720px, calc(100vh - 48px));
+    max-height: calc(100vh - 48px);
+}
+
+.app-config-modal-bottom .ant-modal-content {
+    height: min(720px, calc(100vh - 168px));
+    max-height: calc(100vh - 168px);
+}
+
+.app-config-modal-left .ant-modal-body,
+.app-config-modal-bottom .ant-modal-body {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.app-config-modal-left .app-config-panel-shell,
+.app-config-modal-bottom .app-config-panel-shell {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+/* API 配置：左侧配置列表 / 右侧连接信息，底部固定本地提示。 */
+.atelier-config-api-layout {
+    display: grid;
+    min-height: 0;
+    height: 100%;
+    grid-template-columns: 244px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 42px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.atelier-config-api-sidebar {
+    display: grid;
+    min-height: 0;
+    grid-template-rows: 54px minmax(0, 1fr) auto;
+    border-right: 1px solid #ffffff0a;
+    background: transparent;
+}
+
+.atelier-config-api-sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px 0 16px;
+    border-bottom: 1px solid #ffffff08;
+}
+
+.atelier-config-api-sidebar-head strong,
+.atelier-config-api-sidebar-head small {
+    display: block;
+}
+
+.atelier-config-api-sidebar-head strong {
+    color: #f4f4f5;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.atelier-config-api-sidebar-head small {
+    margin-top: 3px;
+    color: #85858a;
+    font-size: 11px;
+}
+
+.atelier-config-api-sidebar-head > button,
+.atelier-config-api-icon-button {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 7px;
+    color: #929297;
+    background: transparent;
+    cursor: pointer;
+}
+
+.atelier-config-api-sidebar-head > button:hover {
+    color: #f4f4f5;
+    background: #ffffff0b;
+}
+
+.atelier-config-api-list {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #4a4a4e transparent;
+}
+
+.atelier-config-api-list-item {
+    display: grid;
+    width: 100%;
+    min-height: 58px;
+    grid-template-columns: 7px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: #a5a5a9;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.atelier-config-api-list-item:hover {
+    color: #f4f4f5;
+    background: #ffffff06;
+}
+
+.atelier-config-api-list-item.is-active {
+    color: #f4f4f5;
+    border-color: #ffffff14;
+    background: #ffffff0d;
+    box-shadow: inset 2px 0 0 #c6c6ca;
+}
+
+.atelier-config-api-list-item > i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6c6c70;
+}
+
+.atelier-config-api-list-item > i.is-ready {
+    background: #72b98c;
+    box-shadow: 0 0 0 3px #72b98c18;
+}
+
+.atelier-config-api-list-item > i.is-error {
+    background: #d48282;
+}
+
+.atelier-config-api-list-item span {
+    min-width: 0;
+}
+
+.atelier-config-api-list-item strong,
+.atelier-config-api-list-item small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atelier-config-api-list-item strong {
+    color: inherit;
+    font-size: 12.5px;
+    font-weight: 620;
+}
+
+.atelier-config-api-list-item small {
+    margin-top: 4px;
+    color: #818186;
+    font-size: 10.5px;
+}
+
+.atelier-config-api-add {
+    display: flex;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 7px;
+    border: 1px dashed #4b4b50;
+    border-radius: 7px;
+    color: #a3a3a8;
+    background: transparent;
+    font-size: 11.5px;
+    cursor: pointer;
+}
+
+.atelier-config-api-add:hover {
+    color: #f4f4f5;
+    border-color: #68686e;
+    background: #ffffff05;
+}
+
+.atelier-config-api-editor {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: 72px minmax(0, 1fr) 62px;
+}
+
+.atelier-config-api-editor-head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 18px;
+    border-bottom: 1px solid #ffffff08;
+}
+
+.atelier-config-api-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.atelier-config-api-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid #ffffff17;
+    border-radius: 8px;
+    color: #d0d0d4;
+    background: #ffffff08;
+}
+
+.atelier-config-api-identity > div {
+    min-width: 0;
+}
+
+.atelier-config-api-identity strong,
+.atelier-config-api-identity > div > span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atelier-config-api-identity strong {
+    color: #f2f2f3;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.atelier-config-api-identity > div > span {
+    max-width: 330px;
+    margin-top: 4px;
+    color: #85858a;
+    font-size: 11px;
+}
+
+.atelier-config-api-controls {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+}
+
+.atelier-config-api-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #98989d;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.atelier-config-api-state.is-ready {
+    color: #79bd91;
+}
+
+.atelier-config-api-state.is-error {
+    color: #d58d8d;
+}
+
+.atelier-config-api-browser-note {
+    color: #69696e;
+    font-size: 10.5px;
+}
+
+.atelier-config-api-editor-body {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 22px 22px;
+    scrollbar-width: thin;
+    scrollbar-color: #4a4a4e transparent;
+}
+
+.atelier-config-api-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #ffffff0b;
+}
+
+.atelier-config-api-section-heading strong {
+    color: #ececee;
+    font-size: 12.5px;
+    font-weight: 650;
+}
+
+.atelier-config-api-section-heading span {
+    color: #77777c;
+    font-size: 10.5px;
+}
+
+.atelier-config-api-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+}
+
+.atelier-config-api-field {
+    display: grid;
+    gap: 8px;
+}
+
+.atelier-config-api-field > span:first-child,
+.atelier-config-api-field-label {
+    color: #9b9ba0;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.atelier-config-api-field-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.atelier-config-api-field-label small {
+    margin-left: auto;
+    color: #737378;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.atelier-config-api-field--wide {
+    grid-column: 1 / -1;
+}
+
+.atelier-config-api-fields .ant-input,
+.atelier-config-api-fields .ant-input-affix-wrapper {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid #3c3c40;
+    border-radius: 8px;
+    color: #efeff1;
+    background: #242426;
+    box-shadow: none;
+}
+
+.atelier-config-api-fields .ant-input-affix-wrapper > input.ant-input {
+    min-height: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.atelier-config-api-fields .ant-input:hover,
+.atelier-config-api-fields .ant-input-affix-wrapper:hover {
+    border-color: #54545a;
+    background: #262628;
+}
+
+.atelier-config-api-fields .ant-input:focus,
+.atelier-config-api-fields .ant-input-affix-wrapper-focused {
+    border-color: #77777e;
+    background: #28282a;
+    box-shadow: 0 0 0 3px #ffffff08;
+}
+
+.atelier-config-api-fields .ant-input::placeholder {
+    color: #636368;
+}
+
+.atelier-config-api-protocol {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.atelier-config-api-protocol button {
+    display: flex;
+    height: 42px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border: 1px solid #3c3c40;
+    border-radius: 8px;
+    color: #98989d;
+    background: #242426;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.atelier-config-api-protocol button i {
+    display: grid;
+    width: 12px;
+    height: 12px;
+    place-items: center;
+    border: 1px solid #74747a;
+    border-radius: 50%;
+}
+
+.atelier-config-api-protocol button.is-active {
+    color: #f1f1f2;
+    border-color: #6e6e75;
+    background: #2b2b2e;
+}
+
+.atelier-config-api-protocol button.is-active i::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #d9d9dc;
+}
+
+.atelier-config-api-presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.atelier-config-api-presets button {
+    display: grid;
+    min-width: 0;
+    min-height: 76px;
+    gap: 4px;
+    padding: 10px 11px;
+    border: 1px solid #36363a;
+    border-radius: 8px;
+    color: #a0a0a5;
+    background: #202022;
+    text-align: left;
+    cursor: pointer;
+}
+
+.atelier-config-api-presets button:hover {
+    border-color: #515157;
+    background: #252527;
+}
+
+.atelier-config-api-presets button.is-active {
+    border-color: #77777e;
+    background: #2a2a2d;
+    box-shadow: inset 0 0 0 1px #ffffff08;
+}
+
+.atelier-config-api-presets strong,
+.atelier-config-api-presets small,
+.atelier-config-api-presets code {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atelier-config-api-presets strong {
+    color: #e5e5e8;
+    font-size: 11.5px;
+    font-weight: 650;
+}
+
+.atelier-config-api-presets small {
+    color: #7f7f84;
+    font-size: 10px;
+}
+
+.atelier-config-api-presets code {
+    color: #66666b;
+    font-size: 9.5px;
+}
+
+.atelier-config-api-presets button.is-active strong {
+    color: #f5f5f6;
+}
+
+.atelier-config-api-secret {
+    position: relative;
+    display: block;
+}
+
+.atelier-config-api-secret .ant-input-affix-wrapper {
+    padding-right: 42px;
+}
+
+.atelier-config-api-secret > button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 6px;
+    color: #85858a;
+    background: transparent;
+    cursor: pointer;
+}
+
+.atelier-config-api-secret > button:hover {
+    color: #f1f1f2;
+    background: #ffffff0b;
+}
+
+.atelier-config-api-editor-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 18px;
+    border-top: 1px solid #ffffff08;
+    background: transparent;
+}
+
+.atelier-config-api-model-button {
+    display: inline-flex;
+    height: 34px;
+    align-items: center;
+    gap: 7px;
+    padding: 0 12px;
+    border-radius: 7px;
+    color: #a8a8ad;
+    background: transparent;
+    font-size: 11.5px;
+    cursor: pointer;
+}
+
+.atelier-config-api-model-button:hover {
+    color: #f1f1f2;
+    background: #ffffff08;
+}
+
+.atelier-config-api-delete-wrap {
+    position: relative;
+    display: block;
+}
+
+.atelier-config-api-icon-button.is-danger:hover {
+    color: #e09a9a;
+    background: #e09a9a14;
+}
+
+.atelier-config-api-delete-popover {
+    position: absolute;
+    top: 36px;
+    right: 0;
+    z-index: 5;
+    display: grid;
+    width: 220px;
+    gap: 12px;
+    padding: 11px;
+    border: 1px solid #5a3d3d;
+    border-radius: 8px;
+    background: #292324;
+    box-shadow: 0 16px 32px #0008;
+}
+
+.atelier-config-api-delete-popover strong,
+.atelier-config-api-delete-popover small {
+    display: block;
+}
+
+.atelier-config-api-delete-popover strong {
+    color: #f0e9e9;
+    font-size: 11.5px;
+}
+
+.atelier-config-api-delete-popover small {
+    margin-top: 4px;
+    color: #a58b8b;
+    font-size: 10.5px;
+}
+
+.atelier-config-api-delete-popover > div:last-child {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.atelier-config-api-delete-popover button {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 5px;
+    color: #b9b2b2;
+    background: #ffffff08;
+    font-size: 10.5px;
+    cursor: pointer;
+}
+
+.atelier-config-api-delete-popover button.is-danger {
+    color: #f5e9e9;
+    background: #a45050;
+}
+
+.atelier-config-api-empty {
+    display: grid;
+    min-height: 240px;
+    place-content: center;
+    justify-items: center;
+    gap: 10px;
+    color: #717176;
+}
+
+.atelier-config-api-empty strong {
+    color: #ececee;
+    font-size: 13px;
+}
+
+.atelier-config-api-empty button {
+    display: inline-flex;
+    height: 34px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border-radius: 6px;
+    color: #222;
+    background: #eee;
+    font-size: 11.5px;
+    cursor: pointer;
+}
+
+.atelier-config-api-foot {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 15px;
+    border-top: 1px solid #ffffff08;
+    color: #85858a;
+    background: transparent;
+    font-size: 11px;
+}
+
+.atelier-config-api-foot small {
+    color: #6f6f74;
+    font-size: 10.5px;
+}
+
+.atelier-config-api-editor-body,
+.atelier-config-api-list {
+    overscroll-behavior: contain;
+}
+
+.atelier-config-api-editor-body,
+.atelier-config-api-list,
+.atelier-config-api-delete-popover {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.atelier-config-api-editor-body::-webkit-scrollbar,
+.atelier-config-api-list::-webkit-scrollbar,
+.atelier-config-api-delete-popover::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.atelier-config-api-zoom-bypass {
+    pointer-events: auto;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell > .app-config-tabs-fill,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell > .app-config-tabs-fill {
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .app-config-tabs-fill > .ant-tabs,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .app-config-tabs-fill > .ant-tabs {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-content-holder,
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-content,
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-tabpane,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-content-holder,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-content,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-tabpane {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-body,
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-content-holder,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-body,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-content-holder,
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-body-holder,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-body-holder {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-content-active,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-content-active {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-content-active::-webkit-scrollbar,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-content-active::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell #rc-tabs-0-panel-channels,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell #rc-tabs-0-panel-channels {
+    overflow: hidden;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-tabpane > div,
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-tabpane > div {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    width: 100%;
+}
+
+.ant-modal-root.app-config-modal-left .app-config-panel-shell .ant-tabs-tabpane[aria-hidden="true"],
+.ant-modal-root.app-config-modal-bottom .app-config-panel-shell .ant-tabs-tabpane[aria-hidden="true"],
+.app-config-panel-shell .ant-tabs-content-hidden {
+    display: none !important;
+}
+
+
+@media (max-width: 900px) {
+    .atelier-config-api-layout {
+        grid-template-columns: 210px minmax(0, 1fr);
+    }
+}
+
+.app-config-modal-left .ant-modal-mask {
+    animation: app-config-modal-mask-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal {
+    inset: 50% auto auto 88px;
+    margin-block: 0;
+    margin-inline: 0;
+    padding-bottom: 0;
+    translate: 0 -50%;
+}
+
+/* Keep Ant Design's modal shell fully mounted and visible, then reveal only
+   the panel inside it. Animating the shell made its mask and content arrive
+   on different frames, which read as a flash. */
+.app-config-modal-left .ant-modal-wrap .ant-modal {
+    animation: none;
+    opacity: 1;
+    transform-origin: left center;
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal-container {
+    display: flex;
+    max-height: calc(100vh - 48px);
+    flex-direction: column;
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal .ant-modal-container {
+    animation: app-config-modal-left-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: left center;
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal.ant-zoom-leave .ant-modal-container {
+    animation: none;
+}
+
+.app-config-modal-left.is-closing .ant-modal-mask {
+    animation: app-config-modal-mask-out 0.15s ease-in both;
+}
+
+.app-config-modal-left.is-closing .ant-modal-wrap .ant-modal-container {
+    animation: app-config-modal-left-out 0.15s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.app-config-modal-left .ant-modal-wrap .ant-modal .ant-modal-container {
+    animation-fill-mode: both;
+}
+
+.app-config-modal-left:not(.is-closing) .ant-modal-wrap .ant-modal .ant-modal-container {
+    animation-duration: 0.32s;
+}
+
+@keyframes app-config-modal-left-in {
+    from {
+        opacity: 0;
+        transform: translateX(-28px) scaleX(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scaleX(1);
+    }
+}
+
+@keyframes app-config-modal-mask-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes app-config-modal-mask-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes app-config-modal-left-out {
+    from {
+        opacity: 1;
+        transform: translateX(0) scaleX(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-24px) scaleX(0.98);
+    }
+}
+
+@keyframes app-config-modal-bottom-in {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scaleY(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scaleY(1);
+    }
+}
+
+@keyframes app-config-modal-bottom-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scaleY(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(16px) scaleY(0.99);
+    }
 }
 
 /*
@@ -722,12 +1647,8 @@
     }
 }
 
-.app-config-modal-bottom .ant-modal-wrap .ant-modal.ant-zoom-enter {
-    animation: app-config-modal-in 0.32s cubic-bezier(0.34, 1.3, 0.64, 1);
-}
-
-.app-config-modal-bottom .ant-modal-wrap .ant-modal.ant-zoom-leave {
-    animation: app-config-modal-out 0.16s ease-in;
+.app-config-modal-bottom .ant-modal-wrap .ant-modal {
+    animation: none;
 }
 
 @keyframes app-config-modal-out {
@@ -743,12 +1664,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .app-config-modal-bottom .ant-modal-wrap .ant-modal.ant-zoom-enter {
-        animation: app-config-modal-in 0.12s ease-out;
-    }
-
-    .app-config-modal-bottom .ant-modal-wrap .ant-modal.ant-zoom-leave {
-        animation: app-config-modal-out 0.1s ease-in;
+    .app-config-modal-bottom .ant-modal-wrap .ant-modal .ant-modal-container,
+    .app-config-modal-left .ant-modal-wrap .ant-modal-container {
+        animation: app-config-modal-mask-in 0.12s ease-out;
     }
 }
 

@@ -1,28 +1,18 @@
 import { App, Button, Form, Input, Modal, Progress, Radio, Select, Switch, Tabs } from "antd";
 import type { TFunction } from "i18next";
-import { Cloud, Download, Pencil, Plus, RefreshCw, Trash2, Upload, Wifi } from "lucide-react";
+import { Cloud, RefreshCw, Wifi } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ModelPicker } from "@/components/model-picker";
-import { imageAspectOptions } from "@/components/image-settings-panel";
-import { videoResolutionOptions, videoSizeOptions } from "@/components/video-settings-panel";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
+import { ConfigApiSettings } from "@/components/layout/config-api-settings";
 import { ConfigLocalProxy } from "@/components/layout/config-local-proxy";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
+import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import type { AppLocale } from "@/i18n";
-import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
-import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
-import { computeMediaSize, inferMediaRatio, inferMediaScale, mediaScaleOptions, parseVideoResolution } from "@/lib/media-size";
 import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
-
-type ModelGroup = {
-    capability: ModelCapability;
-    modelKey: "imageModel" | "videoModel" | "textModel" | "audioModel";
-    labelKey: string;
-};
 
 type WebdavDomainProgress = {
     stage: string;
@@ -30,13 +20,6 @@ type WebdavDomainProgress = {
     total?: number;
     status?: "active" | "success" | "exception";
 };
-
-const modelGroups: ModelGroup[] = [
-    { capability: "image", modelKey: "imageModel", labelKey: "config.preferences.defaultImageModel" },
-    { capability: "video", modelKey: "videoModel", labelKey: "config.preferences.defaultVideoModel" },
-    { capability: "text", modelKey: "textModel", labelKey: "config.preferences.defaultTextModel" },
-    { capability: "audio", modelKey: "audioModel", labelKey: "config.preferences.defaultAudioModel" },
-];
 
 const webdavDomainKeys: AppSyncDomainKey[] = ["canvas", "assets", "image-workbench", "video-workbench"];
 function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProgress> {
@@ -49,10 +32,9 @@ function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProg
     );
 }
 
-export function AppConfigPanel({ showDoneButton = false, initialTab = "channels" }: { showDoneButton?: boolean; initialTab?: ConfigTabKey }) {
+export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: ConfigTabKey }) {
     const { message } = App.useApp();
     const { i18n, t } = useTranslation();
-    const configInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<ConfigTabKey>(initialTab);
     const [editingChannelId, setEditingChannelId] = useState("");
     const [testingWebdav, setTestingWebdav] = useState(false);
@@ -63,36 +45,13 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     const webdav = useConfigStore((state) => state.webdav);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
-    const shouldPromptContinue = useConfigStore((state) => state.shouldPromptContinue);
-    const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
-    const clearPromptContinue = useConfigStore((state) => state.clearPromptContinue);
     const webdavReady = Boolean(webdav.url.trim());
     const editingChannel = config.channels.find((channel) => channel.id === editingChannelId) || null;
     const locale = i18n.resolvedLanguage as AppLocale;
-    const imageResolutionOptions = mediaScaleOptions.map((value) => ({ value, label: value === "auto" ? t("settingsPanels.common.auto") : value.toUpperCase() }));
     useEffect(() => setActiveTab(initialTab), [initialTab]);
 
     const saveConfig = (nextConfig: AiConfig) => {
         (Object.keys(nextConfig) as Array<keyof AiConfig>).forEach((key) => updateConfig(key, nextConfig[key]));
-    };
-
-    const finishConfig = () => {
-        const ready = config.channels.some((channel) => channel.baseUrl.trim() && channel.apiKey.trim() && channel.models.length);
-        setConfigDialogOpen(false);
-        if (!ready) return;
-        message.success(t(shouldPromptContinue ? "config.savedContinue" : "config.saved"));
-        clearPromptContinue();
-    };
-
-    const loadConfigFile = async (file: File) => {
-        try {
-            await importAppConfig(file);
-            message.success(t("config.imported"));
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("config.importFailed"));
-        } finally {
-            if (configInputRef.current) configInputRef.current.value = "";
-        }
     };
 
     const updateChannels = (channels: ModelChannel[]) => saveConfig(withChannels(config, channels));
@@ -171,20 +130,8 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
         // 切 tab 时弹窗大小照样跳。
         // 624 是弹窗**内容区**的高度；加上 antd 的标题栏 48 + 上下内边距 48，整窗正好 720。
         // 视口不够高时按 100vh - 200 收（底部要避开工具条那截）。
-        <div className="flex h-[624px] max-h-[calc(100vh-200px)] min-h-[320px] flex-col">
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-stone-800">
-                <div className="text-xs text-stone-500">{t("config.fileSecurity")}</div>
-                <div className="flex gap-2">
-                    <Button icon={<Upload className="size-4" />} onClick={() => configInputRef.current?.click()}>
-                        {t("config.import")}
-                    </Button>
-                    <Button icon={<Download className="size-4" />} onClick={exportAppConfig}>
-                        {t("config.export")}
-                    </Button>
-                    <input ref={configInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && void loadConfigFile(event.target.files[0])} />
-                </div>
-            </div>
-            <div className="config-scroll-area hide-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <div className="app-config-panel-shell flex min-h-0 w-full flex-1 flex-col">
+            <div className="hide-scrollbar app-config-tabs-fill min-h-0 flex-1">
             <Tabs
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as ConfigTabKey)}
@@ -193,32 +140,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         key: "channels",
                         label: t("config.tabs.channels"),
                         children: (
-                            <div>
-                                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                    <div className="text-xs text-stone-500">{t("config.channels.description")}</div>
-                                    <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
-                                        {t("config.channels.add")}
-                                    </Button>
-                                </div>
-                                <div className="space-y-2">
-                                    {config.channels.map((channel) => (
-                                        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
-                                            <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
-                                                <div className="mt-1 truncate text-xs text-stone-500">
-                                                    {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
-                                                </div>
-                                            </div>
-                                            <div className="flex shrink-0 gap-2">
-                                                <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
-                                                    {t("common.edit")}
-                                                </Button>
-                                                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            <ConfigApiSettings config={config} onChange={updateConfig} onEditModels={(channel) => setEditingChannelId(channel.id)} />
                         ),
                     },
                     {
@@ -231,40 +153,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         label: t("config.tabs.preferences"),
                         children: (
                             <Form layout="vertical" requiredMark={false}>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.defaultModels")}</div>
-                                <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                                    {modelGroups.map((group) => (
-                                        <Form.Item key={group.modelKey} label={t(group.labelKey)} className="mb-0">
-                                            <ModelPicker config={config} value={config[group.modelKey]} onChange={(model) => updateConfig(group.modelKey, model)} capability={group.capability} fullWidth />
-                                        </Form.Item>
-                                    ))}
-                                </div>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.generation")}</div>
-                                <div className="grid gap-4 md:grid-cols-4">
-                                    <Form.Item label={t("config.preferences.videoRatio")} className="mb-4">
-                                        <Select value={config.videoRatio} options={videoSizeOptions} onChange={(ratio) => updateConfig("videoRatio", ratio)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.videoResolution")} className="mb-4">
-                                        <Select value={parseVideoResolution(config.vquality)} options={videoResolutionOptions} onChange={(value) => updateConfig("vquality", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioVoice")} className="mb-4">
-                                        <Select value={config.audioVoice} options={audioVoiceOptions} onChange={(value) => updateConfig("audioVoice", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioFormat")} className="mb-4">
-                                        <Select value={config.audioFormat} options={audioFormatOptions} onChange={(value) => updateConfig("audioFormat", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioSpeed")} className="mb-4">
-                                        <Input
-                                            type="number"
-                                            min={0.25}
-                                            max={4}
-                                            step={0.05}
-                                            value={config.audioSpeed}
-                                            onChange={(event) => updateConfig("audioSpeed", event.target.value)}
-                                            onBlur={(event) => updateConfig("audioSpeed", normalizeAudioSpeedValue(event.target.value))}
-                                        />
-                                    </Form.Item>
-                                </div>
                                 <Form.Item label={t("config.preferences.regenerateBehavior")} className="mb-4">
                                     <Radio.Group value={config.nodeRegenerateBehavior} onChange={(event) => updateConfig("nodeRegenerateBehavior", event.target.value)} className="flex flex-col gap-2">
                                         <Radio value="overwrite">
@@ -357,13 +245,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                 ]}
             />
             </div>
-            {showDoneButton ? (
-                <div className="flex shrink-0 justify-end pt-4">
-                    <Button type="primary" onClick={finishConfig}>
-                        {t("common.done")}
-                    </Button>
-                </div>
-            ) : null}
             <ChannelEditorDrawer open={Boolean(editingChannel)} channel={editingChannel} onSave={saveChannel} onClose={() => setEditingChannelId("")} />
         </div>
     );
@@ -374,6 +255,31 @@ export function AppConfigModal() {
     const isConfigOpen = useConfigStore((state) => state.isConfigOpen);
     const configTab = useConfigStore((state) => state.configTab);
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
+    const toolbarDock = useCanvasSidePanelStore((state) => state.toolbarDock);
+    const [isClosing, setIsClosing] = useState(false);
+    const closeTimerRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (isConfigOpen) setIsClosing(false);
+        return () => {
+            if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+        };
+    }, [isConfigOpen]);
+    const closeConfig = () => {
+        if (isClosing) return;
+        if (closeTimerRef.current !== null) {
+            window.clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+        }
+        setIsClosing(true);
+        closeTimerRef.current = window.setTimeout(() => setConfigDialogOpen(false), 150);
+    };
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && isConfigOpen) closeConfig();
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    });
     return (
         <Modal
             title={
@@ -384,16 +290,20 @@ export function AppConfigModal() {
             }
             open={isConfigOpen}
             width={880}
-            // 设置按钮在底部工具条上，弹窗也从底部升起、贴着底边，不再居中。
-            rootClassName="app-config-modal-bottom"
-            onCancel={() => setConfigDialogOpen(false)}
+            transitionName=""
+            maskTransitionName=""
+            rootClassName={`app-config-modal-${toolbarDock === "bottom" ? "bottom" : "left"}${isClosing ? " is-closing" : ""}`}
+            onCancel={closeConfig}
+            afterOpenChange={(open) => {
+                if (!open) setIsClosing(false);
+            }}
             styles={{
                 // 弹窗本体不滚动：高度固定，滚动交给内部的 flex 列（头部 / tab / 内容 / 完成按钮各司其职）。
                 body: { overflow: "hidden", paddingRight: 0 },
             }}
             footer={null}
         >
-            <AppConfigPanel showDoneButton initialTab={configTab} />
+            <AppConfigPanel initialTab={configTab} />
         </Modal>
     );
 }

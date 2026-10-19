@@ -60,6 +60,24 @@ export async function cleanupUnusedMedia(usedData: unknown) {
     await Promise.all(unused.map((key) => store.removeItem(key)));
 }
 
+export type UnusedMediaStorage = { keys: string[]; bytes: number };
+
+// 只盘点不删除；生成历史由调用方合并进引用数据。
+export async function scanUnusedMedia(usedData: unknown): Promise<UnusedMediaStorage> {
+    const usedKeys = collectMediaStorageKeys(usedData);
+    const result: UnusedMediaStorage = { keys: [], bytes: 0 };
+    await store.iterate((value, key) => {
+        if (usedKeys.has(key)) return;
+        result.keys.push(key);
+        result.bytes += value instanceof Blob ? value.size : 0;
+    });
+    return result;
+}
+
+export async function cleanupUnusedMediaFromScan(scan: UnusedMediaStorage) {
+    await deleteStoredMedia(scan.keys);
+}
+
 export function collectMediaStorageKeys(value: unknown, keys = new Set<string>()) {
     if (!value || typeof value !== "object") return keys;
     if ("storageKey" in value && typeof value.storageKey === "string" && value.storageKey.includes(":")) keys.add(value.storageKey);

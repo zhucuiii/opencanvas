@@ -35,7 +35,6 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
     const quality = config.quality || "auto";
-    const count = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
     // 扁平模式下图标要跟着比例变形，所以得拿到当前尺寸的像素值。
     const dimensions = readMediaDimensions(activeSize, inferMediaScale(activeSize), inferMediaRatio(activeSize));

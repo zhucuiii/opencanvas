@@ -4,11 +4,62 @@ import { ensureImagePreview, resolveImageUrl, uploadImage } from "@/services/ima
 import { resolveMediaUrl } from "@/services/file-storage";
 import { imageMetadata, referenceUrl } from "@/lib/canvas/canvas-node-factory";
 import { computeMediaSize, computeVideoSize, inferMediaScale } from "@/lib/media-size";
+import { nanoid } from "nanoid";
 import type { NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { ReferenceImage } from "@/types/image";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationMode, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+
+export function generationRequestId() {
+    return `generation-${nanoid(12)}`;
+}
+
+export function startGenerationMetadata(metadata: CanvasNodeMetadata | undefined, mode: CanvasGenerationMode, previous?: CanvasNodeMetadata["generationRequest"]): CanvasNodeMetadata {
+    // A completed/canceled request starts a new id; retrying an unknown request
+    // keeps its id so the same logical operation is not counted as a new one.
+    const isResumable = previous?.status === "running" || previous?.status === "unknown";
+    return {
+        ...metadata,
+        status: "loading",
+        errorDetails: undefined,
+        generationRequest: {
+            id: isResumable ? previous.id : generationRequestId(),
+            mode,
+            status: "running",
+            startedAt: new Date().toISOString(),
+            attempts: (isResumable ? previous.attempts : 0) + 1,
+        },
+    };
+}
+
+export function markGenerationRequestUnknown(metadata: CanvasNodeMetadata | undefined, reason: string): CanvasNodeMetadata {
+    if (!metadata?.generationRequest) return { ...metadata, status: "error", errorDetails: reason };
+    return {
+        ...metadata,
+        status: "error",
+        errorDetails: reason,
+        recovery: "unknown",
+        generationRequest: { ...metadata.generationRequest, status: "unknown", lastError: reason },
+    };
+}
+
+export function markGenerationRequestCanceled(metadata: CanvasNodeMetadata | undefined): CanvasNodeMetadata {
+    if (!metadata?.generationRequest) return { ...metadata, status: "idle", errorDetails: undefined };
+    return {
+        ...metadata,
+        status: "idle",
+        errorDetails: undefined,
+        recovery: "canceled",
+        generationRequest: { ...metadata.generationRequest, status: "canceled", lastError: undefined },
+    };
+}
+
+export function clearGenerationRequestMetadata(metadata: CanvasNodeMetadata | undefined): CanvasNodeMetadata {
+    if (!metadata) return {};
+    const { generationRequest: _completed, recovery: _recovery, ...rest } = metadata;
+    return rest;
+}
 
 export function imageExtension(dataUrl: string) {
     return dataUrl.match(/^data:image[/]([^;]+)/)?.[1] || dataUrl.match(/image[/]([^;]+)/)?.[1] || "png";
@@ -90,7 +141,7 @@ export async function hydrateAssistantImages(sessions: CanvasAssistantSession[])
 }
 
 export function getGenerationCount(count: string) {
-    return Math.max(1, Math.min(15, Math.floor(Math.abs(Number(count)) || 1)));
+    return Math.max(1, Math.min(4, Math.floor(Math.abs(Number(count)) || 1)));
 }
 
 export function getInputSummary(inputs: NodeGenerationInput[]) {
@@ -150,21 +201,60 @@ export function hasResumableVideoTask(node: CanvasNodeData) {
 }
 
 export function resetInterruptedGeneration(nodes: CanvasNodeData[]) {
-    return nodes.map((node) =>
-        node.metadata?.status === "loading"
-            ? hasResumableVideoTask(node)
-                ? node
-                : {
-                      ...node,
-                      metadata: {
-                          ...node.metadata,
-                          status: "error" as const,
-                          errorDetails: i18n.t("canvas.generation.interrupted"),
-                          images: node.metadata.images?.map((image) => (image.status === "loading" ? { ...image, status: "error" as const, errorDetails: i18n.t("canvas.generation.interrupted") } : image)),
-                          texts: node.metadata.texts?.map((text) => (text.status === "loading" ? { ...text, status: "error" as const, errorDetails: i18n.t("canvas.generation.interrupted") } : text)),
-                      },
-                  }
-            : node,
+    return nodes.map((node) => {
+        const isLoading = node.metadata?.status === "loading";
+        const isRunning = node.metadata?.generationRequest?.status === "running";
+        if (!isLoading && !isRunning) return node;
+        if (hasResumableVideoTask(node)) return node;
+        return {
+            ...node,
+            metadata: {
+                ...node.metadata,
+                ...markGenerationRequestUnknown(
+                    {
+                        ...node.metadata,
+                        generationRequest:
+                            node.metadata?.generationRequest ||
+                            ({
+                                id: `legacy-${node.id}`,
+                                mode: node.metadata?.generationMode || "image",
+                                status: "running",
+                                startedAt: new Date().toISOString(),
+                                attempts: 1,
+                            } as const),
+                    },
+                    i18n.t("canvas.generation.interrupted"),
+                ),
+                images: node.metadata?.images?.map((image) => (image.status === "loading" ? { ...image, status: "error" as const, errorDetails: i18n.t("canvas.generation.interrupted") } : image)),
+                texts: node.metadata?.texts?.map((text) => (text.status === "loading" ? { ...text, status: "error" as const, errorDetails: i18n.t("canvas.generation.interrupted") } : text)),
+            },
+        };
+    });
+}
+
+export function resumeGenerationMetadata(metadata: CanvasNodeMetadata | undefined): CanvasNodeMetadata {
+    if (!metadata?.generationRequest || metadata.generationRequest.status === "running") return metadata || {};
+    return {
+        ...metadata,
+        status: "loading",
+        errorDetails: undefined,
+        recovery: "resumable",
+        generationRequest: { ...metadata.generationRequest, status: "running", lastError: undefined },
+    };
+}
+
+export function generationRecoveryCounts(nodes: CanvasNodeData[]) {
+    return nodes.reduce(
+        (counts, node) => {
+            // Never report a batch root as one unknown task for every image.
+            if (node.type === CanvasNodeType.Config || node.type === CanvasNodeType.Group || node.metadata?.content) return counts;
+            const request = node.metadata?.generationRequest;
+            if (node.metadata?.status === "loading" && hasResumableVideoTask(node)) counts.resumable += 1;
+            else if (request?.status === "unknown") counts.unknown += 1;
+            else if (request?.status === "canceled") counts.canceled += 1;
+            return counts;
+        },
+        { resumable: 0, unknown: 0, canceled: 0 },
     );
 }
 

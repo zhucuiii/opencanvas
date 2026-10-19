@@ -109,7 +109,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
 
 export function videoResolutionLabel(value: string) {
     const resolution = parseVideoResolution(value);
-    return resolution === 1440 ? "2K" : resolution === 2160 ? "4K" : `${resolution}p`;
+    return resolution === "1440" ? "2K" : resolution === "2160" ? "4K" : `${resolution}p`;
 }
 
 export function videoSizeLabel(value: string) {

@@ -25,6 +25,21 @@ export type CanvasNodeStatus = "idle" | "success" | "loading" | "error";
 export type CanvasGenerationMode = "text" | "image" | "video" | "audio";
 export type CanvasImageGenerationType = "generation" | "edit";
 
+/**
+ * Persisted in the project so an interrupted request can be recognized after
+ * a refresh. The request key is an idempotency marker, not a provider secret.
+ */
+export type CanvasGenerationRequestRecord = {
+    id: string;
+    mode: CanvasGenerationMode;
+    status: "running" | "unknown" | "error" | "canceled";
+    startedAt: string;
+    attempts: number;
+    /** Provider task id, when the request has one (video tasks). */
+    taskId?: string;
+    lastError?: string;
+};
+
 export type CanvasNodeImage = {
     id: string;
     status: CanvasNodeStatus;
@@ -50,6 +65,8 @@ export type CanvasNodeMetadata = {
     prompt?: string;
     status?: CanvasNodeStatus;
     errorDetails?: string;
+    /** User-visible recovery guidance for persisted generation requests. */
+    recovery?: "resumable" | "unknown" | "canceled";
     fontSize?: number;
     generationMode?: CanvasGenerationMode;
     generationType?: CanvasImageGenerationType;
@@ -85,6 +102,7 @@ export type CanvasNodeMetadata = {
     durationMs?: number;
     videoTaskId?: string;
     videoTaskProvider?: "openai" | "gemini";
+    generationRequest?: CanvasGenerationRequestRecord;
     groupId?: string;
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
 };

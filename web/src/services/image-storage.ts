@@ -261,11 +261,54 @@ export async function cleanupUnusedImages(usedData: unknown) {
     await Promise.all([deleteStoredImages(unused), ...orphanPreviews.map(deleteImagePreview)]);
 }
 
+export type UnusedImageStorage = { keys: string[]; bytes: number; previewKeys: string[]; previewBytes: number };
+
+// 清理前先只做盘点，不删除任何内容。生成历史也纳入引用范围。
+export async function scanUnusedImages(usedData: unknown): Promise<UnusedImageStorage> {
+    const usedKeys = collectImageStorageKeys(usedData);
+    await Promise.all([
+        imageLogStore.iterate((value) => {
+            collectImageStorageKeys(value, usedKeys);
+        }),
+        videoLogStore.iterate((value) => {
+            collectImageStorageKeys(value, usedKeys);
+        }),
+    ]);
+    const result: UnusedImageStorage = { keys: [], bytes: 0, previewKeys: [], previewBytes: 0 };
+    await store.iterate((value, key) => {
+        if (usedKeys.has(key)) return;
+        result.keys.push(key);
+        result.bytes += blobBytes(value);
+    });
+    await previewStore.iterate((value, key) => {
+        if (usedKeys.has(key)) return;
+        result.previewKeys.push(key);
+        result.previewBytes += storedPreviewBytes(value);
+    });
+    return result;
+}
+
+export async function cleanupUnusedImagesFromScan(scan: UnusedImageStorage) {
+    await Promise.all([deleteStoredImages(scan.keys), ...scan.previewKeys.map(deleteImagePreview)]);
+}
+
 export function collectImageStorageKeys(value: unknown, keys = new Set<string>()) {
     if (!value || typeof value !== "object") return keys;
     if ("storageKey" in value && typeof value.storageKey === "string" && value.storageKey.startsWith("image:")) keys.add(value.storageKey);
     Object.values(value).forEach((item) => (Array.isArray(item) ? item.forEach((child) => collectImageStorageKeys(child, keys)) : collectImageStorageKeys(item, keys)));
     return keys;
+}
+
+function blobBytes(value: unknown) {
+    if (value instanceof Blob) return value.size;
+    if (value instanceof ArrayBuffer) return value.byteLength;
+    if (ArrayBuffer.isView(value)) return value.byteLength;
+    return 0;
+}
+
+function storedPreviewBytes(value: unknown) {
+    if (!value || typeof value !== "object" || !("blob" in value)) return 0;
+    return value.blob instanceof Blob ? value.blob.size : 0;
 }
 
 function blobToDataUrl(blob: Blob) {

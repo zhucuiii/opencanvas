@@ -72,6 +72,7 @@ export function CanvasNodePromptPanel({
     const config = buildGenerationConfig(globalConfig, node, mode);
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
+    const recovery = node.metadata?.recovery;
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
     const [parametersOpen, setParametersOpen] = useState(false);
@@ -258,6 +259,12 @@ export function CanvasNodePromptPanel({
                     placeholder="输入提示词..."
                 />
             </div>
+            {recovery ? (
+                <div className="atelier-recovery-note" role="status">
+                    <span>{recovery === "resumable" ? t("canvas.generation.resumable", { count: 1 }) : recovery === "canceled" ? t("canvas.generation.canceled", { count: 1 }) : t("canvas.generation.unknown", { count: 1 })}</span>
+                    <small>{t("canvas.generation.recoveryHint")}</small>
+                </div>
+            ) : null}
             <div className="atelier-prompt-footer">
                 <div className="atelier-prompt-options">
                     <ModelPicker flat config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px]" contentClassName="atelier-model-menu" />
@@ -314,7 +321,6 @@ export function CanvasNodePromptPanel({
                                     <input type="checkbox" aria-label="B64" checked={globalConfig.imageReferencesAsBase64 !== false} onChange={(event) => updateGlobalConfig("imageReferencesAsBase64", event.target.checked)} />
                                     B64
                                 </label>
-                                {mode === "image" ? <CanvasImageCountChip value={Number(config.count) || 1} onChange={(count) => onConfigChange(node.id, { count })} /> : null}
                                 <button
                                     type="button"
                                     className="atelier-icon-button"
@@ -332,6 +338,7 @@ export function CanvasNodePromptPanel({
                     </div>
                 </div>
                 <div className="atelier-prompt-actions">
+                    {mode === "image" ? <CanvasImageCountChip value={Number(node.metadata?.count) || 1} onChange={(count) => onConfigChange(node.id, { count })} /> : null}
                     <button type="button" className="atelier-icon-button" aria-label="增强提示词" title="增强提示词" disabled={!prompt.trim() || enhancing} onClick={() => void enhance()}>
                         {enhancing ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
                     </button>

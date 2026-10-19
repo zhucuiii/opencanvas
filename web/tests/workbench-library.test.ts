@@ -18,7 +18,7 @@ test("library hydration rejects malformed folders and dangling assignments", () 
     expect(data.favoriteIds).toEqual(["one"]);
     expect(data.folders.map((folder) => folder.name)).toEqual(["Trip"]);
     expect(data.imageFolders).toEqual({ one: ["a"] });
-    expect(normalizeWorkbenchLibrary(null)).toEqual({ favoriteIds: [], folders: [], imageFolders: {} });
+    expect(normalizeWorkbenchLibrary(null)).toEqual({ favoriteIds: [], folders: [], imageFolders: {}, videoFavoriteIds: [], videoFolders: {}, videoLibraryFolders: [] });
 });
 
 test("removing a folder preserves favorites and other image assignments", () => {

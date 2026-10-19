@@ -503,7 +503,7 @@ function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedV
                     <Tooltip title={t(favorite ? "imageWorkbench.unfavorite" : "imageWorkbench.favorite")}>
                         <Button size="small" type="text" className={favorite ? "!text-amber-500" : ""} icon={<Star className="size-3.5" fill={favorite ? "currentColor" : "none"} />} aria-pressed={favorite} onClick={() => toggleFavorite(video.id)} />
                     </Tooltip>
-                    <WorkbenchFolderPicker imageId={video.id} mediaType="video" onSaveAsset={() => onSaveAsset(video)} />
+                    <WorkbenchFolderPicker imageId={video.id} mediaType="video" onSaveAsset={async () => onSaveAsset(video)} />
                     <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
                         {t("common.addToAssets")}
                     </Button>

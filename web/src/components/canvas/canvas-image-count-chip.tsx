@@ -33,7 +33,7 @@ const LOOP = 5;
  * 滚动停下后自动吸附到最近的一项，中间项即当前张数。
  * 只在图片模式显示——张数只对生图有意义。
  */
-export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageCountChipProps) {
+export function CanvasImageCountChip({ value, max = 4, onChange }: CanvasImageCountChipProps) {
     const { t } = useTranslation();
     const reduce = useReducedMotion();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
@@ -157,11 +157,10 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
         [],
     );
 
-    const width = 40;
+    const width = 44;
     const gap = 8;
     const margin = 12;
-    // 右边缘与芯片右边缘对齐（芯片就在发送圆钮左边，40px 宽对齐成一条线）。
-    // 视口退化成 0 宽时 window.innerWidth 不可信，直接用 anchor 的位置。
+    // 面板贴着触发按钮向上展开，右边缘与按钮右边缘对齐。
     const viewport = window.innerWidth > width + margin * 2 ? window.innerWidth : 0;
     const left = anchor ? (viewport ? Math.max(margin, Math.min(viewport - width - margin, anchor.right - width)) : anchor.right - width) : 0;
     const style = {
@@ -171,9 +170,9 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
         left,
         bottom: anchor ? window.innerHeight - anchor.top + gap : undefined,
         background: theme.toolbar.panel,
-        borderRadius: 18,
+        borderRadius: 16,
         boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
-        padding: "8px 4px",
+        padding: "7px 5px",
         color: theme.node.text,
     } as const;
     // 渐隐遮罩：上下各盖住一条，让边缘的项淡出。
@@ -186,7 +185,7 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
             <button
                 ref={buttonRef}
                 type="button"
-                className="h-10 w-10 shrink-0 cursor-pointer rounded-full text-sm font-medium tabular-nums transition hover:opacity-80"
+                className="h-7 min-w-9 shrink-0 cursor-pointer rounded-full px-2 text-[11px] font-semibold tabular-nums transition hover:opacity-80"
                 style={{ background: theme.node.fill, color: theme.node.text }}
                 onClick={toggle}
                 aria-label={t("settingsPanels.image.count")}
@@ -201,10 +200,10 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
                         <motion.div
                             ref={panelRef}
                             style={{ ...style, transformOrigin: "right bottom" }}
-                            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 8 }}
+                            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 6 }}
                             animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-                            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 6 }}
-                            transition={reduce ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 30, mass: 0.7 }}
+                            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 4 }}
+                            transition={reduce ? { duration: 0.12 } : { type: "spring", stiffness: 460, damping: 32, mass: 0.6 }}
                             onPointerDown={(event) => event.stopPropagation()}
                             onMouseDown={(event) => event.stopPropagation()}
                             onClick={(event) => event.stopPropagation()}
@@ -216,7 +215,7 @@ export function CanvasImageCountChip({ value, max = 15, onChange }: CanvasImageC
                                  * relative，两者 z-auto 按 DOM 先后层叠，文字就浮上来了。
                                  * 上下渐隐留在最后，它们是半透明的，本来就要罩住文字边缘。
                                  */}
-                                <div className="pointer-events-none absolute left-0 right-0 rounded-xl" style={{ top: pad, height: ROW_HEIGHT, background: theme.toolbar.activeBg }} />
+                                <div className="pointer-events-none absolute left-1 right-1 rounded-[10px]" style={{ top: pad, height: ROW_HEIGHT, background: theme.toolbar.activeBg }} />
                                 <div ref={wheelRef} className="relative hide-scrollbar h-full snap-y snap-mandatory overflow-y-auto overscroll-contain" style={{ paddingTop: pad, paddingBottom: pad }} onScroll={handleScroll}>
                                     {Array.from({ length: LOOP }, (_, loop) =>
                                         items.map((n, index) => {

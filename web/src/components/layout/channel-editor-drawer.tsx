@@ -1,9 +1,21 @@
 import { Button, Drawer, Input, Segmented, Select, Space } from "antd";
-import { ListPlus, Trash2 } from "lucide-react";
+import { ListPlus, Trash2, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import {
+    API_PROTOCOL_PRESETS,
+    apiProtocolPresetForChannel,
+    applyApiProtocolPreset,
+    defaultBaseUrlForApiFormat,
+    guessCapability,
+    normalizeChannelModels,
+    type ApiCallFormat,
+    type ApiProtocolPresetId,
+    type ChannelModel,
+    type ModelCapability,
+    type ModelChannel,
+} from "@/stores/use-config-store";
 import { ModelScriptEditor } from "./model-script-editor";
 import { ModelSelectModal } from "./model-select-modal";
 
@@ -33,6 +45,8 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         const baseUrl = !draft.baseUrl.trim() || draft.baseUrl.trim() === defaultBaseUrlForApiFormat(draft.apiFormat) ? defaultBaseUrlForApiFormat(apiFormat) : draft.baseUrl;
         patch({ apiFormat, baseUrl });
     };
+
+    const applyPreset = (presetId: ApiProtocolPresetId) => setDraft((current) => (current ? applyApiProtocolPreset(current, presetId) : current));
 
     const applySelection = (names: string[]) => {
         const map = new Map(draft.models.map((model) => [model.name, model]));
@@ -82,6 +96,37 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
                 </label>
             </div>
+
+            <section className="mt-5 rounded-xl border border-stone-200 bg-stone-50/60 p-3 dark:border-stone-800 dark:bg-stone-950/30">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                            <Zap className="size-4" />
+                            {t("config.protocolPresets.title")}
+                        </div>
+                        <div className="mt-1 text-xs text-stone-500">{t("config.protocolPresets.description")}</div>
+                    </div>
+                    <span className="rounded-full border border-stone-200 px-2 py-0.5 text-[10px] text-stone-500 dark:border-stone-800">{t("config.protocolPresets.safeHint")}</span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    {API_PROTOCOL_PRESETS.map((preset) => {
+                        const selected = apiProtocolPresetForChannel(draft)?.id === preset.id;
+                        return (
+                            <button
+                                key={preset.id}
+                                type="button"
+                                aria-pressed={selected}
+                                className={`rounded-lg border px-3 py-2 text-left transition ${selected ? "border-stone-500 bg-white shadow-sm dark:border-stone-500 dark:bg-stone-900" : "border-stone-200 bg-white/70 hover:border-stone-300 dark:border-stone-800 dark:bg-stone-900/40 dark:hover:border-stone-700"}`}
+                                onClick={() => applyPreset(preset.id)}
+                            >
+                                <span className="block text-xs font-semibold">{t(`config.protocols.${preset.id}.name`)}</span>
+                                <span className="mt-1 block text-[11px] leading-4 text-stone-500">{t(`config.protocols.${preset.id}.description`)}</span>
+                                <code className="mt-1.5 block truncate text-[10px] text-stone-400">{preset.baseUrl || "https://your-provider.example.com/v1"}</code>
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
 
             <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
