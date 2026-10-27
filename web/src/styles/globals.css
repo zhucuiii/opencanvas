@@ -793,6 +793,45 @@
     height: min(720px, calc(100vh - 48px));
 }
 
+/*
+ * 矮屏（<560px）时把弹窗顶部/底部的留白压到最小，
+ * 多出来的每一像素都给内部的侧栏列表和表单用 ——
+ * 否则 340px 高的窗口里弹窗只有 292px，侧栏光头部+按钮就吃掉 132px。
+ */
+@media (max-height: 560px) {
+    .app-config-modal-left .ant-modal-wrap .ant-modal,
+    .app-config-modal-bottom .ant-modal-wrap .ant-modal {
+        height: calc(100vh - 24px);
+    }
+
+    .app-config-modal-left .ant-modal-content,
+    .app-config-modal-bottom .ant-modal-content {
+        height: calc(100vh - 24px);
+        max-height: calc(100vh - 24px);
+    }
+
+    /*
+     * 矮到 340px 这种程度时，侧栏光"头部 54 + 添加按钮 36 + 底部提示 42"就
+     * 吃掉 132px，列表再挤也只剩十几像素 —— 硬压没有意义。
+     * 改成给面板一个可用的最小高度、让弹窗正文整体滚动：
+     * 一屏看不全就滚，总比所有东西叠在一起强。
+     */
+    .app-config-modal-left .ant-modal-body,
+    .app-config-modal-bottom .ant-modal-body {
+        overflow-y: auto;
+    }
+
+    .app-config-modal-left .app-config-panel-shell,
+    .app-config-modal-bottom .app-config-panel-shell {
+        min-height: 24rem;
+    }
+
+    .app-config-modal-left .app-config-panel-shell > .app-config-tabs-fill,
+    .app-config-modal-bottom .app-config-panel-shell > .app-config-tabs-fill {
+        overflow: visible;
+    }
+}
+
 .app-config-modal-bottom .ant-modal-wrap .ant-modal {
     height: min(720px, calc(100vh - 168px));
 }
@@ -850,10 +889,21 @@
 }
 
 .atelier-config-api-sidebar {
-    display: grid;
     min-height: 0;
-    /* 列表区保底 96px：窗口再矮也不会被压成一条线，配合页面滚动仍可操作。 */
-    grid-template-rows: 54px minmax(96px, 1fr) auto;
+    /*
+     * 头部 / 列表 / 底部按钮 三段纵向排布。
+     * 列表必须能收缩，否则容器变矮时后面的元素会被挤出去、盖在列表上
+     * （"添加配置"压在渠道列表中间就是这么来的）。
+     */
+    /*
+     * 用 flex 而不是 grid：grid 的 1fr 行在容器极矮时仍会塌成 0，
+     * 后面的行照样叠上来；flex 下把列表设成 flex:1 + min-height:0，
+     * 容器再矮也只是列表变矮，其余元素各占各的高度，不会互相覆盖。
+     */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    scrollbar-width: thin;
     border-right: 1px solid #ffffff0a;
     background: transparent;
 }
@@ -1536,20 +1586,18 @@
  */
 /*
  * /config 页面上的面板高度。
- * 屏幕够高时撑满，矮窗口则保底 32rem 并让页面滚动 ——
- * 否则 flex 会把面板压到几十像素，侧栏列表直接看不见。
+ *
+ * 约束必须"跟着视口走"，不能写死下限：
+ * 写死 32rem 时，视口比它矮（比如 900x340）面板照样撑到 32rem，
+ * 于是整块溢出、侧栏内部的行互相重叠 —— 看上去就是布局错乱。
+ * 现在改成：上限跟着视口收，内容再长都交给页面滚动，
+ * 任何视口下面板都不会比可用高度更高。
  */
 .app-config-page-panel {
     display: flex;
-    min-height: 32rem;
+    min-height: 0;
     flex-direction: column;
-}
-
-@media (min-height: 760px) {
-    .app-config-page-panel {
-        height: calc(100dvh - 15rem);
-        min-height: 26rem;
-    }
+    height: min(46rem, calc(100dvh - 13rem));
 }
 
 .app-config-panel-shell > .app-config-tabs-fill {
@@ -1680,6 +1728,22 @@
     margin-inline: 0;
     padding-bottom: 0;
     translate: 0 -50%;
+}
+
+
+/* 侧栏改成 flex 后，头尾不参与收缩、列表吃掉剩余高度。 */
+.atelier-config-api-sidebar-head {
+    flex-shrink: 0;
+}
+
+.atelier-config-api-sidebar .atelier-config-api-add {
+    flex-shrink: 0;
+    margin: 6px;
+}
+
+.atelier-config-api-sidebar .atelier-config-api-list {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 /* Keep Ant Design's modal shell fully mounted and visible, then reveal only
