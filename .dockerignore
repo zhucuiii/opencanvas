@@ -12,3 +12,6 @@ web/out
 *.log
 .env*
 !.env.example
+
+# 10087 开发实例的构建产物，只用于本地挂载，不进镜像
+web/.dist-10087
