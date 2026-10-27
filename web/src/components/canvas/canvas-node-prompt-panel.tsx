@@ -18,7 +18,6 @@ import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-refer
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import { requestImageQuestion } from "@/services/api/image";
 import { CanvasPresetPicker } from "./canvas-preset-picker";
-import { CanvasStylePicker } from "./canvas-style-picker";
 import { buildGenerationConfig } from "@/lib/canvas/canvas-generation-helpers";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
@@ -118,12 +117,6 @@ export function CanvasNodePromptPanel({
         updatePrompt(value);
         closeTransientPanels();
     };
-    /** 选「风格」= 把它追加到已写的内容后面，不覆盖用户已经打的东西。 */
-    const applyStyle = (value: string) => {
-        const base = prompt.trim();
-        updatePrompt(base ? `${base}，${value}` : value);
-        closeTransientPanels();
-    };
     const closeTransientPanels = () => {
         setParametersOpen(false);
     };
@@ -213,7 +206,6 @@ export function CanvasNodePromptPanel({
                  * 这两个是写提示词时最常用的入口，放顶栏更容易找到。
                  */}
                 <div className="atelier-prompt-top-actions">
-                    <CanvasStylePicker onApply={applyStyle} />
                     <CanvasPresetPicker onApply={applyPreset} />
                 </div>
             </div>
