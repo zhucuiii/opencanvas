@@ -17,8 +17,8 @@ import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import { requestImageQuestion } from "@/services/api/image";
-import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
-import atelierPresets from "@/lib/canvas/atelier-prompt-presets.json";
+import { CanvasPresetPicker } from "./canvas-preset-picker";
+import { CanvasStylePicker } from "./canvas-style-picker";
 import { buildGenerationConfig } from "@/lib/canvas/canvas-generation-helpers";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
@@ -57,11 +57,6 @@ export function CanvasNodePromptPanel({
     onImageSettingsOpenChange,
     modeOverride,
 }: CanvasNodePromptPanelProps) {
-    const [libraryOpen, setLibraryOpen] = useState(false);
-    const presetScrollRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (libraryOpen) presetScrollRef.current?.scrollTo({ top: 0 });
-    }, [libraryOpen]);
     const { t } = useTranslation();
     const { message } = App.useApp();
     const globalConfig = useEffectiveConfig();
@@ -77,8 +72,6 @@ export function CanvasNodePromptPanel({
     const [expanded, setExpanded] = useState(false);
     const [parametersOpen, setParametersOpen] = useState(false);
     const [parametersMounted, setParametersMounted] = useState(false);
-    const [presetsClosing, setPresetsClosing] = useState(false);
-    const presetsCloseTimerRef = useRef<number | null>(null);
     const [enhancing, setEnhancing] = useState(false);
     const [listening, setListening] = useState(false);
     const recognitionRef = useRef<SpeechSession | null>(null);
@@ -87,33 +80,12 @@ export function CanvasNodePromptPanel({
         setPrompt(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
         setParametersOpen(false);
         setParametersMounted(false);
-        setLibraryOpen(false);
         return () => {
             recognitionRef.current?.stop();
             enhanceRef.current?.abort();
         };
     }, [node.id]);
-    useEffect(
-        () => () => {
-            if (presetsCloseTimerRef.current) window.clearTimeout(presetsCloseTimerRef.current);
-        },
-        [],
-    );
-    const closeLibrary = () => {
-        if (!libraryOpen || presetsClosing) return;
-        if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-            setLibraryOpen(false);
-            return;
-        }
-        setPresetsClosing(true);
-        if (presetsCloseTimerRef.current) window.clearTimeout(presetsCloseTimerRef.current);
-        presetsCloseTimerRef.current = window.setTimeout(() => {
-            setLibraryOpen(false);
-            setPresetsClosing(false);
-            presetsCloseTimerRef.current = null;
-        }, 210);
-    };
-    useEffect(() => onCanvasPopoverDismiss(() => setLibraryOpen(false)), []);
+
     useEffect(() => {
         if (!parametersOpen) return;
         const close = (event: PointerEvent) => {
@@ -140,6 +112,20 @@ export function CanvasNodePromptPanel({
     };
     const submit = () => {
         if (prompt.trim() && !isRunning) onGenerate(node.id, mode, prompt.trim());
+    };
+    /** 选「预设」= 用一个模板替换当前提示词（模板本身就是完整指令）。 */
+    const applyPreset = (value: string) => {
+        updatePrompt(value);
+        closeTransientPanels();
+    };
+    /** 选「风格」= 把它追加到已写的内容后面，不覆盖用户已经打的东西。 */
+    const applyStyle = (value: string) => {
+        const base = prompt.trim();
+        updatePrompt(base ? `${base}，${value}` : value);
+        closeTransientPanels();
+    };
+    const closeTransientPanels = () => {
+        setParametersOpen(false);
     };
     const enhance = async () => {
         const model = resolveModelForCapability(globalConfig, undefined, "text");
@@ -221,33 +207,16 @@ export function CanvasNodePromptPanel({
                         <CanvasNodeReferenceBar nodeId={node.id} nodes={nodes} connectedNodes={connectedNodes} onDisconnect={onDisconnectReference} headerAddButton compact />
                     </div>
                 ) : null}
-            </div>
-            {libraryOpen ? (
-                <div className={`atelier-preset-section${presetsClosing ? " is-closing" : ""}`}>
-                    <button type="button" className="atelier-preset-heading" aria-expanded={true} onClick={closeLibrary}>
-                        常用提示词库
-                        <ChevronDown size={13} className="rotate-180" />
-                    </button>
-                    <div ref={presetScrollRef} className="atelier-preset-list" role="list" aria-label="常用提示词">
-                        {atelierPresets.map((preset, index) => (
-                            <button
-                                type="button"
-                                key={preset.id}
-                                role="listitem"
-                                className="atelier-preset-chip"
-                                style={{ animationDelay: `${Math.min(5, Math.floor(index / 8)) * 18}ms` }}
-                                title={`点击应用：${preset.name}`}
-                                onClick={() => {
-                                    updatePrompt(preset.prompt);
-                                    closeLibrary();
-                                }}
-                            >
-                                {preset.name}
-                            </button>
-                        ))}
-                    </div>
+                {/*
+                 * 风格 / 预设两个入口放在面板头部右侧：
+                 * 原来那个「词库」埋在底栏一堆参数里，要先把面板撑开才看得见；
+                 * 这两个是写提示词时最常用的入口，放顶栏更容易找到。
+                 */}
+                <div className="atelier-prompt-top-actions">
+                    <CanvasStylePicker onApply={applyStyle} />
+                    <CanvasPresetPicker onApply={applyPreset} />
                 </div>
-            ) : null}
+            </div>
             <div className="atelier-prompt-editor-shell">
                 <CanvasPromptChipInput
                     value={prompt}
@@ -274,7 +243,6 @@ export function CanvasNodePromptPanel({
                             config={config}
                             onChange={(patch) => onConfigChange(node.id, patch)}
                             onOpenChange={(open) => {
-                                if (open) closeLibrary();
                                 onImageSettingsOpenChange?.(open);
                             }}
                         />
@@ -296,11 +264,6 @@ export function CanvasNodePromptPanel({
                     {mode === "image" ? (
                         <CanvasImageQualityPopover flat quality={config.quality || "auto"} onChange={(quality) => onConfigChange(node.id, { quality })} buttonClassName="!h-7 !px-0" />
                     ) : null}
-                    {!libraryOpen ? (
-                        <button type="button" className="atelier-library-trigger" aria-label="词库" aria-expanded={false} title="打开词库" onClick={() => setLibraryOpen(true)}>
-                            词库
-                        </button>
-                    ) : null}
                     <div className="atelier-advanced-shell" data-open={parametersOpen ? "true" : undefined}>
                         {!parametersMounted ? (
                             <button
@@ -310,7 +273,6 @@ export function CanvasNodePromptPanel({
                                 aria-expanded={false}
                                 onClick={() => {
                                     setParametersOpen(true);
-                                    closeLibrary();
                                 }}
                             >
                                 <MoreHorizontal size={17} />

@@ -78,6 +78,25 @@ export const defaultAdvancedProtocol: ChannelAdvancedProtocol = {
     resultPaths: "",
 };
 
+/** 用户自定义的画布风格条目。 */
+export type CanvasStylePreset = {
+    id: string;
+    name: string;
+    /** 具体提示词；点击风格时插进提示词框。 */
+    prompt: string;
+    /** 卡片上的色块，用来快速区分风格。 */
+    color?: string;
+};
+
+/** 用户自定义的画布提示词预设。 */
+export type CanvasPromptPreset = {
+    id: string;
+    name: string;
+    prompt: string;
+    /** 一句话说明，显示在名称下方。 */
+    description?: string;
+};
+
 export type ModelChannel = {
     id: string;
     name: string;
@@ -122,6 +141,16 @@ export type AiConfig = {
     videoRatio: string;
     transferPresetOverrides: Record<string, { name?: string; prompt?: string }>;
     transferCustomPresets: Array<{ id: string; name: string; prompt: string }>;
+    /**
+     * 画布「风格」库：用户自己维护的视觉风格条目。
+     * 只做界面与本地保存，条目由用户自行添加（不预置任何内容）。
+     */
+    canvasStylePresets: CanvasStylePreset[];
+    /**
+     * 画布「预设」库：用户自己维护的提示词模板。
+     * 同上，不预置内容。
+     */
+    canvasPromptPresets: CanvasPromptPreset[];
     background: string;
     imageReferencesAsBase64?: boolean;
     imageOutputFormat?: "png" | "jpeg" | "webp";
@@ -205,6 +234,8 @@ export const defaultConfig: AiConfig = {
     videoRatio: "16:9",
     transferPresetOverrides: {},
     transferCustomPresets: [],
+    canvasStylePresets: [],
+    canvasPromptPresets: [],
     background: "",
     imageOutputFormat: "png",
     imageModeration: "auto",
@@ -369,6 +400,8 @@ export const useConfigStore = create<ConfigStore>()(
                         videoRatio: config.videoRatio || "16:9",
                         transferPresetOverrides: config.transferPresetOverrides && typeof config.transferPresetOverrides === "object" ? config.transferPresetOverrides : {},
                         transferCustomPresets: Array.isArray(config.transferCustomPresets) ? config.transferCustomPresets : [],
+                        canvasStylePresets: Array.isArray(config.canvasStylePresets) ? config.canvasStylePresets : [],
+                        canvasPromptPresets: Array.isArray(config.canvasPromptPresets) ? config.canvasPromptPresets : [],
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",

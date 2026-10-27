@@ -312,6 +312,38 @@
     align-items: flex-start;
     gap: 9px;
 }
+/* 风格 / 预设：靠右对齐在面板头部，和左侧的焦点编辑、加参考图分开。 */
+.atelier-prompt-top-actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    padding-top: 5px;
+}
+.atelier-head-action {
+    display: inline-flex;
+    height: 26px;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 5px;
+    padding: 0 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: #8882;
+    color: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+.atelier-head-action:hover {
+    background: #ffffff12;
+    border-color: #ffffff14;
+}
 .atelier-square-button {
     display: grid;
     place-items: center;
@@ -423,100 +455,6 @@
 }
 .atelier-base64 input {
     accent-color: #b6b6b6;
-}
-.atelier-library-trigger {
-    display: flex;
-    height: 28px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    padding: 0 7px;
-    border: 1px solid transparent;
-    border-radius: 9px;
-    background: transparent;
-    color: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    cursor: pointer;
-    transition:
-        background-color 150ms ease,
-        border-color 150ms ease;
-}
-.atelier-library-trigger:hover {
-    background: #ffffff0d;
-    border-color: transparent;
-}
-.atelier-preset-section {
-    margin: 10px 0 4px;
-    animation: atelier-preset-section-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    transform-origin: top center;
-}
-.atelier-preset-section.is-closing {
-    animation: atelier-preset-section-out 210ms cubic-bezier(0.4, 0, 1, 1) both;
-    pointer-events: none;
-}
-.atelier-preset-section.is-closing .atelier-preset-list {
-    animation: atelier-preset-list-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-.atelier-preset-section.is-closing .atelier-preset-chip {
-    animation: atelier-preset-chip-out 160ms ease-in both;
-}
-.atelier-preset-heading {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    min-height: 22px;
-    padding: 0;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-}
-.atelier-preset-heading svg {
-    transition: transform 180ms ease;
-}
-.atelier-preset-heading:hover {
-    opacity: 0.8;
-}
-.atelier-preset-list {
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: 6px;
-    max-height: 132px;
-    margin-top: 7px;
-    padding-right: 4px;
-    overflow-y: auto;
-    scrollbar-width: none;
-    animation: atelier-preset-list-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.atelier-preset-list::-webkit-scrollbar {
-    display: none;
-}
-.atelier-preset-chip {
-    height: 28px;
-    max-width: 100%;
-    flex: 0 0 auto;
-    padding: 0 10px;
-    overflow: hidden;
-    border-radius: 8px;
-    background: #ffffff0d;
-    color: inherit;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 28px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: pointer;
-    transition:
-        background-color 150ms ease,
-        color 150ms ease;
-    animation: atelier-preset-chip-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.atelier-preset-chip:hover {
-    background: #ffffff1f;
-    color: #fff;
 }
 .atelier-ratio-panel {
     width: min(316px, calc(100vw - 52px));
@@ -656,66 +594,6 @@
         transform: translateY(0);
     }
 }
-@keyframes atelier-preset-section-in {
-    from {
-        opacity: 0;
-        transform: translate3d(0, -8px, 0);
-    }
-    to {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-}
-@keyframes atelier-preset-list-in {
-    from {
-        opacity: 0;
-        clip-path: inset(0 0 100% 0);
-    }
-    to {
-        opacity: 1;
-        clip-path: inset(0 0 0 0);
-    }
-}
-@keyframes atelier-preset-chip-in {
-    from {
-        opacity: 0;
-        transform: translate3d(0, 5px, 0);
-    }
-    to {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-}
-@keyframes atelier-preset-section-out {
-    from {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-    to {
-        opacity: 0;
-        transform: translate3d(0, -6px, 0);
-    }
-}
-@keyframes atelier-preset-list-out {
-    from {
-        opacity: 1;
-        clip-path: inset(0 0 0 0);
-    }
-    to {
-        opacity: 0;
-        clip-path: inset(0 0 100% 0);
-    }
-}
-@keyframes atelier-preset-chip-out {
-    from {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-    to {
-        opacity: 0;
-        transform: translate3d(0, -3px, 0);
-    }
-}
 @keyframes atelier-advanced-in {
     from {
         opacity: 0;
@@ -807,17 +685,6 @@
         width: 150px !important;
         height: 100px !important;
     }
-    .atelier-preset-section {
-        margin-top: 8px;
-    }
-    .atelier-preset-list {
-        max-height: 110px;
-    }
-    .atelier-preset-chip {
-        height: 26px;
-        padding-inline: 8px;
-        line-height: 26px;
-    }
     .atelier-prompt-panel {
         padding: 14px;
     }
@@ -845,16 +712,6 @@
     }
     .atelier-advanced[data-state="open"],
     .atelier-advanced[data-state="closing"] {
-        animation: none;
-    }
-    .atelier-preset-section,
-    .atelier-preset-list,
-    .atelier-preset-chip {
-        animation: none;
-    }
-    .atelier-preset-section.is-closing,
-    .atelier-preset-section.is-closing .atelier-preset-list,
-    .atelier-preset-section.is-closing .atelier-preset-chip {
         animation: none;
     }
     .atelier-connector-slide,
