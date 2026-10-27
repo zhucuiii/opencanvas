@@ -2200,9 +2200,13 @@
      * 所以固定一个能放 3 行半的高度并自己滚动 —— 用百分比反而不行：
      * 百分比是相对"内容高度"算的，auto 行里的百分比会退化成按内容撑开。
      */
-    min-height: 0;
-    /* 表头 44 + 每行 32 * 4 + 上下 padding = 200，正好放下 4 个常见配置；再多才滚动。 */
-    height: 200px;
+    /*
+     * 用 max-height 而不是固定 height：不同 antd 版本的行高略有差异
+     * （分段控件内边距不同），写死高度会在某些版本里把最后一行切掉。
+     * 这里给下限和上限，内容少时按内容、多了才滚动。
+     */
+    min-height: 120px;
+    max-height: 220px;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
-import { ChevronDown, ChevronLeft, Plus, Type, Image as ImageIcon, Video, Music2, Undo2, Redo2, Settings2, MousePointer2, Hand, Puzzle, Eraser, Grid2x2, Sun, Moon, Info, Scan } from "lucide-react";
+import { ChevronDown, ChevronLeft, Plus, Type, Image as ImageIcon, Video, Music2, Undo2, Redo2, Settings2, MousePointer2, Hand, Puzzle, Eraser, Grid2x2, Grip, Square, Info, Scan } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -54,7 +54,6 @@ export function CanvasToolbar({
 }) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const colorTheme = useThemeStore((state) => state.theme);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const toolbarDock = useCanvasSidePanelStore((state) => state.toolbarDock);
     const setToolbarDock = useCanvasSidePanelStore((state) => state.setToolbarDock);
@@ -160,15 +159,21 @@ export function CanvasToolbar({
                 <button type="button" className="atelier-tool" aria-label={t("navigation.config")} title={t("navigation.config")} onClick={() => openConfigDialog(false)}>
                     <Settings2 size={18} />
                 </button>
+                {/*
+                 * 这个按钮管的是画布背景（点阵 / 网格 / 纯色），不是主题切换。
+                 * 原来用月亮/太阳图标，看起来像"切深浅色"，实际点开只有背景选项，
+                 * 图标和行为对不上；换成网格图标，和菜单里的三项一致。
+                 * 同时把 title 里误导性的"主题：深色"去掉，改成当前背景模式。
+                 */}
                 <button
                     type="button"
                     className="atelier-tool"
-                    aria-label="画布选项"
-                    title={`主题：${colorTheme === "dark" ? "深色" : "浅色"} · 画布选项`}
+                    aria-label="画布背景"
+                    title={`画布背景：${backgroundMode === "dots" ? "点阵" : backgroundMode === "lines" ? "网格" : "纯色"}`}
                     aria-expanded={menu === "settings"}
                     onClick={(event) => toggle("settings", event)}
                 >
-                    {colorTheme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+                    <Grid2x2 size={18} />
                 </button>
             </div>
             <div className="atelier-tools-extra">
@@ -233,7 +238,7 @@ export function CanvasToolbar({
                                             action(() => onBackgroundModeChange(mode));
                                         }}
                                     >
-                                        <Grid2x2 size={16} />
+                                        {mode === "dots" ? <Grip size={16} /> : mode === "lines" ? <Grid2x2 size={16} /> : <Square size={16} />}
                                         <span>{mode === "dots" ? "点阵背景" : mode === "lines" ? "网格背景" : "纯色背景"}</span>
                                         {backgroundMode === mode ? <span className="atelier-menu-current">当前</span> : null}
                                     </button>
