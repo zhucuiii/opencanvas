@@ -7,19 +7,24 @@ export default function ConfigPage() {
 
     return (
         /*
-         * 用 flex 纵向分配高度，而不是让内容自然撑开：
-         * 配置面板内部有多个"自适应滚动区"（编辑器、模型列表），
-         * 只有当面板拿到确定的高度时它们才知道该滚多少。
-         * 之前 panel 按内容无限长，模型列表一展开就把面板顶出视口，
-         * 外层 overflow-y-auto 又只滚整页，导致底下那截既看不见也滚不到。
+         * 整页滚动 + 面板最小高度，而不是把面板死死压进视口高度。
+         *
+         * 早先用的是 flex + h-full：窗口够高时没问题，一旦窗口变矮（比如 900x340），
+         * 面板只能分到几十像素，侧栏列表被压成一条线、还和底部提示叠在一起，
+         * 整个 API 配置区等于看不见。
+         *
+         * 现在改成：
+         *   - 页面自身 overflow-y-auto，装不下就滚页面；
+         *   - 面板给一个最小高度（32rem），保证列表、表单、底部提示三段都排得开；
+         *   - 屏幕够高时再用 h-full 让面板填满，视觉和之前一致。
          */
-        <main className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-            <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-6 py-6">
+        <main className="h-full overflow-y-auto bg-background">
+            <div className="mx-auto flex w-full max-w-6xl flex-col px-6 py-6">
                 <div className="mb-5 shrink-0">
                     <h1 className="text-xl font-semibold text-stone-950 dark:text-stone-100">{t("config.title")}</h1>
                     <p className="mt-1 text-sm text-stone-500">{t("config.description")}</p>
                 </div>
-                <div className="flex min-h-0 flex-1 flex-col">
+                <div className="app-config-page-panel">
                     <AppConfigPanel />
                 </div>
             </div>

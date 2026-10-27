@@ -852,7 +852,8 @@
 .atelier-config-api-sidebar {
     display: grid;
     min-height: 0;
-    grid-template-rows: 54px minmax(0, 1fr) auto;
+    /* 列表区保底 96px：窗口再矮也不会被压成一条线，配合页面滚动仍可操作。 */
+    grid-template-rows: 54px minmax(96px, 1fr) auto;
     border-right: 1px solid #ffffff0a;
     background: transparent;
 }
@@ -1533,6 +1534,24 @@
  * 面板就按内容无限撑开，内部滚动区全部失效（模型列表展开后被裁掉就是这么来的）。
  * 去掉模态前缀，让它对两种形态都生效。
  */
+/*
+ * /config 页面上的面板高度。
+ * 屏幕够高时撑满，矮窗口则保底 32rem 并让页面滚动 ——
+ * 否则 flex 会把面板压到几十像素，侧栏列表直接看不见。
+ */
+.app-config-page-panel {
+    display: flex;
+    min-height: 32rem;
+    flex-direction: column;
+}
+
+@media (min-height: 760px) {
+    .app-config-page-panel {
+        height: calc(100dvh - 15rem);
+        min-height: 26rem;
+    }
+}
+
 .app-config-panel-shell > .app-config-tabs-fill {
     display: flex;
     min-height: 0;
