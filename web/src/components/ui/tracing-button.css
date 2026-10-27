@@ -12,6 +12,9 @@
  * 3. 尺寸不再写死 150×50。原版尺寸固定是因为文字层全是 absolute，这里放一个
  *    visibility:hidden 的 sizer 撑出宽高，标签文案多长都跟得上。
  * 4. 丢掉 .start / data-start 那套"已开始"状态 —— 是游戏按钮的语义，跟我们的跳转按钮无关。
+ * 5. 四条边线不再是贴在矩形四边的 2px 长条，改成沿真实圆角矩形轮廓描边的 SVG 路径
+ *    （见 tracing-button.tsx 里的 outlineSegments）。原方案在圆角处被 overflow 切掉，
+ *    拐角只剩几级台阶、绿线不跟着圆角转，肉眼看就是"边框缺了一角"。
  */
 
 .tracing-button {
@@ -21,6 +24,7 @@
     /* 图标占位宽度（16px 图标 + 6px 间距），由组件按是否有图标传入。 */
     --tracing-icon-slot: 0px;
     --tracing-pad-x: 18px;
+    --tracing-radius: 12px;
 
     position: relative;
     display: inline-flex;
@@ -29,8 +33,8 @@
     gap: 6px;
     padding: 9px var(--tracing-pad-x);
     border: 0;
-    /* 沿用初版的圆角（首页白按钮原是 rounded-xl = 12px，旁边的星轨按钮也是 12px）。 */
-    border-radius: 12px;
+    /* 圆角值由组件以 --tracing-radius 传入，和描边路径用的是同一个数。 */
+    border-radius: var(--tracing-radius);
     background-color: var(--tracing-surface);
     color: var(--tracing-ink);
     font: inherit;
@@ -39,72 +43,58 @@
     line-height: 1.25;
     letter-spacing: 1px;
     text-transform: uppercase;
+    /* 文字翻页要裁切，圆角由 SVG 描边自己保证，所以这里保留 hidden 也不会切到线。 */
     overflow: hidden;
     cursor: pointer;
     transition: all 0.3s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
-/* 横线：上边从右端往左长，下边从左端往右长。 */
-.tracing-button::before,
-.tracing-button::after {
-    content: "";
-    position: absolute;
-    z-index: 2;
-    width: 0;
-    height: 2px;
-    background-color: var(--tracing-accent);
-    transition: all 0.3s cubic-bezier(0.35, 0.1, 0.25, 1);
-}
-
-.tracing-button::before {
-    right: 0;
-    top: 0;
-    transition: all 0.5s cubic-bezier(0.35, 0.1, 0.25, 1);
-}
-
-.tracing-button::after {
-    left: 0;
-    bottom: 0;
-}
-
-/* 竖线：右边从上往下长，左边从下往上长。 */
-.tracing-button__lines {
+/* 描边整体画在按钮内部，pointer-events 关掉以免挡住点击与 hover。 */
+.tracing-button__outline {
     position: absolute;
     inset: 0;
     z-index: 3;
-    pointer-events: none;
-}
-
-.tracing-button__lines::before,
-.tracing-button__lines::after {
-    content: "";
-    position: absolute;
-    width: 2px;
-    height: 0;
-    background-color: var(--tracing-accent);
-    transition: all 0.3s cubic-bezier(0.35, 0.1, 0.25, 1);
-}
-
-.tracing-button__lines::before {
-    right: 0;
-    top: 0;
-    transition: all 0.5s cubic-bezier(0.35, 0.1, 0.25, 1);
-}
-
-.tracing-button__lines::after {
-    left: 0;
-    bottom: 0;
-}
-
-.tracing-button:not(:disabled):hover::before,
-.tracing-button:not(:disabled):hover::after {
     width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
 }
 
-.tracing-button:not(:disabled):hover .tracing-button__lines::before,
-.tracing-button:not(:disabled):hover .tracing-button__lines::after {
-    height: 100%;
+.tracing-button__outline path {
+    fill: none;
+    stroke: var(--tracing-accent);
+    stroke-width: 2;
+    /*
+     * 必须用 butt 而不是 round：静止时 dashoffset=1、虚线长度为 0，
+     * 圆头会把这条零长度虚线画成一个实心圆点 —— 四个角上各冒一颗绿点。
+     * butt 头对零长度线段不绘制任何东西，正好符合"还没开始画"的语义。
+     */
+    stroke-linecap: butt;
+    /* pathLength=1 归一化后，offset 从 1 回到 0 就是"把这段线画出来"。 */
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    /*
+     * 零长度虚线在部分渲染引擎上仍会吐出一个亚像素残点（静止时四个角上各一颗）。
+     * 与其和抗锯齿搏斗，不如静止时整层直接透明，hover 时再露出来 ——
+     * 线本来也要从 0 长到全长，配合淡入反而更像"描出来"。
+     */
+    opacity: 0;
+    transition:
+        stroke-dashoffset 0.3s cubic-bezier(0.35, 0.1, 0.25, 1),
+        opacity 0.15s ease;
+}
+
+/* 上边和左边慢一点（0.5s），下边和右边快一点，错峰才有"绕一圈"的观感。 */
+.tracing-button__outline path:nth-child(1),
+.tracing-button__outline path:nth-child(2) {
+    transition-duration: 0.5s;
+}
+
+.tracing-button:not(:disabled):hover .tracing-button__outline path,
+.tracing-button:not(:disabled):focus-visible .tracing-button__outline path {
+    stroke-dashoffset: 0;
+    opacity: 1;
 }
 
 /* 撑尺寸用，不参与显示。 */
@@ -173,10 +163,7 @@
 
 @media (prefers-reduced-motion: reduce) {
     .tracing-button,
-    .tracing-button::before,
-    .tracing-button::after,
-    .tracing-button__lines::before,
-    .tracing-button__lines::after,
+    .tracing-button__outline path,
     .tracing-button__title,
     .tracing-button__text {
         transition: none;

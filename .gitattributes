@@ -4,3 +4,7 @@
 
 # Dockerfile 同理，CRLF 会破坏续行。
 Dockerfile text eol=lf
+# deploy/ 下的 Windows 脚本按原样保存：.cmd 在 CRLF 下才可靠，.ps1 带 UTF-8 BOM
+# （否则 PowerShell 5.1 会按 ANSI 解析中文注释并报语法错）。
+deploy/*.cmd -text
+deploy/*.ps1 -text

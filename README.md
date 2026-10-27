@@ -31,7 +31,7 @@ AI API Key、Base URL、画布、素材和生成记录默认保存在浏览器�
 ### 本地开发
 
 ```bash
-git clone https://github.com/zhucuii/opencanvas.git
+git clone https://github.com/zhucuiii/opencanvas.git
 cd opencanvas
 cd web
 bun install
@@ -41,7 +41,7 @@ bun run dev
 ### Docker 运行
 
 ```bash
-git clone https://github.com/zhucuii/opencanvas.git
+git clone https://github.com/zhucuiii/opencanvas.git
 cd opencanvas
 docker compose up -d app
 ```

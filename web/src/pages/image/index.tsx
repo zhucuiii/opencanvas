@@ -502,7 +502,7 @@ function ImageWorkbench() {
             <div className="pointer-events-none fixed bottom-3 left-1/2 z-30 w-full -translate-x-1/2 px-3 sm:bottom-5 sm:px-4">
                 <div className="workbench-composer-stack mx-auto w-full max-w-5xl">
                 <div
-                    className={`playground-composer pointer-events-auto relative z-10 mx-auto w-full rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-[#1b1c20] dark:shadow-[0_20px_60px_rgba(0,0,0,0.55)] ${isReferenceDragActive ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.10]"}`}
+                    className={`playground-composer pointer-events-auto relative z-10 mx-auto w-full rounded-2xl border bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors sm:rounded-3xl sm:p-4 dark:bg-[#19191b] dark:shadow-[0_20px_60px_rgba(0,0,0,0.55)] ${isReferenceDragActive ? "border-stone-400 dark:border-stone-500" : "border-stone-200/90 dark:border-white/[0.10]"}`}
                     data-workbench-input-bar
                     onPointerDown={(event) => event.stopPropagation()}
                     // 拖拽参考图：整条卡片都是投放区，拖进来时描边变色给反馈（参考图那行本身可能不占位）。
@@ -629,7 +629,7 @@ function ImageWorkbench() {
                         </button>
                     </div>
                 </div>
-                <div className="playground-settings-rail pointer-events-auto relative z-20 mx-auto -mt-px flex min-h-12 items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-100/95 px-3 py-1.5 shadow-[0_14px_36px_rgba(15,23,42,0.12)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101116] dark:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:mx-4 sm:min-h-11 sm:px-3.5">
+                <div className="playground-settings-rail pointer-events-auto relative z-20 mx-auto -mt-px flex min-h-12 items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-100/95 px-3 py-1.5 shadow-[0_14px_36px_rgba(15,23,42,0.12)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#141416] dark:shadow-[0_18px_40px_rgba(0,0,0,0.5)] sm:mx-4 sm:min-h-11 sm:px-3.5">
                     <WorkbenchGenerationControls mode="image" config={effectiveConfig} model={model} onChange={updateConfig} />
                     <div className="workbench-mode-spacer" aria-hidden="true" />
                 </div>

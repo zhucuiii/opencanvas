@@ -5,6 +5,49 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * ============================================================================
+ * 配色统一：把 Tailwind 的 stone 色板整体改写成中性石墨色
+ * ============================================================================
+ * 全站有 226 处 stone-50…stone-950 的工具类，而 stone 是"暖灰"——色相落在
+ * 34°~74°（棕黄方向）。深色档位和页面真正的中性黑（#000 / #19191b / #2b2b2d）
+ * 摆在一起时会明显偏褐发脏：图片/视频工作台主体用的是 stone 系，画布和顶栏
+ * 用的是中性系，两块黑挨着看就不统一。
+ *
+ * 与其去 30 个文件里逐个替换几百处工具类（容易漏、review 也看不出来），
+ * 不如在 @theme 里把 stone 色阶直接重定义成中性灰：
+ *   1. 所有 bg-stone-* / text-stone-* / border-stone-* 立即变成中性灰；
+ *   2. 层级关系（谁比谁深一档）全部保持，视觉落差照旧；
+ *   3. 以后新写的 stone-* 也自动是中性灰，不会再混回暖色。
+ *
+ * 数值与现有中性 token 的台阶对齐：
+ *   深色端 #000 → #19191b → #202023 → #2b2b2d → #303034
+ *   浅色端 #ffffff → #fafafa → #f4f4f5 → #e4e4e7 → #a1a1aa
+ */
+@theme {
+    --color-stone-50: #fafafa;
+    --color-stone-100: #f4f4f5;
+    --color-stone-200: #e4e4e7;
+    --color-stone-300: #d4d4d8;
+    --color-stone-400: #a1a1aa;
+    --color-stone-500: #71717a;
+    --color-stone-600: #52525b;
+    --color-stone-700: #3f3f46;
+    --color-stone-800: #2b2b2d;
+    --color-stone-900: #19191b;
+    --color-stone-950: #0a0a0a;
+
+    /*
+     * 字体：全站唯一一套（antd 那边在同名的 APP_FONT_STACK 里保持一致）。
+     * 原先 main.tsx 把 body 内联写死成 SF Pro 栈，而 html 走 @apply font-sans
+     * 拿 Tailwind 默认的 -apple-system 栈，同一个页面里就有两套字体。
+     */
+    --font-sans: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "PingFang SC",
+        "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --default-font-family: var(--font-sans);
+}
+
+
 .image-playground .playground-tool {
     display: inline-flex;
     height: 2.5rem;
@@ -15,14 +58,14 @@
     padding: 0 0.875rem;
     border-radius: 0.75rem;
     background: rgb(28 25 23 / 4%);
-    color: #78716c;
+    color: #71717a;
     font-size: 0.75rem;
     cursor: pointer;
     transition: background 150ms;
 }
 .image-playground .playground-tool:hover { background: rgb(28 25 23 / 8%); }
 .image-playground .playground-tool:disabled { opacity: 0.4; cursor: not-allowed; }
-.dark .image-playground .playground-tool { background: rgb(255 255 255 / 5%); color: #a8a29e; }
+.dark .image-playground .playground-tool { background: rgb(255 255 255 / 5%); color: #a1a1aa; }
 .dark .image-playground .playground-tool:hover { background: rgb(255 255 255 / 9%); }
 .image-playground input[type="search"]::-webkit-search-cancel-button { display: none; }
 @media (prefers-reduced-motion: no-preference) {
@@ -123,7 +166,7 @@
 .dark .studio-ratio-grid button { border-color: #48484a; }
 .studio-ratio-grid button:hover { background: rgb(127 127 127 / 9%); }
 .studio-ratio-grid button[aria-pressed="true"] { border-color: #73737b; background: #ececef; color: #202023; }
-.dark .studio-ratio-grid button[aria-pressed="true"] { border-color: #b0b0b8; background: #27272c; color: #eeeeef; }
+.dark .studio-ratio-grid button[aria-pressed="true"] { border-color: #b0b0b8; background: #27272a; color: #eeeeef; }
 .studio-segments { display: flex; padding: 3px; gap: 2px; overflow-x: auto; border-radius: 11px; background: #ededee; scrollbar-width: thin; }
 .dark .studio-segments { background: #030303; }
 .studio-segments button { flex: 1 0 auto; min-width: 34px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: inherit; font-size: 12px; cursor: pointer; }
@@ -146,7 +189,7 @@
 .studio-function-button:focus-visible, .studio-ratio-grid button:focus-visible, .studio-segments button:focus-visible, .studio-provider-popover button:focus-visible, .studio-base64-toggle input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .workbench-mode-spacer { width: 144px; flex-shrink: 0; }
 .workbench-mode-dock { bottom: 20px; }
-.workbench-mode-switch { width: 144px; height: 40px; background: #e7e5e4; }
+.workbench-mode-switch { width: 144px; height: 40px; background: #e4e4e7; }
 .dark .workbench-mode-switch { background: #070708; }
 .workbench-mode-indicator {
     position: absolute;
@@ -160,8 +203,8 @@
     transition: transform 240ms cubic-bezier(.22,1,.36,1);
 }
 .dark .workbench-mode-indicator {
-    background: #27272c;
-    box-shadow: inset 0 0 0 1px #3b3b42;
+    background: #27272a;
+    box-shadow: inset 0 0 0 1px #3f3f46;
 }
 .workbench-mode-switch[data-mode="video"] .workbench-mode-indicator { transform: translateX(100%); }
 .workbench-mode-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
@@ -186,7 +229,12 @@
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
     --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
+    /*
+     * 这里原本是 --font-sans: var(--font-sans) —— 自我引用，属于无效值。
+     * 这个 @theme inline 块排在前面那套 @theme 之后，等于把真正的字体栈
+     * 又覆盖回浏览器默认的 sans-serif（实测 html 计算值就是 "sans-serif"）。
+     * 删掉它，让上面 @theme 里定义的唯一字体栈生效。
+     */
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -332,8 +380,15 @@
     textarea::-webkit-resizer {
         display: none;
     }
-    html {
-        @apply font-sans;
+    /*
+     * 这里原本是 @apply font-sans，但它在 @layer base 里被解析成了字面值
+     * sans-serif（实测 html 计算值 = "sans-serif"），--font-sans 根本没生效。
+     * 直接引用变量，避免再被 @apply 的解析时序坑一次。
+     * 同时显式写到 body：body 之前被 main.tsx 的内联样式占着，现在内联已删。
+     */
+    html,
+    body {
+        font-family: var(--font-sans);
     }
 }
 
@@ -348,7 +403,7 @@
     }
 
     .dark .ai-title-aurora {
-        background: linear-gradient(90deg, #fafaf9 0%, #fafaf9 36%, #a8a29e 54%, #fafaf9 72%, #fafaf9 100%);
+        background: linear-gradient(90deg, #fafafa 0%, #fafafa 36%, #a1a1aa 54%, #fafafa 72%, #fafafa 100%);
         background-size: 220% 100%;
         -webkit-background-clip: text;
         background-clip: text;
@@ -393,7 +448,7 @@
         border: 1px solid transparent;
         border-radius: 6px;
         padding: 5px 10px;
-        color: #57534e;
+        color: #52525b;
         font-size: 14px;
         line-height: 1;
         transition:
@@ -405,7 +460,7 @@
 
     .prompt-filter-tag.ant-tag-checkable:hover {
         background: rgba(28, 25, 23, 0.06);
-        color: #1c1917;
+        color: #19191b;
     }
 
     .prompt-filter-tag.ant-tag-checkable.is-active,
@@ -417,7 +472,7 @@
     }
 
     .dark .prompt-filter-tag.ant-tag-checkable {
-        color: #e7e5e4;
+        color: #e4e4e7;
     }
 
     .dark .prompt-filter-tag.ant-tag-checkable:hover {
@@ -432,7 +487,7 @@
         box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.18),
             0 6px 18px rgba(0, 0, 0, 0.22);
-        color: #0c0a09 !important;
+        color: #0a0a0a !important;
         font-weight: 700;
     }
 
@@ -597,7 +652,7 @@
 
     .canvas-control-select.ant-select-focused .ant-select-selector,
     .canvas-control-number.ant-input-number-focused {
-        border-color: #a8a29e !important;
+        border-color: #a1a1aa !important;
     }
 
     .dark .canvas-control-select.ant-select .ant-select-selector,
@@ -607,7 +662,7 @@
 
     .dark .canvas-control-select.ant-select-focused .ant-select-selector,
     .dark .canvas-control-number.ant-input-number-focused {
-        border-color: #78716c !important;
+        border-color: #71717a !important;
     }
 
     /*
@@ -1890,9 +1945,9 @@
 /* The create menu follows the compact command-menu language: quiet surface,
    roomy hit targets, and descriptions that appear only when the user explores. */
 .canvas-node-menu {
-    --canvas-node-menu-fg: #292524;
-    --canvas-node-menu-fg-hover: #0c0a09;
-    --canvas-node-menu-fg-muted: #78716c;
+    --canvas-node-menu-fg: #2b2b2d;
+    --canvas-node-menu-fg-hover: #0a0a0a;
+    --canvas-node-menu-fg-muted: #71717a;
     --canvas-node-menu-icon-box: #e7e5df;
     --canvas-node-menu-item-hover: #e7e5df;
     border-radius: 17px;

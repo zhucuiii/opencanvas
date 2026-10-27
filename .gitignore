@@ -9,6 +9,8 @@ data/
 .DS_Store
 .idea
 web/dist
+# 10087 开发实例的构建产物（由 deploy/build-test.ps1 生成，供容器挂载）
+web/.dist-10087
 
 # 本地开发用，不上传
 .agents/

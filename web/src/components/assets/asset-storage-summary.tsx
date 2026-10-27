@@ -102,7 +102,7 @@ export function AssetStorageSummary() {
                             </div>
                             {usage?.quota ? (
                                 <div className="mt-2 flex items-center gap-2">
-                                    <Progress percent={percent} showInfo={false} size="small" className="!mb-0 max-w-56" strokeColor="#78716c" />
+                                    <Progress percent={percent} showInfo={false} size="small" className="!mb-0 max-w-56" strokeColor="#71717a" />
                                     <span className="text-[11px] tabular-nums text-stone-400">{t("assets.storage.quotaUsed", { percent: percent.toFixed(1) })}</span>
                                 </div>
                             ) : null}

@@ -12,8 +12,8 @@ import { router } from "@/router";
 
 initAnalytics();
 
-document.body.style.fontFamily = '"SF Pro Display","SF Pro Text","PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif';
-
+// 字体不再在这里内联写死：唯一的字体栈在 globals.css 的 @theme --font-sans 里，
+// 内联赋值只会盖住 CSS 层、让 body 与 html/antd 出现两套字体。
 createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
         <AppProviders>

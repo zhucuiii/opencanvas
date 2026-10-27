@@ -5,7 +5,8 @@ import "./star-border.css";
 
 const THEMES = {
     dark: {
-        surface: "#0c0c0f",
+        // 与 --card (#19191b) 一致：原本的 #0c0c0f 偏蓝，摆在纯黑底上会显出一块冷色。
+        surface: "#19191b",
         text: "#fafafa",
         track: "rgba(255, 255, 255, 0.1)",
         light: "#ffffff",

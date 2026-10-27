@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE_NAME: ghcr.io/zhucuii/opencanvas
+  IMAGE_NAME: ghcr.io/zhucuiii/opencanvas
 
 jobs:
   meta:

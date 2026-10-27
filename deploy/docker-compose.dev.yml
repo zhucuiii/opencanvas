@@ -1,0 +1,16 @@
+# 可选的开发覆盖文件。不影响 README 里记载的发布流程，只在本地开发时显式叠加使用：
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.dev.yml up -d app-test
+#   deploy\build-test.cmd          # 改完代码构建到 web/.dist-10087
+#
+# 叠加后 app-test 变成"只有 nginx + 挂载宿主机产物"的实例：
+# 构建一次只要几秒，刷新页面即可看到改动，不重建镜像、不重启容器。
+# 它使用独立镜像 opencanvas:test-nginx，因此不会再和生产的 opencanvas:local 互相牵连。
+services:
+  app-test:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.dev
+    image: opencanvas:test-nginx
+    volumes:
+      - ./web/.dist-10087:/usr/share/nginx/html:ro

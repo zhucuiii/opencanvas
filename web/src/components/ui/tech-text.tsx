@@ -110,7 +110,7 @@ const TechText = ({
   const wakeRef = useRef<() => void>(() => {});
   const theme = useThemeStore((state) => state.theme);
   // Follow the app theme so the effect stays legible in both light and dark mode.
-  const resolvedColor = color || (theme === "dark" ? "#fafaf9" : "#1c1917");
+  const resolvedColor = color || (theme === "dark" ? "#fafafa" : "#19191b");
   const resolvedAccent = accentColor || (theme === "dark" ? "#5aa2ff" : "#2f7ff6");
 
   useEffect(() => {

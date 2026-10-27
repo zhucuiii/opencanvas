@@ -1,6 +1,14 @@
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 
+/**
+ * 全站唯一字体栈，和 globals.css 里 @theme 的 --font-sans 保持一致。
+ * antd 的 ConfigProvider 会给 .ant-app 注入自己的 font-family（默认是 -apple-system 栈），
+ * 不显式传 token 的话，antd 容器内部的文字（顶栏、弹窗、下拉）就跟页面其余部分不是同一套字体。
+ */
+export const APP_FONT_STACK =
+    '"SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 export const neutral = {
     light: {
         primary: "#171717",
@@ -35,6 +43,7 @@ export function getAntThemeConfig(dark: boolean): ThemeConfig {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         cssVar: { key: dark ? "infinite-canvas-dark" : "infinite-canvas-light" },
         token: {
+            fontFamily: APP_FONT_STACK,
             colorPrimary: color.primary,
             colorInfo: color.primary,
             colorLink: color.primary,

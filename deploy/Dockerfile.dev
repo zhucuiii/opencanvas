@@ -1,0 +1,10 @@
+# 10087 开发实例专用运行镜像。
+# 只跑 nginx，页面文件由宿主机 web/.dist-10087 绑定挂载进来 ——
+# 改完代码重新执行 deploy\build-test.ps1 就直接刷新页面，无需重建镜像、无需重启容器。
+# 生产实例（10086）仍然使用根目录的多阶段 Dockerfile。
+FROM nginx:1.27-alpine
+
+# COPY 的路径是相对 build context（仓库根目录），不是相对本文件所在目录。
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 3000
