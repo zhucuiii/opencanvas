@@ -4,7 +4,6 @@ import { Cloud, RefreshCw, Wifi } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
 import { ConfigApiSettings } from "@/components/layout/config-api-settings";
 import { ConfigLocalProxy } from "@/components/layout/config-local-proxy";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
@@ -36,7 +35,7 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
     const { message } = App.useApp();
     const { i18n, t } = useTranslation();
     const [activeTab, setActiveTab] = useState<ConfigTabKey>(initialTab);
-    const [editingChannelId, setEditingChannelId] = useState("");
+
     const [testingWebdav, setTestingWebdav] = useState(false);
     const [syncingWebdav, setSyncingWebdav] = useState(false);
     const [webdavSyncStatus, setWebdavSyncStatus] = useState("");
@@ -46,7 +45,6 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
     const webdavReady = Boolean(webdav.url.trim());
-    const editingChannel = config.channels.find((channel) => channel.id === editingChannelId) || null;
     const locale = i18n.resolvedLanguage as AppLocale;
     useEffect(() => setActiveTab(initialTab), [initialTab]);
 
@@ -59,7 +57,6 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
     const addChannel = () => {
         const channel = createModelChannel({ name: t("config.channels.numberedName", { count: config.channels.length + 1 }) });
         updateChannels([...config.channels, channel]);
-        setEditingChannelId(channel.id);
     };
 
     const deleteChannel = (id: string) => {
@@ -68,10 +65,6 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
             return;
         }
         updateChannels(config.channels.filter((channel) => channel.id !== id));
-    };
-
-    const saveChannel = (channel: ModelChannel) => {
-        updateChannels(config.channels.map((item) => (item.id === channel.id ? channel : item)));
     };
 
     const testWebdav = async () => {
@@ -140,7 +133,7 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
                         key: "channels",
                         label: t("config.tabs.channels"),
                         children: (
-                            <ConfigApiSettings config={config} onChange={updateConfig} onEditModels={(channel) => setEditingChannelId(channel.id)} />
+                            <ConfigApiSettings config={config} onChange={updateConfig} />
                         ),
                     },
                     {
@@ -245,7 +238,6 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
                 ]}
             />
             </div>
-            <ChannelEditorDrawer open={Boolean(editingChannel)} channel={editingChannel} onSave={saveChannel} onClose={() => setEditingChannelId("")} />
         </div>
     );
 }

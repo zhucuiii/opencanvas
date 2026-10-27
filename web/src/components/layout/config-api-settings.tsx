@@ -1,10 +1,11 @@
-import { Button, Input } from "antd";
-import { CircleAlert, CircleCheck, CircleDashed, Eye, EyeOff, ListPlus, Plus, RefreshCw, Server, Trash2, Zap } from "lucide-react";
+import { Button, Input, Segmented } from "antd";
+import { CircleAlert, CircleCheck, CircleDashed, Eye, EyeOff, Plus, RefreshCw, Server, Trash2, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AdvancedProtocolPanel } from "./advanced-protocol-panel";
 import { InlineModelPicker } from "./inline-model-picker";
+import { ModelScriptEditor } from "./model-script-editor";
 import {
     API_PROTOCOL_PRESETS,
     apiProtocolPresetForChannel,
@@ -12,23 +13,24 @@ import {
     createModelChannel,
     defaultBaseUrlForApiFormat,
     guessCapability,
-    normalizeAdvancedProtocol,
     normalizeChannelModels,
     type AiConfig,
     type ApiCallFormat,
     type ApiProtocolPresetId,
+    type ModelCapability,
     type ModelChannel,
 } from "@/stores/use-config-store";
 
 type ConfigApiSettingsProps = {
     config: AiConfig;
     onChange: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
-    onEditModels: (channel: ModelChannel) => void;
 };
 
 type ConnectionState = "ready" | "incomplete" | "error";
 
-export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiSettingsProps) {
+type ScriptTarget = { name: string; capability: ModelCapability; value: string };
+
+export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) {
     const { t } = useTranslation();
     const channels = config.channels;
     const [activeId, setActiveId] = useState(channels[0]?.id || "");
@@ -36,6 +38,8 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     // 模型列表在按钮下方就地展开，不再另开弹窗。
     const [modelsOpen, setModelsOpen] = useState(false);
+    // 单个模型的自定义调用脚本编辑（原「编辑渠道」抽屉里的功能，挪到这里）。
+    const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
     const activeChannel = channels.find((channel) => channel.id === activeId) || channels[0] || null;
 
     useEffect(() => {
@@ -61,6 +65,28 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
             channels.map((channel) => (channel.id === activeChannel.id ? { ...channel, ...patch } : channel)),
         );
     };
+
+    /** 改单个模型的能力标签（生图 / 视频 / 文本 / 音频）。 */
+    const setModelCapability = (name: string, capability: ModelCapability) => {
+        if (!activeChannel) return;
+        updateChannel({ models: activeChannel.models.map((model) => (model.name === name ? { ...model, capability } : model)) });
+    };
+
+    /** 写入 / 清除某个模型的自定义调用脚本。 */
+    const setModelScript = (name: string, script: string) => {
+        if (!activeChannel) return;
+        updateChannel({ models: activeChannel.models.map((model) => (model.name === name ? { ...model, script: script || undefined } : model)) });
+    };
+
+    const removeModel = (name: string) => {
+        if (!activeChannel) return;
+        updateChannel({ models: activeChannel.models.filter((model) => model.name !== name) });
+    };
+
+    const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({
+        label: t(`config.channelEditor.capabilities.${value}`),
+        value: value as ModelCapability,
+    }));
 
     const changeFormat = (apiFormat: ApiCallFormat) => {
         if (!activeChannel) return;
@@ -262,20 +288,52 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                             </div>
                         </div>
                         <div className="atelier-config-api-editor-foot">
-                        <div className="atelier-config-api-editor-actions">
-                            <button type="button" className="atelier-config-api-model-button" onClick={() => onEditModels(activeChannel)}>
-                                <ListPlus className="size-4" />
-                                模型与高级脚本
-                            </button>
-                            <Button
-                                type="primary"
-                                icon={<RefreshCw className="size-4" />}
-                                disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()}
-                                aria-expanded={modelsOpen}
-                                onClick={() => setModelsOpen((current) => !current)}
-                            >
-                                {activeChannel.models.length ? "重新拉取模型" : "拉取模型"}
-                            </Button>
+                        {/*
+                         * 模型区：这里原本只是一个「模型与高级脚本」按钮，点开要另开一层抽屉，
+                         * 在抽屉里才能改能力标签、配自定义脚本。抽屉已删除，这些能力直接摊在这里：
+                         * 每个模型一行，能力用分段控件就地切换，脚本按钮打开原有的编辑器弹窗。
+                         */}
+                        <div className="atelier-config-api-models">
+                            <div className="atelier-config-api-models-head">
+                                <div>
+                                    <strong>渠道模型</strong>
+                                    <small>{activeChannel.models.length ? `已选 ${activeChannel.models.length} 个，可按能力分类并配置调用脚本` : "还没有模型"}</small>
+                                </div>
+                                <Button
+                                    type="primary"
+                                    icon={<RefreshCw className="size-4" />}
+                                    disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()}
+                                    aria-expanded={modelsOpen}
+                                    onClick={() => setModelsOpen((current) => !current)}
+                                >
+                                    {activeChannel.models.length ? "重新拉取模型" : "拉取模型"}
+                                </Button>
+                            </div>
+
+                            {activeChannel.models.length ? (
+                                <div className="atelier-config-api-model-rows">
+                                    {activeChannel.models.map((model) => (
+                                        <div key={model.name} className="atelier-config-api-model-row">
+                                            <span className="atelier-config-api-model-name" title={model.name}>
+                                                {model.name}
+                                            </span>
+                                            <div className="atelier-config-api-model-row-actions">
+                                                <Segmented size="small" value={model.capability} options={capabilityOptions} onChange={(value) => setModelCapability(model.name, value as ModelCapability)} />
+                                                <Button size="small" type={model.script ? "primary" : "default"} ghost={Boolean(model.script)} onClick={() => setScriptTarget({ name: model.name, capability: model.capability, value: model.script || "" })}>
+                                                    {model.script ? "脚本已配" : "调用脚本"}
+                                                </Button>
+                                                <Button size="small" danger type="text" icon={<Trash2 className="size-3.5" />} aria-label={`删除模型 ${model.name}`} onClick={() => removeModel(model.name)} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="atelier-config-api-model-empty">
+                                    <Button icon={<RefreshCw className="size-4" />} disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()} onClick={() => setModelsOpen(true)}>
+                                        拉取模型
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                         {/*
                          * 拉取结果直接在这块面板里展开可选，勾了就生效。
@@ -295,6 +353,14 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                             </div>
                         ) : null}
                         </div>
+                        <ModelScriptEditor
+                            open={Boolean(scriptTarget)}
+                            capability={scriptTarget?.capability || "text"}
+                            modelName={scriptTarget?.name || ""}
+                            value={scriptTarget?.value || ""}
+                            onSave={(script) => scriptTarget && setModelScript(scriptTarget.name, script)}
+                            onClose={() => setScriptTarget(null)}
+                        />
                     </>
                 ) : (
                     <div className="atelier-config-api-empty">
