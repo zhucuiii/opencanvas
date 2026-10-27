@@ -16,15 +16,15 @@ import {
     type ModelCapability,
     type ModelChannel,
 } from "@/stores/use-config-store";
+import { InlineModelPicker } from "./inline-model-picker";
 import { ModelScriptEditor } from "./model-script-editor";
-import { ModelSelectModal } from "./model-select-modal";
 
 type ScriptTarget = { name: string; capability: ModelCapability; value: string };
 
 export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<ModelChannel | null>(channel);
-    const [selectOpen, setSelectOpen] = useState(false);
+    const [modelsOpen, setModelsOpen] = useState(false);
     const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
     const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
         { label: "OpenAI", value: "openai" },
@@ -33,7 +33,10 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({ label: t(`config.channelEditor.capabilities.${value}`), value: value as ModelCapability }));
 
     useEffect(() => {
-        if (open && channel) setDraft(channel);
+        if (open && channel) {
+            setDraft(channel);
+            setModelsOpen(false);
+        }
     }, [open, channel]);
 
     if (!draft) return null;
@@ -47,11 +50,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     };
 
     const applyPreset = (presetId: ApiProtocolPresetId) => setDraft((current) => (current ? applyApiProtocolPreset(current, presetId) : current));
-
-    const applySelection = (names: string[]) => {
-        const map = new Map(draft.models.map((model) => [model.name, model]));
-        setModels(names.map((name) => map.get(name) || { name, capability: guessCapability(name) }));
-    };
 
     const setCapability = (name: string, capability: ModelCapability) => setModels(draft.models.map((model) => (model.name === name ? { ...model, capability } : model)));
     const setScript = (name: string, script: string) => setModels(draft.models.map((model) => (model.name === name ? { ...model, script: script || undefined } : model)));
@@ -133,10 +131,24 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     <div className="text-sm font-semibold">{t("config.channelEditor.models")}</div>
                     <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.modelDescription", { count: draft.models.length })}</div>
                 </div>
-                <Button type="primary" icon={<ListPlus className="size-4" />} onClick={() => setSelectOpen(true)}>
+                <Button type="primary" icon={<ListPlus className="size-4" />} onClick={() => setModelsOpen((current) => !current)} aria-expanded={modelsOpen}>
                     {t("config.channelEditor.selectModels")}
                 </Button>
             </div>
+
+            {/* 模型选择就地展开在按钮下方，拉取结果直接出现在这里，不会再叠一层弹窗。 */}
+            {modelsOpen ? (
+                <div className="mb-3">
+                    <InlineModelPicker
+                        channel={draft}
+                        selectedNames={draft.models.map((model) => model.name)}
+                        onChange={(names) => {
+                            const map = new Map(draft.models.map((model) => [model.name, model]));
+                            setModels(names.map((name) => map.get(name) || { name, capability: guessCapability(name) }));
+                        }}
+                    />
+                </div>
+            ) : null}
 
             <div className="space-y-2 rounded-lg border border-stone-200 p-2 dark:border-stone-800">
                 {draft.models.length ? (
@@ -158,8 +170,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     <div className="px-2 py-8 text-center text-sm text-stone-500">{t("config.channelEditor.empty")}</div>
                 )}
             </div>
-
-            <ModelSelectModal open={selectOpen} channel={draft} selectedNames={draft.models.map((model) => model.name)} onConfirm={applySelection} onClose={() => setSelectOpen(false)} />
 
             <ModelScriptEditor
                 open={Boolean(scriptTarget)}

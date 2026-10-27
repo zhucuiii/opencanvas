@@ -997,10 +997,20 @@
 }
 
 .atelier-config-api-editor {
+    position: relative;
     display: grid;
     min-width: 0;
     min-height: 0;
-    grid-template-rows: 72px minmax(0, 1fr) 62px;
+    /*
+     * 四行，各司其职，任何一行都不再"赌"内容高度：
+     *   72px        头部（固定）
+     *   minmax(0,1fr) 连接信息表单 —— 唯一吃剩余空间、也是唯一滚动的区域
+     *   auto        操作条 + 展开的模型选择区（按内容撑开，不吃 1fr）
+     * 之前是 72px / 1fr / 62px 三行写死，模型区一展开就顶破总高被裁掉；
+     * 改成 auto 之后底部会挤上来，所以这里让表单区自己滚，底部永远有位置。
+     */
+    grid-template-rows: 72px minmax(0, 1fr) auto;
+    overflow: hidden;
 }
 
 .atelier-config-api-editor-head {
@@ -1088,10 +1098,12 @@
 
 .atelier-config-api-editor-body {
     min-height: 0;
+    /* 只有表单区滚动：底部操作条和模型选择区始终留在可视范围内。 */
     overflow-y: auto;
     padding: 18px 22px 22px;
     scrollbar-width: thin;
     scrollbar-color: #4a4a4e transparent;
+    overscroll-behavior: contain;
 }
 
 .atelier-config-api-section-heading {
@@ -1317,14 +1329,53 @@
     background: #ffffff0b;
 }
 
+.atelier-config-api-editor-foot {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    border-top: 1px solid #ffffff08;
+}
+
 .atelier-config-api-editor-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     padding: 11px 18px;
-    border-top: 1px solid #ffffff08;
     background: transparent;
+}
+
+/*
+ * 模型选择就地展开区：原本是"点按钮 → 覆盖列表"或"进抽屉 → 再叠一层弹窗"，
+ * 现在拉取结果直接摊在这块面板底部，勾选即写回配置。
+ */
+/*
+ * 模型选择区是"浮"在编辑器底部的覆盖层，不参与 grid 行高分配。
+ *
+ * 原因是这个面板高度固定（弹窗形态尤其明显），连接信息表单本身就要占满：
+ * 一旦把模型列表塞进正常文档流，两者必然抢高度 —— 要么表单被压掉半截
+ * （API Key 输入框被切），要么列表只剩一两行。
+ * 做成覆盖层后，表单尺寸完全不变，列表从底部升起、自带滚动，勾选即生效。
+ */
+.atelier-config-api-model-picker {
+    position: absolute;
+    right: 0;
+    /* 盖在连接信息之上，但要停在操作条上沿，否则会挡住"重新拉取模型"按钮本身，
+       用户点开之后就再也点不到同一个按钮收起。 */
+    bottom: 56px;
+    left: 0;
+    z-index: 20;
+    display: flex;
+    max-height: calc(100% - 72px - 56px);
+    flex-direction: column;
+    padding: 10px 18px 12px;
+    border-top: 1px solid #ffffff14;
+    border-radius: 10px 10px 0 0;
+    /* 必须是完全不透明：半透明会让底下的表单字段透上来，列表看起来像"脏"的。 */
+    background: #17171a;
+    box-shadow: 0 -18px 44px rgb(0 0 0 / 60%);
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 .atelier-config-api-model-button {
@@ -1476,11 +1527,50 @@
     pointer-events: auto;
 }
 
-.ant-modal-root.app-config-modal-left .app-config-panel-shell > .app-config-tabs-fill,
-.ant-modal-root.app-config-modal-bottom .app-config-panel-shell > .app-config-tabs-fill {
+/*
+ * 下面这几条 flex 高度链原本只写在 .ant-modal-root 作用域里，
+ * 所以只有"弹窗形态"的配置面板有确定高度；/config 独立路由拿不到，
+ * 面板就按内容无限撑开，内部滚动区全部失效（模型列表展开后被裁掉就是这么来的）。
+ * 去掉模态前缀，让它对两种形态都生效。
+ */
+.app-config-panel-shell > .app-config-tabs-fill {
     display: flex;
+    min-height: 0;
     overflow: hidden;
     flex-direction: column;
+}
+
+.app-config-panel-shell .app-config-tabs-fill > .ant-tabs {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.app-config-panel-shell .ant-tabs-content-holder,
+.app-config-panel-shell .ant-tabs-content,
+.app-config-panel-shell .ant-tabs-tabpane,
+.app-config-panel-shell .ant-tabs-body,
+.app-config-panel-shell .ant-tabs-body-holder {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.app-config-panel-shell .ant-tabs-body,
+.app-config-panel-shell .ant-tabs-content-holder,
+.app-config-panel-shell .ant-tabs-body-holder {
+    overflow: hidden;
+}
+
+.app-config-panel-shell .ant-tabs-content-active {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
 }
 
 .ant-modal-root.app-config-modal-left .app-config-panel-shell .app-config-tabs-fill > .ant-tabs,

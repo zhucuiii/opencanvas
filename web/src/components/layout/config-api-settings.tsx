@@ -1,9 +1,9 @@
-import { App, Button, Input } from "antd";
+import { Button, Input } from "antd";
 import { CircleAlert, CircleCheck, CircleDashed, Eye, EyeOff, ListPlus, Plus, RefreshCw, Server, Trash2, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { fetchChannelModels } from "@/services/api/image";
+import { InlineModelPicker } from "./inline-model-picker";
 import {
     API_PROTOCOL_PRESETS,
     apiProtocolPresetForChannel,
@@ -27,13 +27,13 @@ type ConfigApiSettingsProps = {
 type ConnectionState = "ready" | "incomplete" | "error";
 
 export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiSettingsProps) {
-    const { message } = App.useApp();
     const { t } = useTranslation();
     const channels = config.channels;
     const [activeId, setActiveId] = useState(channels[0]?.id || "");
     const [visibleKeyId, setVisibleKeyId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-    const [fetchingId, setFetchingId] = useState<string | null>(null);
+    // 模型列表在按钮下方就地展开，不再另开弹窗。
+    const [modelsOpen, setModelsOpen] = useState(false);
     const activeChannel = channels.find((channel) => channel.id === activeId) || channels[0] || null;
 
     useEffect(() => {
@@ -83,6 +83,7 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
         });
         onChange("channels", [...channels, channel]);
         setActiveId(channel.id);
+        setModelsOpen(false);
     };
 
     const removeChannel = (id: string) => {
@@ -96,25 +97,6 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
             if (id === activeId) setActiveId(next[0].id);
         }
         setConfirmDeleteId(null);
-    };
-
-    const fetchModels = async () => {
-        if (!activeChannel) return;
-        if (!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()) {
-            message.error("请先填写服务地址和 API Key");
-            return;
-        }
-        setFetchingId(activeChannel.id);
-        try {
-            const names = await fetchChannelModels(activeChannel);
-            const existing = new Map(activeChannel.models.map((model) => [model.name, model]));
-            updateChannel({ models: normalizeChannelModels(names.map((name) => existing.get(name) || { name, capability: guessCapability(name) })) });
-            message.success(`已拉取 ${names.length} 个模型`);
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : "拉取模型失败");
-        } finally {
-            setFetchingId(null);
-        }
     };
 
     const stateIcon = activeState.state === "ready" ? <CircleCheck className="size-3.5" /> : activeState.state === "error" ? <CircleAlert className="size-3.5" /> : <CircleDashed className="size-3.5" />;
@@ -143,6 +125,7 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                                 onClick={() => {
                                     setActiveId(channel.id);
                                     setConfirmDeleteId(null);
+                                    setModelsOpen(false);
                                 }}
                             >
                                 <i className={`is-${state.state}`} />
@@ -259,14 +242,39 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                                 </label>
                             </div>
                         </div>
+                        <div className="atelier-config-api-editor-foot">
                         <div className="atelier-config-api-editor-actions">
                             <button type="button" className="atelier-config-api-model-button" onClick={() => onEditModels(activeChannel)}>
                                 <ListPlus className="size-4" />
                                 模型与高级脚本
                             </button>
-                            <Button type="primary" icon={<RefreshCw className="size-4" />} loading={fetchingId === activeChannel.id} disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()} onClick={() => void fetchModels()}>
+                            <Button
+                                type="primary"
+                                icon={<RefreshCw className="size-4" />}
+                                disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()}
+                                aria-expanded={modelsOpen}
+                                onClick={() => setModelsOpen((current) => !current)}
+                            >
                                 {activeChannel.models.length ? "重新拉取模型" : "拉取模型"}
                             </Button>
+                        </div>
+                        {/*
+                         * 拉取结果直接在这块面板里展开可选，勾了就生效。
+                         * 原先点这个按钮会无声覆盖整个模型列表，想挑模型还得再进
+                         * "编辑渠道" 抽屉里叠一层弹窗，绕一圈回到同一个地方。
+                         */}
+                        {modelsOpen ? (
+                            <div className="atelier-config-api-model-picker">
+                                <InlineModelPicker
+                                    channel={activeChannel}
+                                    selectedNames={activeChannel.models.map((model) => model.name)}
+                                    onChange={(names) => {
+                                        const existing = new Map(activeChannel.models.map((model) => [model.name, model]));
+                                        updateChannel({ models: normalizeChannelModels(names.map((name) => existing.get(name) || { name, capability: guessCapability(name) })) });
+                                    }}
+                                />
+                            </div>
+                        ) : null}
                         </div>
                     </>
                 ) : (
