@@ -1,33 +1,55 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, LayoutTemplate, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Check, FastForward, Grid2x2, Grid3x3, LayoutTemplate, Package, Pencil, Plus, Rewind, ScanFace, Search, Sun, Trash2, UserRound } from "lucide-react";
 import { Button, Input } from "antd";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
+import { BUILTIN_PROMPT_PRESETS, CUSTOM_PRESET_CATEGORY, PRESET_CATEGORY_ORDER, type BuiltinPromptPreset } from "@/lib/canvas/canvas-presets";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useConfigStore, type CanvasPromptPreset } from "@/stores/use-config-store";
 
 type CanvasPresetPickerProps = {
     /** 选中预设后把提示词写回输入框。 */
     onApply: (prompt: string) => void;
-    /** 面板顶部按钮样式；头部动作条用 quiet。 */
-    variant?: "header" | "footer";
+};
+
+type PresetRow = {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    prompt: string;
+    builtin: boolean;
+    icon?: ReactNode;
 };
 
 const newId = () => `canvas-preset-${Date.now()}`;
 
+/** 按 id 给内置条目配图标，和上游工具条保持同一套语义。 */
+const BUILTIN_ICONS: Record<string, ReactNode> = {
+    "builtin-79": <Grid3x3 className="size-3.5" />,
+    "builtin-80": <Grid2x2 className="size-3.5" />,
+    "builtin-83": <Grid3x3 className="size-3.5" />,
+    "builtin-81": <ScanFace className="size-3.5" />,
+    "builtin-85": <UserRound className="size-3.5" />,
+    "builtin-82": <Package className="size-3.5" />,
+    "builtin-84": <Sun className="size-3.5" />,
+    "builtin-86": <FastForward className="size-3.5" />,
+    "builtin-87": <Rewind className="size-3.5" />,
+};
+
 /**
- * 画布「预设」：用户自己维护的提示词模板。
+ * 画布「预设」：内置提示词模板 + 用户自己添加的模板。
  *
- * 交互照着参考项目那套来 —— 按钮在面板头部，点开是一个带搜索的列表，
- * 每条显示名称、类型标签和一句说明，点一下就把提示词填进输入框。
- * 不预置任何内容：条目全部来自用户自己添加（存本地配置）。
+ * 交互与分组照着参考项目来 —— 面板头部一个入口，点开是带搜索的两列列表，
+ * 按 分镜宫格 / 设定图 / 光影 / 画面推演 分组，每条显示名称和一句说明。
+ * 内置条目的 prompt 直接取自上游数据文件，不在本地改写。
  */
-export function CanvasPresetPicker({ onApply, variant = "header" }: CanvasPresetPickerProps) {
+export function CanvasPresetPicker({ onApply }: CanvasPresetPickerProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const presets = useConfigStore((state) => state.config.canvasPromptPresets) || [];
+    const customPresets = useConfigStore((state) => state.config.canvasPromptPresets) || [];
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -40,17 +62,37 @@ export function CanvasPresetPicker({ onApply, variant = "header" }: CanvasPreset
     const [draftPrompt, setDraftPrompt] = useState("");
     const [adding, setAdding] = useState(false);
 
-    const filtered = useMemo(() => {
+    const groups = useMemo(() => {
         const keyword = query.trim().toLowerCase();
-        if (!keyword) return presets;
-        return presets.filter((item) => `${item.name} ${item.description ?? ""} ${item.prompt}`.toLowerCase().includes(keyword));
-    }, [presets, query]);
+        const builtin: PresetRow[] = BUILTIN_PROMPT_PRESETS.map((item: BuiltinPromptPreset) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            category: item.category,
+            prompt: item.prompt,
+            builtin: true,
+            icon: BUILTIN_ICONS[item.id] ?? <LayoutTemplate className="size-3.5" />,
+        }));
+        const custom: PresetRow[] = customPresets.map((item) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || "",
+            category: CUSTOM_PRESET_CATEGORY,
+            prompt: item.prompt,
+            builtin: false,
+            icon: <LayoutTemplate className="size-3.5" />,
+        }));
+        const all = [...builtin, ...custom].filter((item) => !keyword || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(keyword));
+        const order = [...PRESET_CATEGORY_ORDER, CUSTOM_PRESET_CATEGORY];
+        return order
+            .map((category) => ({ category, items: all.filter((item) => item.category === category) }))
+            .filter((group) => group.items.length);
+    }, [customPresets, query]);
 
     useEffect(() => {
         if (!open) return;
         const syncPosition = () => {
             setButtonRect(buttonRef.current?.getBoundingClientRect() || null);
-            // 面板边界：弹层只在这个范围内展开，别飘到画布上去。
             setContainerRect(buttonRef.current?.closest(".atelier-prompt-panel")?.getBoundingClientRect() || null);
         };
         const closeOnOutsidePointer = (event: PointerEvent) => {
@@ -81,7 +123,7 @@ export function CanvasPresetPicker({ onApply, variant = "header" }: CanvasPreset
         const name = draftName.trim();
         const promptText = draftPrompt.trim();
         if (!name || !promptText) return;
-        save([...presets, { id: newId(), name, prompt: promptText }]);
+        save([...customPresets, { id: newId(), name, prompt: promptText }]);
         setDraftName("");
         setDraftPrompt("");
         setAdding(false);
@@ -97,23 +139,16 @@ export function CanvasPresetPicker({ onApply, variant = "header" }: CanvasPreset
         const name = draftName.trim();
         const promptText = draftPrompt.trim();
         if (!name || !promptText) return;
-        save(presets.map((item) => (item.id === id ? { ...item, name, prompt: promptText } : item)));
+        save(customPresets.map((item) => (item.id === id ? { ...item, name, prompt: promptText } : item)));
         setEditingId(null);
     };
 
-    const removePreset = (id: string) => save(presets.filter((item) => item.id !== id));
+    const removePreset = (id: string) => save(customPresets.filter((item) => item.id !== id));
 
     return (
         <>
             <span ref={buttonRef} className="inline-flex min-w-0">
-                <button
-                    type="button"
-                    className={variant === "header" ? "atelier-head-action" : "atelier-library-trigger"}
-                    aria-label="预设"
-                    title="打开提示词预设"
-                    aria-expanded={open}
-                    onClick={() => setOpen((current) => !current)}
-                >
+                <button type="button" className="atelier-head-action" aria-label="预设" title="打开提示词预设" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
                     <LayoutTemplate className="size-3.5" />
                     <span>预设</span>
                 </button>
@@ -124,8 +159,7 @@ export function CanvasPresetPicker({ onApply, variant = "header" }: CanvasPreset
                 containerRect={containerRect}
                 panelRef={panelRef}
                 theme={theme}
-                presets={filtered}
-                total={presets.length}
+                groups={groups}
                 query={query}
                 onQueryChange={setQuery}
                 adding={adding}
@@ -161,8 +195,7 @@ function PresetPortal({
     containerRect,
     panelRef,
     theme,
-    presets,
-    total,
+    groups,
     query,
     onQueryChange,
     adding,
@@ -185,8 +218,7 @@ function PresetPortal({
     containerRect: DOMRect | null;
     panelRef: RefObject<HTMLDivElement | null>;
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
-    presets: CanvasPromptPreset[];
-    total: number;
+    groups: Array<{ category: string; items: PresetRow[] }>;
     query: string;
     onQueryChange: (value: string) => void;
     adding: boolean;
@@ -205,22 +237,20 @@ function PresetPortal({
     onApply: (prompt: string) => void;
 }) {
     const reduce = useReducedMotion();
-    const width = 340;
+    const width = 460;
     const gap = 8;
     const margin = 12;
     if (!buttonRect) return null;
-    // 右边缘贴齐按钮右边缘，再夹在面板范围内：按钮在面板右上角，左对齐会戳出去。
     const minLeft = (containerRect?.left ?? 0) + margin;
     const maxLeft = (containerRect?.right ?? window.innerWidth) - width - margin;
-    const left = Math.max(minLeft, Math.min(maxLeft, buttonRect.right - width));
+    const left = Math.max(Math.min(minLeft, maxLeft), Math.min(Math.max(minLeft, maxLeft), buttonRect.right - width));
     const style = {
         position: "fixed",
         zIndex: 1200,
         width,
         left,
-        // 按钮在面板头部，弹层向下展开。
         top: buttonRect.bottom + gap,
-        maxHeight: Math.max(240, window.innerHeight - buttonRect.bottom - margin * 2),
+        maxHeight: Math.max(280, window.innerHeight - buttonRect.bottom - margin * 2),
         background: theme.toolbar.panel,
         border: `1px solid ${theme.node.stroke}`,
         borderRadius: 16,
@@ -236,8 +266,7 @@ function PresetPortal({
             {open ? (
                 <motion.div
                     ref={panelRef}
-                    className="thin-scrollbar"
-                    style={{ ...style, transformOrigin: "left top" }}
+                    style={{ ...style, transformOrigin: "right top" }}
                     initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
                     animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
                     exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: -2 }}
@@ -247,16 +276,7 @@ function PresetPortal({
                     onClick={(event) => event.stopPropagation()}
                 >
                     <div className="flex items-center gap-1.5 border-b px-2 py-1.5" style={{ borderColor: theme.node.stroke }}>
-                        <Input
-                            size="small"
-                            variant="borderless"
-                            allowClear
-                            autoFocus
-                            value={query}
-                            onChange={(event) => onQueryChange(event.target.value)}
-                            placeholder="搜索预设"
-                            prefix={<Search className="size-3.5 opacity-60" />}
-                        />
+                        <Input size="small" variant="borderless" allowClear autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="搜索预设" prefix={<Search className="size-3.5 opacity-60" />} />
                         <Button type="text" size="small" className="!h-6 !w-6 !min-w-6 !rounded-md" icon={<Plus className="size-3.5" />} onClick={onStartAdd} aria-label="添加预设" title="添加预设" />
                     </div>
 
@@ -275,52 +295,58 @@ function PresetPortal({
                         </div>
                     ) : null}
 
-                    <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto p-1">
-                        {presets.length ? (
-                            presets.map((preset) => {
-                                const editing = editingId === preset.id;
-                                return (
-                                    <div key={preset.id} className="rounded-lg px-2 py-1.5" style={{ background: editing ? theme.node.fill : "transparent" }}>
-                                        {editing ? (
-                                            <div className="space-y-1.5">
-                                                <Input size="small" value={draftName} onChange={(event) => onDraftName(event.target.value)} placeholder="预设名称" />
-                                                <Input.TextArea rows={3} value={draftPrompt} onChange={(event) => onDraftPrompt(event.target.value)} placeholder="提示词正文" />
-                                                <div className="flex justify-end gap-1.5">
-                                                    <Button size="small" type="text" onClick={onCancelEdit}>
-                                                        取消
-                                                    </Button>
-                                                    <Button size="small" type="primary" icon={<Check className="size-3.5" />} disabled={!draftName.trim() || !draftPrompt.trim()} onClick={() => onCommitEdit(preset.id)}>
-                                                        保存
-                                                    </Button>
+                    <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-1">
+                        {groups.length ? (
+                            groups.map((group) => (
+                                <section key={group.category} className="mb-1.5">
+                                    <div className="atelier-preset-group-title">{group.category}</div>
+                                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                                        {group.items.map((item) => {
+                                            const editing = editingId === item.id;
+                                            return editing ? (
+                                                <div key={item.id} className="col-span-2 rounded-lg px-2 py-1.5" style={{ background: theme.node.fill }}>
+                                                    <div className="space-y-1.5">
+                                                        <Input size="small" value={draftName} onChange={(event) => onDraftName(event.target.value)} placeholder="预设名称" />
+                                                        <Input.TextArea rows={3} value={draftPrompt} onChange={(event) => onDraftPrompt(event.target.value)} placeholder="提示词正文" />
+                                                        <div className="flex justify-end gap-1.5">
+                                                            <Button size="small" type="text" onClick={onCancelEdit}>
+                                                                取消
+                                                            </Button>
+                                                            <Button size="small" type="primary" icon={<Check className="size-3.5" />} disabled={!draftName.trim() || !draftPrompt.trim()} onClick={() => onCommitEdit(item.id)}>
+                                                                保存
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <div className="group flex items-start gap-2">
-                                                <button type="button" className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => onApply(preset.prompt)}>
-                                                    <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md" style={{ background: theme.node.fill, color: theme.node.text }}>
-                                                        <LayoutTemplate className="size-3.5" />
-                                                    </span>
-                                                    <span className="min-w-0 flex-1">
-                                                        <span className="block truncate text-xs font-semibold">{preset.name}</span>
-                                                        {preset.description ? <span className="mt-0.5 block truncate text-[11px] opacity-60">{preset.description}</span> : null}
-                                                        <span className="mt-0.5 block truncate text-[11px] opacity-45">{preset.prompt}</span>
-                                                    </span>
-                                                </button>
-                                                <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
-                                                    <button type="button" className="grid size-5 place-items-center rounded opacity-60 hover:opacity-100" aria-label="编辑预设" onClick={() => onStartEdit(preset)}>
-                                                        <Pencil className="size-3" />
+                                            ) : (
+                                                <div key={item.id} className="atelier-preset-item group" style={{ color: theme.node.text }}>
+                                                    <button type="button" className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => onApply(item.prompt)} title={item.name}>
+                                                        <span className="atelier-preset-item-icon" style={{ background: theme.node.fill }}>
+                                                            {item.icon}
+                                                        </span>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-xs font-medium">{item.name}</span>
+                                                            <span className="mt-0.5 block truncate text-[10.5px] opacity-55">{item.description}</span>
+                                                        </span>
                                                     </button>
-                                                    <button type="button" className="grid size-5 place-items-center rounded opacity-60 hover:opacity-100" aria-label="删除预设" onClick={() => onRemove(preset.id)}>
-                                                        <Trash2 className="size-3" />
-                                                    </button>
-                                                </span>
-                                            </div>
-                                        )}
+                                                    {item.builtin ? null : (
+                                                        <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+                                                            <button type="button" className="grid size-5 place-items-center rounded opacity-60 hover:opacity-100" aria-label="编辑预设" onClick={() => onStartEdit({ id: item.id, name: item.name, prompt: item.prompt })}>
+                                                                <Pencil className="size-3" />
+                                                            </button>
+                                                            <button type="button" className="grid size-5 place-items-center rounded opacity-60 hover:opacity-100" aria-label="删除预设" onClick={() => onRemove(item.id)}>
+                                                                <Trash2 className="size-3" />
+                                                            </button>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                );
-                            })
+                                </section>
+                            ))
                         ) : (
-                            <div className="px-3 py-8 text-center text-xs opacity-55">{total ? "没有匹配的预设" : "还没有预设，点右上角 + 添加"}</div>
+                            <div className="px-3 py-8 text-center text-xs opacity-55">没有匹配的预设</div>
                         )}
                     </div>
                 </motion.div>

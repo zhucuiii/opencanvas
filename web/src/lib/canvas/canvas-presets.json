@@ -1,0 +1,74 @@
+[
+  {
+    "id": "builtin-79",
+    "name": "多机位九宫格",
+    "description": "生成一个 3x3 九宫格的多机位联系表",
+    "category": "分镜宫格",
+    "ratio": "original",
+    "prompt": "Generate a libtv-style 3x3 director multi-camera contact sheet from the source image.\n\nOutput requirements:\n- Final output must be one readable 3x3 grid contact sheet, not nine separate images.\n- Keep the same primary subject, same costume, same scene, same time moment, and same action.\n- Do not add new characters, new dialogue, new story events, or unrelated props.\n- Each cell must preserve the source image aspect ratio and orientation.\n- Do not crop each camera view into a different ratio.\n- Vary only camera coverage: shot size, camera height, lens distance, and angle.\n- Each panel must look like a usable director coverage frame from the same shot setup.\n- Add a small white label in the upper-left corner of every cell.\n- Use exactly these nine labels and shot types in reading order:\n  [KF1 | 3s | ELS] extreme long shot / full environment,\n  [KF2 | 2s | LS] long shot / full body,\n  [KF3 | 2s | MLS] medium long shot,\n  [KF4 | 2s | MS] medium shot,\n  [KF5 | 2s | MCU] medium close-up,\n  [KF6 | 2s | CU] close-up,\n  [KF7 | 1s | ECU] extreme close-up of the key hand/object/detail,\n  [KF8 | 2s | High-Angle] high-angle view,\n  [KF9 | 2s | Low-Angle] low-angle view.\n- Use thin dark grid lines between cells; no large white gutters, no decorative border.\n- Fill the whole output canvas; do not add black bars, letterboxing, UI, or watermark.\n- Preserve identity, costume, lighting mood, color tone, and scene continuity across all cells."
+  },
+  {
+    "id": "builtin-80",
+    "name": "剧情推演四宫格",
+    "description": "生成一个 2x2 四宫格的剧情推演联系表",
+    "category": "分镜宫格",
+    "ratio": "original",
+    "prompt": "Generate a 2x2 story pitch board from the source image.\n\nOutput requirements:\n- Create four consecutive pitch frames that expand the current story moment.\n- Keep the same characters, scene, and dramatic context.\n- Emphasize clear story progression and emotional beats.\n- Each cell must preserve the source image aspect ratio and orientation.\n- Do not crop each story frame into a different ratio.\n- Arrange the four same-ratio frames in a clean 2x2 grid with thin dividers.\n- Fill the whole output canvas; do not add black bars, letterboxing, UI, or watermark."
+  },
+  {
+    "id": "builtin-81",
+    "name": "角色脸部三视图",
+    "description": "生成一个 3x2 三宫图的角色脸部联系表",
+    "category": "设定图",
+    "ratio": "3:2",
+    "prompt": "Generate a clean three-view face sheet from the source image.\n\nOutput requirements:\n- Show front view, three-quarter view, and side view of the same face.\n- Preserve facial identity, age, hairstyle, skin tone, and expression logic.\n- Use a clean reference-sheet style.\n- Final output must be a compact three-view face layout."
+  },
+  {
+    "id": "builtin-82",
+    "name": "产品三视图",
+    "description": "生成一个 3x2 三宫图的产品联系表",
+    "category": "设定图",
+    "ratio": "3:2",
+    "prompt": "Generate a clean three-view product reference sheet from the source image.\n\nOutput requirements:\n- Show front, side, and back/alternate view of the same product.\n- Preserve materials, silhouette, proportions, and key details.\n- Use a clean product reference layout with neutral presentation.\n- Final output must be a three-view sheet."
+  },
+  {
+    "id": "builtin-83",
+    "name": "25宫格连贯分镜",
+    "description": "生成一个 5x5 25宫格的连贯分镜联系表",
+    "category": "分镜宫格",
+    "ratio": "original",
+    "prompt": "Generate a libtv-style 5x5 cinematic storyboard shot sequence from the source image.\n\nOutput requirements:\n- Final output must be one readable 5x5 storyboard contact sheet, not 25 separate images.\n- Build a coherent shot progression around the same core event in the source image.\n- Do not create random variants, unrelated future scenes, or a new ending.\n- Preserve the visible subjects, identities, costumes/materials, environment, lighting mood, and key objects from the source image.\n- Adapt the sequence to the actual source content. Do not invent dialogue, extra characters, paper, weapons, vehicles, or props that are not visible or strongly implied.\n- Organize the 25 cells like an editable film sequence:\n  1-3 establishing coverage of the location, subject placement, and spatial relationship,\n  4-6 primary subject close-ups, detail views, or reaction shots when characters exist,\n  7-10 alternate angles, over-the-shoulder or eye-line coverage only when applicable,\n  11-15 step-by-step progression of the visible key action or the most plausible next micro-action,\n  16-19 inserts and extreme close-ups of visible key details: hands, face, eyes, object, texture, signage, machinery, landscape feature, or environment clue,\n  20-22 pause, reaction, consequence, or atmospheric detail beats,\n  23-25 restrained resolution frames that stay in the same scene and subject context.\n- Mix shot types deliberately: wide, medium, close-up, extreme close-up, insert, reaction/detail. Use OTS only when the source contains a valid over-shoulder relationship.\n- Avoid repeating the same two-shot or portrait composition across many cells.\n- Number each cell unobtrusively in the upper-left corner from 1 to 25.\n- Each cell must preserve the source image aspect ratio and orientation.\n- Do not crop each storyboard frame into a different ratio.\n- Arrange the twenty-five same-ratio frames in a clean 5x5 grid with thin dividers.\n- Fill the whole output canvas; do not add black bars, letterboxing, UI, or watermark."
+  },
+  {
+    "id": "builtin-84",
+    "name": "电影级光影校正",
+    "description": "修正电影灯光，使场景更真实",
+    "category": "光影",
+    "ratio": "original",
+    "prompt": "Cinematically refine the source image lighting.\n\nOutput requirements:\n- Improve light hierarchy, shadow structure, exposure balance, and atmosphere.\n- Preserve the source image aspect ratio, canvas dimensions, and orientation exactly.\n- Keep the same scene, same characters, and same camera framing.\n- Do not turn the image into a different composition.\n- Fill the whole existing canvas; do not add black bars, borders, or letterboxing.\n- Final output must remain a single frame with no collage, UI, watermark, or text."
+  },
+  {
+    "id": "builtin-85",
+    "name": "角色三视图生成",
+    "description": "生成一个 16x9 三宫图的角色角色联系表",
+    "category": "设定图",
+    "ratio": "16:9",
+    "prompt": "Generate a clean character three-view sheet from the source image.\n\nOutput requirements:\n- Show front, side, and back/full-figure view of the same character.\n- Preserve face identity, body proportions, costume details, and style.\n- Keep the presentation clean and reference-friendly.\n- Final output must be a three-view character sheet."
+  },
+  {
+    "id": "builtin-86",
+    "name": "画面推演-3秒后",
+    "description": "创建一个 3秒后投影的图像，作为视频的一帧",
+    "category": "画面推演",
+    "ratio": "original",
+    "prompt": "Create a future keyframe from the source image, as if this is a libtv-style frame projection 3 seconds later in a video.\n\nOutput requirements:\n- Preserve character identity, costume, environment, art style, and story continuity.\n- Preserve the source image aspect ratio, canvas dimensions, and orientation exactly.\n- Fill the whole existing canvas; do not add black bars, borders, or letterboxing.\n- Do not make a near-duplicate or simple retouch of the source image.\n- Create a clear time jump: the subject must be in a different action phase, body pose, walking position, hand position, gaze, and object placement.\n- Within the same frame size, use plausible camera pan, tilt, push, pull, or subject relocation to make the temporal change obvious.\n- Allow doors, props, cloth, hair, shadows, and nearby environment details to change according to the action, while keeping spatial continuity coherent.\n- The projected moment should feel like a real adjacent video frame, not a retouched still.\n- Final output must be one single frame with no collage, UI, watermark, or text."
+  },
+  {
+    "id": "builtin-87",
+    "name": "画面推演-5秒前",
+    "description": "创建一个 5秒前投影的图像，作为视频的一帧",
+    "category": "画面推演",
+    "ratio": "original",
+    "prompt": "Create a past keyframe from the source image, as if this is a libtv-style frame projection 5 seconds before in a video.\n\nOutput requirements:\n- Preserve character identity, costume, environment, art style, and story continuity.\n- Preserve the source image aspect ratio, canvas dimensions, and orientation exactly.\n- Fill the whole existing canvas; do not add black bars, borders, or letterboxing.\n- Do not make a near-duplicate or simple retouch of the source image.\n- Create a clear earlier setup: the subject must be in a different action phase, body pose, walking position, hand position, gaze, and object placement.\n- Within the same frame size, use plausible camera pan, tilt, push, pull, or subject relocation to make the earlier moment obvious.\n- Allow doors, props, cloth, hair, shadows, and nearby environment details to change according to the preceding action, while keeping spatial continuity coherent.\n- The projected moment should feel like a real adjacent video frame, not a retouched still.\n- Final output must be one single frame with no collage, UI, watermark, or text."
+  }
+]

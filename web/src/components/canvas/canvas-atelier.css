@@ -719,3 +719,32 @@
         transition-duration: 1ms;
     }
 }
+
+/* 预设列表：分组标题 + 两列条目，对齐上游工具条的分组呈现。 */
+.atelier-preset-group-title {
+    margin: 6px 2px 3px;
+    color: #8a8a90;
+    font-size: 10.5px;
+    font-weight: 600;
+}
+.atelier-preset-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 140ms ease;
+}
+.atelier-preset-item:hover {
+    background: #ffffff0d;
+}
+.atelier-preset-item-icon {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 6px;
+    opacity: 0.9;
+}
