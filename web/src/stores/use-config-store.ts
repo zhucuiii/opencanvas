@@ -24,6 +24,60 @@ export type ChannelModel = {
     script?: string;
 };
 
+/**
+ * 高级协议：给中转站 / 自建服务用的手动协议描述。
+ *
+ * 说明：这些字段目前只做**配置界面与本地保存**，尚未接入请求层
+ * （services/api/*.ts 仍按内置的 OpenAI / Gemini 逻辑发请求）。
+ * 接上之前，填了不会改变实际请求行为。
+ */
+export type ChannelAuthMode = "bearer" | "header" | "query";
+export type ChannelBodyEncoding = "json" | "form" | "multipart";
+export type ChannelPollMethod = "GET" | "POST";
+
+export type ChannelAdvancedProtocol = {
+    /** 认证方式：默认 Authorization: Bearer，也可自定义请求头或查询参数。 */
+    authMode: ChannelAuthMode;
+    /** authMode 为 header 时的头名称；为 query 时的参数名。 */
+    authName: string;
+    /** 文本 / 图片 / 视频端点路径，留空则用内置默认值。 */
+    textEndpoint: string;
+    imageEndpoint: string;
+    videoEndpoint: string;
+    bodyEncoding: ChannelBodyEncoding;
+    /** 异步轮询地址模板，支持 {task_id} 占位。 */
+    pollUrl: string;
+    pollMethod: ChannelPollMethod;
+    /** 点路径，每行一条；留空表示使用内置候选。 */
+    taskIdPaths: string;
+    statusPaths: string;
+    successValues: string;
+    failureValues: string;
+    progressPaths: string;
+    errorMessagePaths: string;
+    errorCodePaths: string;
+    resultPaths: string;
+};
+
+export const defaultAdvancedProtocol: ChannelAdvancedProtocol = {
+    authMode: "bearer",
+    authName: "",
+    textEndpoint: "",
+    imageEndpoint: "",
+    videoEndpoint: "",
+    bodyEncoding: "json",
+    pollUrl: "",
+    pollMethod: "GET",
+    taskIdPaths: "",
+    statusPaths: "",
+    successValues: "",
+    failureValues: "",
+    progressPaths: "",
+    errorMessagePaths: "",
+    errorCodePaths: "",
+    resultPaths: "",
+};
+
 export type ModelChannel = {
     id: string;
     name: string;
@@ -31,6 +85,10 @@ export type ModelChannel = {
     apiKey: string;
     apiFormat: ApiCallFormat;
     models: ChannelModel[];
+    /** 是否启用；停用的配置仍保留，但不参与模型选择。缺省视为启用。 */
+    enabled?: boolean;
+    /** 高级协议覆盖项；没有配置过的渠道读出来是 undefined。 */
+    advanced?: ChannelAdvancedProtocol;
 };
 
 export type AiConfig = {
@@ -346,6 +404,33 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
     return result;
 }
 
+/** 把可能残缺/来自旧版本的 advanced 配置补齐成完整对象。 */
+export function normalizeAdvancedProtocol(input?: Partial<ChannelAdvancedProtocol> | null): ChannelAdvancedProtocol {
+    const raw = (input || {}) as Partial<ChannelAdvancedProtocol>;
+    const authMode: ChannelAuthMode = raw.authMode === "header" || raw.authMode === "query" ? raw.authMode : "bearer";
+    const bodyEncoding: ChannelBodyEncoding = raw.bodyEncoding === "form" || raw.bodyEncoding === "multipart" ? raw.bodyEncoding : "json";
+    const pollMethod: ChannelPollMethod = raw.pollMethod === "POST" ? "POST" : "GET";
+    const text = (value: unknown) => (typeof value === "string" ? value : "");
+    return {
+        authMode,
+        authName: text(raw.authName),
+        textEndpoint: text(raw.textEndpoint),
+        imageEndpoint: text(raw.imageEndpoint),
+        videoEndpoint: text(raw.videoEndpoint),
+        bodyEncoding,
+        pollUrl: text(raw.pollUrl),
+        pollMethod,
+        taskIdPaths: text(raw.taskIdPaths),
+        statusPaths: text(raw.statusPaths),
+        successValues: text(raw.successValues),
+        failureValues: text(raw.failureValues),
+        progressPaths: text(raw.progressPaths),
+        errorMessagePaths: text(raw.errorMessagePaths),
+        errorCodePaths: text(raw.errorCodePaths),
+        resultPaths: text(raw.resultPaths),
+    };
+}
+
 export function createModelChannel(channel?: Partial<ModelChannel>): ModelChannel {
     const apiFormat = normalizeApiFormat(channel?.apiFormat);
     return {
@@ -355,6 +440,9 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         apiKey: channel?.apiKey || "",
         apiFormat,
         models: normalizeChannelModels(channel?.models),
+        // 缺省视为启用：旧版本存下来的渠道没有这个字段，不能因此变成"停用"。
+        enabled: channel?.enabled !== false,
+        advanced: channel?.advanced ? normalizeAdvancedProtocol(channel.advanced) : undefined,
     };
 }
 

@@ -2173,3 +2173,268 @@
         transition: none !important;
     }
 }
+
+/* ==========================================================================
+ * 高级协议（可选）折叠区
+ * 面向接口不标准的独立站/自建服务：认证、端点、请求体编码、轮询、解析自检。
+ * 默认收起，不填就用内置默认，普通用户无需理会。
+ * ========================================================================== */
+.atelier-config-api-advanced {
+    border: 1px solid #ffffff0d;
+    border-radius: 9px;
+    background: #1c1c1f;
+    overflow: hidden;
+}
+
+.atelier-config-api-advanced-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: #a8a8ad;
+    font-size: 11.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.atelier-config-api-advanced-toggle:hover {
+    background: #ffffff06;
+}
+
+.atelier-config-api-advanced-toggle strong {
+    color: #d8d8dc;
+    font-size: 11.5px;
+    font-weight: 650;
+}
+
+.atelier-config-api-advanced-toggle span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: #6f6f75;
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atelier-config-api-advanced-chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.atelier-config-api-advanced-chevron.is-open {
+    transform: rotate(180deg);
+}
+
+.atelier-config-api-advanced-body {
+    padding: 4px 12px 12px;
+    border-top: 1px solid #ffffff0a;
+}
+
+.atelier-config-api-advanced-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    margin-top: 10px;
+}
+
+.atelier-config-api-advanced-grid--split {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #ffffff0a;
+}
+
+.atelier-config-api-advanced-field {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.atelier-config-api-advanced-field--wide {
+    grid-column: 1 / -1;
+}
+
+.atelier-config-api-advanced-field > span {
+    color: #8d8d93;
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.atelier-config-api-advanced-field input,
+.atelier-config-api-advanced-field select,
+.atelier-config-api-advanced-field textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 7px 9px;
+    border: 1px solid #34343a;
+    border-radius: 7px;
+    background: #232326;
+    color: #efeff1;
+    font-family: inherit;
+    font-size: 11.5px;
+    outline: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.atelier-config-api-advanced-field textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.atelier-config-api-advanced-field input:hover,
+.atelier-config-api-advanced-field select:hover,
+.atelier-config-api-advanced-field textarea:hover {
+    border-color: #48484f;
+}
+
+.atelier-config-api-advanced-field input:focus,
+.atelier-config-api-advanced-field select:focus,
+.atelier-config-api-advanced-field textarea:focus {
+    border-color: #6d6d76;
+    background: #26262a;
+    box-shadow: 0 0 0 3px #ffffff08;
+}
+
+.atelier-config-api-advanced-field input::placeholder,
+.atelier-config-api-advanced-field textarea::placeholder {
+    color: #5c5c63;
+}
+
+.atelier-config-api-advanced-note {
+    margin-top: 9px;
+    color: #66666d;
+    font-size: 10.5px;
+}
+
+.atelier-config-api-advanced-block {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+}
+
+.atelier-config-api-advanced-block strong {
+    color: #d0d0d5;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.atelier-config-api-advanced-block p {
+    margin: 0;
+    color: #6c6c73;
+    font-size: 10px;
+    line-height: 1.55;
+}
+
+.atelier-config-api-advanced-action {
+    justify-self: start;
+    margin-top: 2px;
+    padding: 6px 11px;
+    border: 1px solid #3a3a41;
+    border-radius: 7px;
+    background: #26262a;
+    color: #c9c9ce;
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.atelier-config-api-advanced-action:hover:not(:disabled) {
+    border-color: #56565e;
+    background: #2c2c31;
+}
+
+.atelier-config-api-advanced-action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.atelier-config-api-advanced-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #ffffff0a;
+    color: #63636a;
+    font-size: 10px;
+}
+
+.atelier-config-api-advanced-reset {
+    border: 0;
+    background: transparent;
+    color: #85858c;
+    font-size: 10px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.atelier-config-api-advanced-reset:hover {
+    color: #b4b4ba;
+}
+
+/* 已启用开关 */
+.atelier-config-api-enabled {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #85858b;
+    font-size: 10.5px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.atelier-config-api-switch {
+    position: relative;
+    width: 30px;
+    height: 16px;
+    margin: 0;
+    appearance: none;
+    border-radius: 999px;
+    background: #3a3a41;
+    cursor: pointer;
+    transition: background 0.16s ease;
+}
+
+.atelier-config-api-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #e6e6ea;
+    transition: transform 0.16s ease;
+}
+
+.atelier-config-api-switch:checked {
+    background: #5c9a7a;
+}
+
+.atelier-config-api-switch:checked::after {
+    transform: translateX(14px);
+}
+
+.atelier-config-api-switch:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
+/* 列表项停用态 */
+.atelier-config-api-list-item i.is-disabled {
+    background: #55555c;
+    box-shadow: none;
+}
+
+@media (max-width: 720px) {
+    .atelier-config-api-advanced-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+

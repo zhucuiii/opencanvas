@@ -3,6 +3,7 @@ import { CircleAlert, CircleCheck, CircleDashed, Eye, EyeOff, ListPlus, Plus, Re
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AdvancedProtocolPanel } from "./advanced-protocol-panel";
 import { InlineModelPicker } from "./inline-model-picker";
 import {
     API_PROTOCOL_PRESETS,
@@ -11,6 +12,7 @@ import {
     createModelChannel,
     defaultBaseUrlForApiFormat,
     guessCapability,
+    normalizeAdvancedProtocol,
     normalizeChannelModels,
     type AiConfig,
     type ApiCallFormat,
@@ -128,10 +130,10 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                                     setModelsOpen(false);
                                 }}
                             >
-                                <i className={`is-${state.state}`} />
+                                <i className={`is-${channel.enabled === false ? "disabled" : state.state}`} />
                                 <span>
                                     <strong>{channel.name || "未命名配置"}</strong>
-                                    <small>{state.label}</small>
+                                    <small>{channel.enabled === false ? "已停用" : state.label}</small>
                                 </span>
                             </button>
                         );
@@ -160,6 +162,16 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                                     {stateIcon}
                                     {activeState.label}
                                 </span>
+                                <label className="atelier-config-api-enabled" title="停用后保留配置，但不会出现在模型选择里">
+                                    <span>{activeChannel.enabled === false ? "已停用" : "已启用"}</span>
+                                    <input
+                                        type="checkbox"
+                                        role="switch"
+                                        className="atelier-config-api-switch"
+                                        checked={activeChannel.enabled !== false}
+                                        onChange={(event) => updateChannel({ enabled: event.target.checked })}
+                                    />
+                                </label>
                                 <span className="atelier-config-api-browser-note">浏览器本地配置</span>
                                 <span className="atelier-config-api-delete-wrap">
                                     <button type="button" className="atelier-config-api-icon-button is-danger" title="删除配置" aria-label="删除当前 API 配置" onClick={() => setConfirmDeleteId(activeChannel.id)}>
@@ -240,6 +252,13 @@ export function ConfigApiSettings({ config, onChange, onEditModels }: ConfigApiS
                                         </button>
                                     </span>
                                 </label>
+                                <div className="atelier-config-api-field--wide">
+                                    <AdvancedProtocolPanel
+                                        value={activeChannel.advanced}
+                                        onChange={(next) => updateChannel({ advanced: next })}
+                                        canTest={Boolean(activeChannel.baseUrl.trim() && activeChannel.apiKey.trim())}
+                                    />
+                                </div>
                             </div>
                         </div>
                         <div className="atelier-config-api-editor-foot">
