@@ -276,7 +276,13 @@
     border: 1px solid;
 }
 .atelier-prompt-editor-shell {
+    position: relative;
     height: 106px;
+}
+/* 有胶囊时把正文的顶部内边距让出来，胶囊占第一行、文字从第二行开始。 */
+.atelier-prompt-editor-shell.has-presets .atelier-prompt-editor {
+    /* 胶囊 26px + 顶部 8px + 8px 间距，正文从第二行开始。 */
+    padding-top: 46px;
 }
 .atelier-recovery-note {
     display: flex;
@@ -749,12 +755,24 @@
     opacity: 0.9;
 }
 
-/* 预设胶囊：显示在提示词框上方，一行可横向滚动，不挤占编辑器高度。 */
+/*
+ * 预设胶囊：绝对定位在输入框内部的第一行（和参考项目一致）。
+ * 不参与文档流，所以不会把输入区顶高；有胶囊时正文通过 padding-top 让位。
+ */
 .atelier-prompt-presets {
+    position: absolute;
+    top: 8px;
+    right: 5px;
+    left: 5px;
+    z-index: 2;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 5px;
-    margin: 8px 0 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.atelier-prompt-presets::-webkit-scrollbar {
+    display: none;
 }
 .atelier-prompt-preset-chip {
     display: inline-flex;
