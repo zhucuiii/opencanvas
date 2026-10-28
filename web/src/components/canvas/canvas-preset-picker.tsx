@@ -11,8 +11,8 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { useConfigStore, type CanvasPromptPreset } from "@/stores/use-config-store";
 
 type CanvasPresetPickerProps = {
-    /** 选中预设后把提示词写回输入框。 */
-    onApply: (prompt: string) => void;
+    /** 选中预设：回调整条预设，由调用方决定怎么落到节点上（当前是加一个胶囊，不直接改正文）。 */
+    onApply: (preset: { id: string; name: string; prompt: string }) => void;
 };
 
 type PresetRow = {
@@ -180,8 +180,8 @@ export function CanvasPresetPicker({ onApply }: CanvasPresetPickerProps) {
                 onCommitEdit={commitEdit}
                 onCancelEdit={() => setEditingId(null)}
                 onRemove={removePreset}
-                onApply={(promptText) => {
-                    onApply(promptText);
+                onApply={(preset) => {
+                    onApply(preset);
                     setOpen(false);
                 }}
             />
@@ -234,7 +234,7 @@ function PresetPortal({
     onCommitEdit: (id: string) => void;
     onCancelEdit: () => void;
     onRemove: (id: string) => void;
-    onApply: (prompt: string) => void;
+    onApply: (preset: { id: string; name: string; prompt: string }) => void;
 }) {
     const reduce = useReducedMotion();
     const width = 460;
@@ -320,7 +320,7 @@ function PresetPortal({
                                                 </div>
                                             ) : (
                                                 <div key={item.id} className="atelier-preset-item group" style={{ color: theme.node.text }}>
-                                                    <button type="button" className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => onApply(item.prompt)} title={item.name}>
+                                                    <button type="button" className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => onApply({ id: item.id, name: item.name, prompt: item.prompt })} title={item.name}>
                                                         <span className="atelier-preset-item-icon" style={{ background: theme.node.fill }}>
                                                             {item.icon}
                                                         </span>

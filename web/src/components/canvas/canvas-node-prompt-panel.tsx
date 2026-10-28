@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, LoaderCircle, MousePointer2, Plus, MoreHorizontal, Mic, Square, Sparkles, ChevronDown } from "lucide-react";
+import { ArrowUp, LoaderCircle, MousePointer2, Plus, MoreHorizontal, Mic, Square, Sparkles, ChevronDown, Grid2x2, X } from "lucide-react";
 import { App, Button, Modal } from "antd";
 import { useTranslation } from "react-i18next";
 import { ModelPicker } from "@/components/model-picker";
@@ -18,6 +18,7 @@ import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-refer
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import { requestImageQuestion } from "@/services/api/image";
 import { CanvasPresetPicker } from "./canvas-preset-picker";
+import { BUILTIN_PROMPT_PRESETS } from "@/lib/canvas/canvas-presets";
 import { buildGenerationConfig } from "@/lib/canvas/canvas-generation-helpers";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
@@ -109,13 +110,33 @@ export function CanvasNodePromptPanel({
         if (hasTextContent || hasImageContent) onConfigChange(node.id, { composerContent: value });
         else onPromptChange(node.id, value);
     };
-    const submit = () => {
-        if (prompt.trim() && !isRunning) onGenerate(node.id, mode, prompt.trim());
+    /**
+     * 已应用的预设：界面上是提示词框上方的一排胶囊，不占用正文。
+     * 提交时才把它们的正文拼到用户输入前面，所以中途可以随时删掉某一个。
+     */
+    const appliedPresets = node.metadata?.promptPresets ?? [];
+    /** 按 id 找到预设正文：先查内置，再查用户自己加的。 */
+    const resolvePresetPrompt = (id: string) => BUILTIN_PROMPT_PRESETS.find((item) => item.id === id)?.prompt ?? globalConfig.canvasPromptPresets?.find((item) => item.id === id)?.prompt ?? "";
+    /** 最终发给模型的提示词 = 各预设正文 + 用户手写内容，用空行分隔。 */
+    const composePrompt = () => {
+        const presetText = appliedPresets
+            .map((item) => resolvePresetPrompt(item.id))
+            .filter(Boolean)
+            .join("\n\n");
+        return [presetText, prompt.trim()].filter(Boolean).join("\n\n");
     };
-    /** 选「预设」= 用一个模板替换当前提示词（模板本身就是完整指令）。 */
-    const applyPreset = (value: string) => {
-        updatePrompt(value);
+    const submit = () => {
+        const finalPrompt = composePrompt();
+        if (finalPrompt && !isRunning) onGenerate(node.id, mode, finalPrompt);
+    };
+    const applyPreset = (preset: { id: string; name: string; prompt: string }) => {
+        // 同一预设重复选只保留一个，避免拼出两遍同样的指令。
+        if (appliedPresets.some((item) => item.id === preset.id)) return;
+        onConfigChange(node.id, { promptPresets: [...appliedPresets, { id: preset.id, name: preset.name }] });
         closeTransientPanels();
+    };
+    const removePreset = (id: string) => {
+        onConfigChange(node.id, { promptPresets: appliedPresets.filter((item) => item.id !== id) });
     };
     const closeTransientPanels = () => {
         setParametersOpen(false);
@@ -209,6 +230,23 @@ export function CanvasNodePromptPanel({
                     <CanvasPresetPicker onApply={applyPreset} />
                 </div>
             </div>
+            {/*
+             * 预设胶囊：只显示预设名，不把整段提示词塞进正文。
+             * 点右上角预设菜单加一个，点胶囊上的 × 去掉；生成时由 composePrompt 展开。
+             */}
+            {appliedPresets.length ? (
+                <div className="atelier-prompt-presets" data-canvas-no-zoom>
+                    {appliedPresets.map((preset) => (
+                        <span key={preset.id} className="atelier-prompt-preset-chip" style={{ borderColor: theme.node.stroke, background: theme.node.fill }}>
+                            <Grid2x2 className="size-3 shrink-0 opacity-70" />
+                            <span className="max-w-[160px] truncate">{preset.name}</span>
+                            <button type="button" aria-label={`移除预设 ${preset.name}`} title="移除" onClick={() => removePreset(preset.id)}>
+                                <X className="size-3" />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            ) : null}
             <div className="atelier-prompt-editor-shell">
                 <CanvasPromptChipInput
                     value={prompt}
@@ -303,7 +341,7 @@ export function CanvasNodePromptPanel({
                         type="button"
                         className="atelier-send"
                         aria-label={isRunning ? t("canvas.promptPanel.stopGeneration") : t("canvas.promptPanel.generate")}
-                        disabled={!isRunning && !prompt.trim()}
+                        disabled={!isRunning && !prompt.trim() && !appliedPresets.length}
                         onClick={isRunning ? () => onStop(node.id) : submit}
                     >
                         {isRunning ? <Square size={13} /> : <ArrowUp size={18} />}

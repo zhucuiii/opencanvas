@@ -91,6 +91,11 @@ export type CanvasNodeMetadata = {
     audioSpeed?: string;
     audioInstructions?: string;
     references?: string[];
+    /**
+     * 已应用的提示词预设（只存 id 和名称，不存正文）。
+     * 界面上显示为提示词框上方的胶囊，生成时再按 id 展开成完整提示词。
+     */
+    promptPresets?: Array<{ id: string; name: string }>;
     naturalWidth?: number;
     naturalHeight?: number;
     freeResize?: boolean;
