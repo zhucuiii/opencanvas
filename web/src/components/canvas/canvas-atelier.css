@@ -527,12 +527,24 @@
 .atelier-size-trigger {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 6px;
+    /* 按最长组合（自适应 · 自适应 · Medium）留固定宽度：
+       切换比例 / 画质 / 质量时整条底栏不会跟着伸缩。 */
+    width: 176px;
+    min-width: 176px;
     font-size: 12px;
     font-weight: 600;
     height: 28px;
     cursor: pointer;
     white-space: nowrap;
+}
+.atelier-size-trigger-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
 }
 .atelier-prompt-options .ant-btn:focus-visible,
 .atelier-tools button:focus-visible,

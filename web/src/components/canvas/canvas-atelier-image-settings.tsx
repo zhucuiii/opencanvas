@@ -126,7 +126,7 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
         >
             <button ref={triggerRef} type="button" className="atelier-size-trigger" aria-label="比例 / 画质 / 质量" aria-expanded={open}>
                 <RectangleHorizontal size={13} />
-                {label}
+                <span className="atelier-size-trigger-label">{label}</span>
             </button>
         </Popover>
     );
