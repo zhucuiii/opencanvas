@@ -8,6 +8,16 @@ import type { AiConfig } from "@/stores/use-config-store";
 
 const resolutionOptions = ["auto", "1k", "2k", "4k"] as const;
 
+// 质量档位在本弹层里固定用英文，跟参考图一致；其余文案仍跟随界面语言。
+const qualityLabels: Record<string, string> = {
+    auto: "Auto",
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+    xhigh: "Ultra",
+    max: "Max",
+};
+
 export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: { config: AiConfig; onChange: (patch: { size?: string; imageScale?: string; quality?: string }) => void; onOpenChange?: (open: boolean) => void }) {
     const [open, setOpen] = useState(false);
     const [anchorOffsetX, setAnchorOffsetX] = useState(0);
@@ -52,7 +62,7 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
     );
     const ratios = ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "21:9", "3:2", "2:3"];
     // 底栏不再单放质量胶囊，非默认档位就跟在比例 / 画质后面，免得改完看不见。
-    const qualityLabel = imageQualityLabel(quality);
+    const qualityLabel = qualityLabels[quality] || imageQualityLabel(quality);
     const label = `${ratio === "auto" ? "自适应" : ratio} · ${scale === "auto" ? "自适应" : scale.toUpperCase()}${quality === "auto" ? "" : ` · ${qualityLabel}`}`;
     return (
         <Popover
@@ -107,7 +117,7 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
                         />
                         {imageQualityOptions.map((item) => (
                             <button type="button" key={item.value} role="tab" aria-selected={quality === item.value} onClick={() => onChange({ quality: item.value })}>
-                                {item.label}
+                                {qualityLabels[item.value] || item.label}
                             </button>
                         ))}
                     </div>

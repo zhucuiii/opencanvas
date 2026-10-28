@@ -496,6 +496,10 @@
     background: transparent;
     opacity: 1;
 }
+/* 六列英文档位比四列分辨率更窄，字号收半级才不至于贴边。 */
+.atelier-quality-tabs button {
+    font-size: 11.5px;
+}
 .atelier-ratio-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
