@@ -276,13 +276,7 @@
     border: 1px solid;
 }
 .atelier-prompt-editor-shell {
-    position: relative;
     height: 106px;
-}
-/* 有胶囊时把正文的顶部内边距让出来，胶囊占第一行、文字从第二行开始。 */
-.atelier-prompt-editor-shell.has-presets .atelier-prompt-editor {
-    /* 胶囊 26px + 顶部 8px + 8px 间距，正文从第二行开始。 */
-    padding-top: 46px;
 }
 .atelier-recovery-note {
     display: flex;
@@ -753,55 +747,5 @@
     place-items: center;
     border-radius: 6px;
     opacity: 0.9;
-}
-
-/*
- * 预设胶囊：绝对定位在输入框内部的第一行（和参考项目一致）。
- * 不参与文档流，所以不会把输入区顶高；有胶囊时正文通过 padding-top 让位。
- */
-.atelier-prompt-presets {
-    position: absolute;
-    top: 8px;
-    right: 5px;
-    left: 5px;
-    z-index: 2;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 5px;
-    overflow-x: auto;
-    scrollbar-width: none;
-}
-.atelier-prompt-presets::-webkit-scrollbar {
-    display: none;
-}
-.atelier-prompt-preset-chip {
-    display: inline-flex;
-    max-width: 100%;
-    height: 26px;
-    align-items: center;
-    gap: 5px;
-    padding: 0 6px 0 8px;
-    border: 1px solid #ffffff1a;
-    border-radius: 8px;
-    color: inherit;
-    font-size: 11.5px;
-    font-weight: 500;
-}
-.atelier-prompt-preset-chip button {
-    display: grid;
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    place-items: center;
-    border: 0;
-    border-radius: 5px;
-    background: transparent;
-    color: inherit;
-    opacity: 0.55;
-    cursor: pointer;
-}
-.atelier-prompt-preset-chip button:hover {
-    background: #ffffff1a;
-    opacity: 1;
 }
 

@@ -18,6 +18,12 @@ type Props = {
     className?: string;
     style?: CSSProperties;
     placeholder?: string;
+    /**
+     * 已应用的预设：作为内联标签排在正文最前面，和光标同一条文本流。
+     * 它们不进 value，序列化时跳过，由调用方在提交时单独展开。
+     */
+    presetChips?: Array<{ id: string; name: string }>;
+    onRemovePreset?: (id: string) => void;
 };
 
 type MentionState = {
@@ -31,7 +37,7 @@ type Token =
 
 // Prompt-panel contentEditable input: @ references embed thumbnail chips instead of plain label text.
 // Serialization converts chips back to reference labels so the generated value matches the former textarea semantics.
-export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, style, placeholder }: Props) {
+export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, style, placeholder, presetChips = [], onRemovePreset }: Props) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
@@ -56,12 +62,19 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         return activeReferences.filter((item) => `${item.label} ${item.title} ${item.kind} ${item.text || ""}`.toLowerCase().includes(query));
     }, [mention, activeReferences]);
 
+    const presetKey = presetChips.map((chip) => chip.id).join("|");
+    const lastPresetKeyRef = useRef(presetKey);
+
     // Rebuild the DOM from value when unfocused, or when a focused value is an external change rather than an emitted echo.
     useEffect(() => {
         const editor = editorRef.current;
         if (!editor) return;
-        if (document.activeElement === editor && value === lastEmittedRef.current) return;
+        const presetsChanged = lastPresetKeyRef.current !== presetKey;
+        if (document.activeElement === editor && value === lastEmittedRef.current && !presetsChanged) return;
+        lastPresetKeyRef.current = presetKey;
         editor.textContent = "";
+        // 预设胶囊排在正文前面，所以光标自然落在它们之后。
+        presetChips.forEach((chip) => editor.append(createPresetChip(chip, theme, onRemovePreset)));
         tokens.forEach((token) => {
             if (token.type === "text") {
                 editor.append(document.createTextNode(token.value));
@@ -72,7 +85,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
             else editor.append(document.createTextNode(token.label));
         });
         lastEmittedRef.current = value;
-    }, [tokens, referenceByLabel, theme, value]);
+    }, [tokens, referenceByLabel, theme, value, presetChips, presetKey, onRemovePreset]);
 
     const emit = (next: string) => {
         lastEmittedRef.current = next;
@@ -276,6 +289,42 @@ function ReferencePreview({ reference }: { reference: CanvasResourceReference })
     );
 }
 
+/**
+ * 预设胶囊：contentEditable=false 的内联块，和正文排在同一条文本流里。
+ * 带一个 × 用来移除；它自身不参与序列化，所以不会混进提示词正文。
+ */
+function createPresetChip(preset: { id: string; name: string }, theme: (typeof canvasThemes)[keyof typeof canvasThemes], onRemove?: (id: string) => void) {
+    const wrapper = document.createElement("span");
+    wrapper.contentEditable = "false";
+    wrapper.dataset.presetId = preset.id;
+    wrapper.className = "mx-px inline-flex h-6 max-w-40 items-center gap-1 overflow-hidden rounded-md border px-1.5 align-middle text-xs leading-none";
+    Object.assign(wrapper.style, { background: theme.toolbar.panel, borderColor: theme.node.stroke, color: theme.node.text } as CSSProperties);
+
+    const label = document.createElement("span");
+    label.className = "block truncate";
+    label.textContent = preset.name;
+    wrapper.appendChild(label);
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", `移除预设 ${preset.name}`);
+    close.className = "grid size-3.5 shrink-0 place-items-center rounded opacity-55 hover:opacity-100";
+    close.style.background = "transparent";
+    close.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+    });
+    close.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onRemove?.(preset.id);
+    });
+    wrapper.appendChild(close);
+
+    return wrapper;
+}
+
 function createReferenceChip(reference: CanvasResourceReference, theme: (typeof canvasThemes)[keyof typeof canvasThemes], onImagePreview: (url: string) => void) {
     const wrapper = document.createElement("span");
     wrapper.contentEditable = "false";
@@ -313,6 +362,8 @@ function serializeNodes(nodes: NodeListOf<ChildNode>) {
     nodes.forEach((node) => {
         if (node.nodeType === Node.TEXT_NODE) result += node.textContent || "";
         if (!(node instanceof HTMLElement)) return;
+        // 预设胶囊不是正文的一部分，序列化时整个跳过。
+        if (node.dataset.presetId) return;
         const label = node.dataset.refLabel;
         if (label) result += label;
         else if (node.tagName === "BR") result += "\n";

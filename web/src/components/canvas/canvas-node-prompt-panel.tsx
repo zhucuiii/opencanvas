@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, LoaderCircle, MousePointer2, Plus, MoreHorizontal, Mic, Square, Sparkles, ChevronDown, Grid2x2, X } from "lucide-react";
+import { ArrowUp, LoaderCircle, MousePointer2, Plus, MoreHorizontal, Mic, Square, Sparkles, ChevronDown } from "lucide-react";
 import { App, Button, Modal } from "antd";
 import { useTranslation } from "react-i18next";
 import { ModelPicker } from "@/components/model-picker";
@@ -231,23 +231,10 @@ export function CanvasNodePromptPanel({
                 </div>
             </div>
             {/*
-             * 预设胶囊放在输入框**内部**的首行：它是这段提示词的一部分，
-             * 不是框外的一个开关。放到框外会把输入区往下顶，看起来像两个独立控件。
+             * 预设胶囊交给输入框内部渲染（见 CanvasPromptChipInput 的 presetChips）：
+             * 它是正文的第一个内联块，光标紧跟在它后面，和手写文字在同一条文本流里。
              */}
-            <div className={`atelier-prompt-editor-shell${appliedPresets.length ? " has-presets" : ""}`}>
-                {appliedPresets.length ? (
-                    <div className="atelier-prompt-presets" data-canvas-no-zoom>
-                        {appliedPresets.map((preset) => (
-                            <span key={preset.id} className="atelier-prompt-preset-chip" style={{ borderColor: theme.node.stroke, background: theme.node.fill }}>
-                                <Grid2x2 className="size-3 shrink-0 opacity-70" />
-                                <span className="max-w-[160px] truncate">{preset.name}</span>
-                                <button type="button" aria-label={`移除预设 ${preset.name}`} title="移除" onClick={() => removePreset(preset.id)}>
-                                    <X className="size-3" />
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                ) : null}
+            <div className="atelier-prompt-editor-shell">
                 <CanvasPromptChipInput
                     value={prompt}
                     references={mentionReferences}
@@ -255,8 +242,9 @@ export function CanvasNodePromptPanel({
                     onSubmit={submit}
                     className="atelier-prompt-editor thin-scrollbar w-full cursor-text resize-none"
                     style={{ background: "transparent", color: theme.node.text }}
-                    // 有预设胶囊时把占位文案让开，否则它会和胶囊挤在同一块区域。
                     placeholder={appliedPresets.length ? "" : "输入提示词..."}
+                    presetChips={appliedPresets}
+                    onRemovePreset={removePreset}
                 />
             </div>
             {recovery ? (
