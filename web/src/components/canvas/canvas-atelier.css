@@ -529,11 +529,12 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    /* 按最长组合（自适应 · 自适应 · Medium）留固定宽度：
-       切换比例 / 画质 / 质量时整条底栏不会跟着伸缩。
-       图标和文字作为一组居中，图标不会孤零零贴在左边缘。 */
-    width: 176px;
-    min-width: 176px;
+    /*
+     * 比例 / 画质 / 质量三段各按最长值留固定槽位，切换任何一段都不会改变总宽，
+     * 底栏和弹层都不动；短标签在自己的槽位里居中，避免整段文字两侧空太多。
+     */
+    width: 168px;
+    min-width: 168px;
     font-size: 12px;
     font-weight: 600;
     height: 28px;
@@ -541,9 +542,27 @@
     white-space: nowrap;
 }
 .atelier-size-trigger-label {
+    display: flex;
     min-width: 0;
+    align-items: center;
     overflow: hidden;
-    text-overflow: ellipsis;
+}
+.atelier-size-trigger-field {
+    display: inline-block;
+    flex: 0 0 auto;
+    text-align: center;
+}
+.atelier-size-trigger-field.is-ratio,
+.atelier-size-trigger-field.is-scale {
+    width: 36px;
+}
+.atelier-size-trigger-field.is-quality {
+    width: 51px;
+}
+.atelier-size-trigger-dot {
+    flex: 0 0 auto;
+    margin: 0 3px;
+    opacity: 0.8;
 }
 .atelier-prompt-options .ant-btn:focus-visible,
 .atelier-tools button:focus-visible,

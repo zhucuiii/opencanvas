@@ -62,8 +62,10 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
     );
     const ratios = ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "21:9", "3:2", "2:3"];
     // 底栏不再单放质量胶囊，但档位文字必须一直可见：比例 / 画质 / 质量连成一行。
+    // 三段各自按最长值留固定槽位，短标签在自己槽位里居中，整条状态栏不会伸缩。
     const qualityLabel = qualityLabels[quality] || imageQualityLabel(quality);
-    const label = `${ratio === "auto" ? "自适应" : ratio} · ${scale === "auto" ? "自适应" : scale.toUpperCase()} · ${qualityLabel}`;
+    const ratioLabel = ratio === "auto" ? "自适应" : ratio;
+    const scaleLabel = scale === "auto" ? "自适应" : scale.toUpperCase();
     return (
         <Popover
             trigger="click"
@@ -126,7 +128,13 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
         >
             <button ref={triggerRef} type="button" className="atelier-size-trigger" aria-label="比例 / 画质 / 质量" aria-expanded={open}>
                 <RectangleHorizontal size={13} />
-                <span className="atelier-size-trigger-label">{label}</span>
+                <span className="atelier-size-trigger-label">
+                    <span className="atelier-size-trigger-field is-ratio">{ratioLabel}</span>
+                    <span className="atelier-size-trigger-dot">·</span>
+                    <span className="atelier-size-trigger-field is-scale">{scaleLabel}</span>
+                    <span className="atelier-size-trigger-dot">·</span>
+                    <span className="atelier-size-trigger-field is-quality">{qualityLabel}</span>
+                </span>
             </button>
         </Popover>
     );
