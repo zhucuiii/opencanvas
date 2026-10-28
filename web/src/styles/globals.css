@@ -1036,6 +1036,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
+    scrollbar-color: #4a4a4e transparent;
 }
 
 .atelier-config-api-editor-head {
@@ -1123,12 +1124,13 @@
 
 .atelier-config-api-editor-body {
     min-height: 0;
-    /* 只有表单区滚动：底部操作条和模型选择区始终留在可视范围内。 */
-    overflow-y: auto;
+    /*
+     * 不要在这里再开一个滚动容器。整块 .atelier-config-api-editor 才是唯一的滚动区；
+     * 这里一旦是 overflow:auto（哪怕内容没超高、scrollHeight 等于 clientHeight），
+     * 滚轮会先落在它身上，而 overscroll-behavior: contain 又截住了向父级的链式滚动，
+     * 结果就是鼠标滚轮怎么转面板都不动。保持 visible，让滚轮直接交给编辑器。
+     */
     padding: 18px 22px 22px;
-    scrollbar-width: thin;
-    scrollbar-color: #4a4a4e transparent;
-    overscroll-behavior: contain;
 }
 
 .atelier-config-api-section-heading {
@@ -1515,19 +1517,16 @@
     font-size: 10.5px;
 }
 
-.atelier-config-api-editor-body,
 .atelier-config-api-list {
     overscroll-behavior: contain;
 }
 
-.atelier-config-api-editor-body,
 .atelier-config-api-list,
 .atelier-config-api-delete-popover {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-.atelier-config-api-editor-body::-webkit-scrollbar,
 .atelier-config-api-list::-webkit-scrollbar,
 .atelier-config-api-delete-popover::-webkit-scrollbar {
     display: none;
