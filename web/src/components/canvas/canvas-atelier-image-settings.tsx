@@ -61,9 +61,9 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
         [onOpenChange],
     );
     const ratios = ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "21:9", "3:2", "2:3"];
-    // 底栏不再单放质量胶囊，非默认档位就跟在比例 / 画质后面，免得改完看不见。
+    // 底栏不再单放质量胶囊，但档位文字必须一直可见：比例 / 画质 / 质量连成一行。
     const qualityLabel = qualityLabels[quality] || imageQualityLabel(quality);
-    const label = `${ratio === "auto" ? "自适应" : ratio} · ${scale === "auto" ? "自适应" : scale.toUpperCase()}${quality === "auto" ? "" : ` · ${qualityLabel}`}`;
+    const label = `${ratio === "auto" ? "自适应" : ratio} · ${scale === "auto" ? "自适应" : scale.toUpperCase()} · ${qualityLabel}`;
     return (
         <Popover
             trigger="click"
