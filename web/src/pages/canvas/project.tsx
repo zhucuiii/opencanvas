@@ -19,6 +19,7 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "@/lib/canvas/canvas-image-data";
 import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
+import { inferMediaRatio } from "@/lib/media-size";
 import { dismissCanvasPopovers } from "@/lib/canvas/canvas-popover-dismiss";
 import { captureVideoFrame, type VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
 import { App, Button, Modal } from "antd";
@@ -1903,12 +1904,18 @@ function InfiniteCanvasPage() {
         // 改配置可能连带改节点尺寸（比如换比例）。节点是动画过渡过去的，而连线端点按数据坐标算，
         // 所以过渡期间要逐帧把连线重算到节点的实际尺寸上（见下面的形变记号与 ConnectionPath）。
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
-        // 比例 / 分辨率 / 张数要「沿用上次用的」：设置里已经不单独配这几个默认值了，
+        // 比例 / 分辨率 / 质量 / 张数要「沿用上次用的」：设置里已经不单独配这几个默认值了，
         // 所以把画布上这次的选择回写到全局配置，下一个新建节点直接用它。
         const updateConfig = useConfigStore.getState().updateConfig;
         const next = patch || {};
-        if (typeof next.size === "string") updateConfig("size", next.size);
+        if (typeof next.size === "string") {
+            updateConfig("size", next.size);
+            // 仅回写像素尺寸不够：新节点的默认尺寸会用 imageRatio 重新拼，
+            // 不同步这个字段的话 16:9 到了下一个节点会退回默认的 1:1。
+            updateConfig("imageRatio", inferMediaRatio(next.size));
+        }
         if (typeof next.imageScale === "string") updateConfig("imageScale", next.imageScale);
+        if (typeof next.quality === "string") updateConfig("quality", next.quality);
         if (typeof next.count === "number") updateConfig("count", String(next.count));
     }, []);
 
