@@ -898,14 +898,14 @@ function ImageContent({
             {stacked ? (
                 <ImageStack className="h-full w-full" layout="fan" radius={24} sendToBackOnClick draggableCards={false} cards={stackCards} />
             ) : (
-                <div className="h-full w-full overflow-hidden rounded-3xl">
+                <div className="h-full w-full overflow-hidden rounded-[17px]">
                     {primaryContent ? (
                         <img
                             src={primarySource}
                             alt={node.title}
                             draggable={false}
                             onDragStart={(event) => event.preventDefault()}
-                            className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`}
+                            className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-cover"}`}
                         />
                     ) : (
                         <ImageSlotStatus image={primaryImage} />
