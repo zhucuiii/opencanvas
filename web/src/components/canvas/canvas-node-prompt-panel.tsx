@@ -7,7 +7,6 @@ import { resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiC
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasAtelierImageSettings } from "./canvas-atelier-image-settings";
-import { CanvasImageQualityPopover } from "./canvas-image-quality-popover";
 import { CanvasImageCountChip } from "./canvas-image-count-chip";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
@@ -280,9 +279,6 @@ export function CanvasNodePromptPanel({
                         />
                     )}
                     <span className="atelier-status-divider" />
-                    {mode === "image" ? (
-                        <CanvasImageQualityPopover flat quality={config.quality || "auto"} onChange={(quality) => onConfigChange(node.id, { quality })} buttonClassName="!h-7 !px-0" />
-                    ) : null}
                     <div className="atelier-advanced-shell" data-open={parametersOpen ? "true" : undefined}>
                         {!parametersMounted ? (
                             <button
