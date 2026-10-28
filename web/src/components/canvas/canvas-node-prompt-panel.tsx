@@ -254,7 +254,7 @@ export function CanvasNodePromptPanel({
             ) : null}
             <div className="atelier-prompt-footer">
                 <div className="atelier-prompt-options">
-                    <ModelPicker flat config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px]" contentClassName="atelier-model-menu" />
+                    <ModelPicker flat alignTo=".atelier-prompt-panel" config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[190px]" contentClassName="atelier-model-menu" />
                     <span className="atelier-status-divider" />
                     {mode === "image" ? (
                         <CanvasAtelierImageSettings

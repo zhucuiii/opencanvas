@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -22,11 +22,15 @@ type ModelPickerProps = {
     /** 画布节点底栏的扁平样式：去掉胶囊的底色和描边，只留图标加文字。 */
     flat?: boolean;
     showIcon?: boolean;
+    /** 把下拉菜单的左边缘对齐到最近的这个容器（CSS 选择器）的左边缘，而不是触发器的左边缘。 */
+    alignTo?: string;
 };
 
-export function ModelPicker({ config, value, onChange, capability, className, contentClassName, fullWidth = false, placeholder, onMissingConfig, flat = false, showIcon = true, side = "bottom" }: ModelPickerProps) {
+export function ModelPicker({ config, value, onChange, capability, className, contentClassName, fullWidth = false, placeholder, onMissingConfig, flat = false, showIcon = true, side = "bottom", alignTo }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const [menuAlignOffset, setMenuAlignOffset] = useState(flat ? 12 : 0);
     const [open, setOpen] = useExclusivePopover();
     const options = useMemo(
         () => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))),
@@ -73,11 +77,19 @@ export function ModelPicker({ config, value, onChange, capability, className, co
                 if (nextOpen && !options.length && config.channelMode === "local") onMissingConfig?.();
                 if (nextOpen) window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
                 if (nextOpen) setActiveChannelId((currentId) => (displayGroups.some((group) => group.id === currentId) ? currentId : displayGroups[0]?.id || ""));
+                if (nextOpen && alignTo) {
+                    // Radix 只按触发器计算菜单原点；这里把原点推到容器的左边缘，
+                    // 菜单展开后就跟提示词面板的左侧边框齐平。
+                    const trigger = triggerRef.current;
+                    const container = trigger?.closest(alignTo);
+                    if (trigger && container) setMenuAlignOffset(container.getBoundingClientRect().left - trigger.getBoundingClientRect().left);
+                }
                 setOpen(nextOpen);
             }}
             onValueChange={onChange}
         >
             <SelectTrigger
+                ref={triggerRef}
                 className={cn(
                     "canvas-composer-model-picker w-fit max-w-full gap-2 text-sm font-normal",
                     flat
@@ -107,7 +119,7 @@ export function ModelPicker({ config, value, onChange, capability, className, co
                 )}
                 position="popper"
                 align="start"
-                alignOffset={flat ? 12 : 0}
+                alignOffset={alignTo ? menuAlignOffset : flat ? 12 : 0}
                 side={side}
                 sideOffset={flat ? 8 : 12}
                 onPointerDown={(event) => event.stopPropagation()}
