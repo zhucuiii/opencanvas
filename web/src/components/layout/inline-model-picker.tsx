@@ -1,5 +1,5 @@
 import { App, Button, Checkbox, Input } from "antd";
-import { RefreshCw, Search } from "lucide-react";
+import { CircleAlert, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -30,6 +30,9 @@ export function InlineModelPicker({ channel, selectedNames, onChange }: InlineMo
     const [search, setSearch] = useState("");
     const [manual, setManual] = useState("");
     const [loading, setLoading] = useState(false);
+    // 拉取失败的原因直接留在面板里，不靠一闪而过的 toast——用户点完看不到任何变化时
+    // 根本不知道是地址不对、密钥无效还是上游不提供 /models。
+    const [error, setError] = useState<string | null>(null);
     const started = useRef(false);
 
     // 已选 + 新拉取的并集：之前配好的模型不会因为这次拉取而消失。
@@ -43,17 +46,23 @@ export function InlineModelPicker({ channel, selectedNames, onChange }: InlineMo
     const load = async () => {
         if (!channel) return;
         if (!channel.baseUrl.trim() || !channel.apiKey.trim()) {
-            message.error(t("config.modelSelect.missingConfig"));
+            setError("请先填写服务地址和 API Key。");
             return;
         }
         setLoading(true);
+        setError(null);
         try {
             const models = await fetchChannelModels(channel);
             setFetched(models);
-            if (!models.length) message.warning(t("config.modelSelect.fetchedEmpty"));
-            else message.success(t("config.modelSelect.fetched", { count: models.length }));
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("config.modelSelect.fetchFailed"));
+            if (!models.length) {
+                setError("上游返回了空列表：接口能连通，但没有可用模型。可以手动填写模型名称。");
+                message.warning(t("config.modelSelect.fetchedEmpty"));
+            } else {
+                message.success(t("config.modelSelect.fetched", { count: models.length }));
+            }
+        } catch (caught) {
+            const detail = caught instanceof Error ? caught.message : t("config.modelSelect.fetchFailed");
+            setError(detail);
         } finally {
             setLoading(false);
         }
@@ -63,6 +72,7 @@ export function InlineModelPicker({ channel, selectedNames, onChange }: InlineMo
     // 地址或密钥还没填完就静默跳过，避免刚打开面板就弹一个错误。
     useEffect(() => {
         if (started.current || !channel) return;
+        // 刚打开面板时还没填完配置是正常状态，不要一进来就报警。
         if (!channel.baseUrl.trim() || !channel.apiKey.trim()) return;
         started.current = true;
         void load();
@@ -105,6 +115,15 @@ export function InlineModelPicker({ channel, selectedNames, onChange }: InlineMo
                     </Button>
                 </span>
             </div>
+            {error && !loading ? (
+                <div className="flex items-start gap-1.5 border-t border-red-200 px-3 py-2 text-[11px] leading-4 text-red-600 dark:border-red-900/60 dark:text-red-400">
+                    <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
+                    <span className="min-w-0 break-all">
+                        拉取失败：{error}
+                        <span className="mt-0.5 block opacity-70">可以重试，或直接在右上角输入模型名称手动添加。</span>
+                    </span>
+                </div>
+            ) : null}
             {visibleList.length ? (
                 <div className="grid max-h-40 grid-cols-1 gap-x-6 gap-y-1 overflow-y-auto border-t border-stone-200 px-3 py-2 dark:border-stone-800 md:grid-cols-2">
                     {visibleList.map((name) => (
@@ -115,9 +134,11 @@ export function InlineModelPicker({ channel, selectedNames, onChange }: InlineMo
                         </Checkbox>
                     ))}
                 </div>
-            ) : (
-                <div className="border-t border-stone-200 px-3 py-5 text-center text-xs text-stone-500 dark:border-stone-800">{loading ? t("config.modelSelect.fetch") : t("config.modelSelect.fetchedEmpty")}</div>
-            )}
+            ) : !error ? (
+                <div className="border-t border-stone-200 px-3 py-5 text-center text-xs text-stone-500 dark:border-stone-800">
+                    {loading ? t("config.modelSelect.fetch") : channel?.baseUrl.trim() && channel?.apiKey.trim() ? "点右上角「拉取模型列表」获取上游模型，也可以直接输入模型名称手动添加。" : "填好上面的服务地址和 API Key 后即可拉取；也可以直接输入模型名称手动添加。"}
+                </div>
+            ) : null}
         </div>
     );
 }

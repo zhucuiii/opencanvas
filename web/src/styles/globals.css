@@ -1026,8 +1026,16 @@
      * 之前是 72px / 1fr / 62px 三行写死，模型区一展开就顶破总高被裁掉；
      * 改成 auto 之后底部会挤上来，所以这里让表单区自己滚，底部永远有位置。
      */
-    grid-template-rows: 72px minmax(0, 1fr) auto;
-    overflow: hidden;
+    /*
+     * 三行都按内容走，整个面板统一滚动。
+     * 之前中间是 1fr：模型区一展开就把连接信息压到只剩一百来像素，
+     * API Key 直接被挤出可视区，看起来就像"密钥填不进去"。
+     * 改成整体滚动后，表单保持自然高度，模型区固定上限、超出再滚。
+     */
+    grid-template-rows: 72px max-content max-content;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
 }
 
 .atelier-config-api-editor-head {
@@ -1366,36 +1374,20 @@
 }
 
 /*
- * 模型选择就地展开区：原本是"点按钮 → 覆盖列表"或"进抽屉 → 再叠一层弹窗"，
- * 现在拉取结果直接摊在这块面板底部，勾选即写回配置。
- */
-/*
- * 模型选择区是"浮"在编辑器底部的覆盖层，不参与 grid 行高分配。
+ * 模型选择区：常驻展开，参与正常文档流。
  *
- * 原因是这个面板高度固定（弹窗形态尤其明显），连接信息表单本身就要占满：
- * 一旦把模型列表塞进正常文档流，两者必然抢高度 —— 要么表单被压掉半截
- * （API Key 输入框被切），要么列表只剩一两行。
- * 做成覆盖层后，表单尺寸完全不变，列表从底部升起、自带滚动，勾选即生效。
+ * 这里曾经是绝对定位的覆盖层 —— 拉取时从底部升起盖住连接信息。
+ * 但它盖住的第一块内容正是 API Key 输入框：模型一展开，密钥就点不到，
+ * 用户会以为"API 填不进去"。现在改成普通块，高度由外层模型区统一限制并滚动。
  */
 .atelier-config-api-model-picker {
-    position: absolute;
-    right: 0;
-    /* 盖在连接信息之上，但要停在操作条上沿，否则会挡住"重新拉取模型"按钮本身，
-       用户点开之后就再也点不到同一个按钮收起。 */
-    bottom: 56px;
-    left: 0;
-    z-index: 20;
     display: flex;
-    max-height: calc(100% - 72px - 56px);
+    min-height: 0;
     flex-direction: column;
-    padding: 10px 18px 12px;
-    border-top: 1px solid #ffffff14;
-    border-radius: 10px 10px 0 0;
-    /* 必须是完全不透明：半透明会让底下的表单字段透上来，列表看起来像"脏"的。 */
-    background: #17171a;
-    box-shadow: 0 -18px 44px rgb(0 0 0 / 60%);
-    overflow-y: auto;
-    scrollbar-width: thin;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .atelier-config-api-model-button {
@@ -2205,10 +2197,9 @@
      * （分段控件内边距不同），写死高度会在某些版本里把最后一行切掉。
      * 这里给下限和上限，内容少时按内容、多了才滚动。
      */
-    min-height: 120px;
-    max-height: 220px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    /* 高度交给外层整体滚动，这里不再二次裁切，否则模型选择区会被挤到滚动条外面。 */
+    min-height: 0;
+    overflow: visible;
     scrollbar-width: thin;
     scrollbar-color: #4a4a4e transparent;
 }

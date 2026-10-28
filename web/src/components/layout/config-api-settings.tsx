@@ -1,5 +1,5 @@
 import { Button, Input, Segmented } from "antd";
-import { CircleAlert, CircleCheck, CircleDashed, Eye, EyeOff, Plus, RefreshCw, Server, Trash2, Zap } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, Eye, EyeOff, Plus, Server, Trash2, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -36,8 +36,6 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
     const [activeId, setActiveId] = useState(channels[0]?.id || "");
     const [visibleKeyId, setVisibleKeyId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-    // 模型列表在按钮下方就地展开，不再另开弹窗。
-    const [modelsOpen, setModelsOpen] = useState(false);
     // 单个模型的自定义调用脚本编辑（原「编辑渠道」抽屉里的功能，挪到这里）。
     const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
     const activeChannel = channels.find((channel) => channel.id === activeId) || channels[0] || null;
@@ -111,7 +109,6 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
         });
         onChange("channels", [...channels, channel]);
         setActiveId(channel.id);
-        setModelsOpen(false);
     };
 
     const removeChannel = (id: string) => {
@@ -153,7 +150,6 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
                                 onClick={() => {
                                     setActiveId(channel.id);
                                     setConfirmDeleteId(null);
-                                    setModelsOpen(false);
                                 }}
                             >
                                 <i className={`is-${channel.enabled === false ? "disabled" : state.state}`} />
@@ -297,17 +293,8 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
                             <div className="atelier-config-api-models-head">
                                 <div>
                                     <strong>渠道模型</strong>
-                                    <small>{activeChannel.models.length ? `已选 ${activeChannel.models.length} 个，可按能力分类并配置调用脚本` : "还没有模型"}</small>
+                                    <small>{activeChannel.models.length ? `已选 ${activeChannel.models.length} 个，可按能力分类并配置调用脚本` : "还没有模型，可以从上游拉取，也可以直接手动填写"}</small>
                                 </div>
-                                <Button
-                                    type="primary"
-                                    icon={<RefreshCw className="size-4" />}
-                                    disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()}
-                                    aria-expanded={modelsOpen}
-                                    onClick={() => setModelsOpen((current) => !current)}
-                                >
-                                    {activeChannel.models.length ? "重新拉取模型" : "拉取模型"}
-                                </Button>
                             </div>
 
                             {activeChannel.models.length ? (
@@ -327,22 +314,16 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <div className="atelier-config-api-model-empty">
-                                    <Button icon={<RefreshCw className="size-4" />} disabled={!activeChannel.baseUrl.trim() || !activeChannel.apiKey.trim()} onClick={() => setModelsOpen(true)}>
-                                        拉取模型
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                        {/*
-                         * 拉取结果直接在这块面板里展开可选，勾了就生效。
-                         * 原先点这个按钮会无声覆盖整个模型列表，想挑模型还得再进
-                         * "编辑渠道" 抽屉里叠一层弹窗，绕一圈回到同一个地方。
-                         */}
-                        {modelsOpen ? (
+                            ) : null}
+
+                            {/*
+                             * 拉取/手动添加都收在这一块里常驻展开，不再用按钮切换。
+                             * 之前这里有三个「拉取模型」入口（区块右上、空态、选择器内），
+                             * 拉取失败时又没有任何回显，用户只会看到一块空白，误以为功能坏了。
+                             */}
                             <div className="atelier-config-api-model-picker">
                                 <InlineModelPicker
+                                    key={activeChannel.id}
                                     channel={activeChannel}
                                     selectedNames={activeChannel.models.map((model) => model.name)}
                                     onChange={(names) => {
@@ -351,7 +332,7 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
                                     }}
                                 />
                             </div>
-                        ) : null}
+                        </div>
                         </div>
                         <ModelScriptEditor
                             open={Boolean(scriptTarget)}
