@@ -156,6 +156,76 @@
     opacity: 0.75;
 }
 
+/* 外观面板里的滑杆与色板用原生控件：antd Slider 的 tooltip Portal 连续拖动时会死循环。 */
+.atelier-slider-field {
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 8px;
+}
+
+.atelier-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    margin: 0;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        currentColor 0%,
+        currentColor var(--slider-percent, 0%),
+        color-mix(in srgb, currentColor 20%, transparent) var(--slider-percent, 0%),
+        color-mix(in srgb, currentColor 20%, transparent) 100%
+    );
+    outline: none;
+    cursor: pointer;
+}
+
+.atelier-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: currentColor;
+    border: 2px solid color-mix(in srgb, currentColor 25%, white);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+}
+
+.atelier-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+    border: 2px solid color-mix(in srgb, currentColor 25%, white);
+    cursor: pointer;
+}
+
+.atelier-slider-value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.atelier-color-swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.atelier-color-swatch::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+.atelier-color-swatch::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+}
+
 .atelier-appearance-media {
     display: flex;
     align-items: center;

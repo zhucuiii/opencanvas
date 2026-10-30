@@ -1,5 +1,5 @@
-import { useEffect, useId, useState } from "react";
-import { Button, ColorPicker, Input, Segmented, Slider } from "antd";
+import { useEffect, useId, useState, type CSSProperties } from "react";
+import { Button, Input, Segmented } from "antd";
 import { ChevronDown, CircleDot, Grid2x2, Moon, Paintbrush, RotateCcw, Square, Sun } from "lucide-react";
 
 import {
@@ -144,7 +144,7 @@ function ColorField({ label, value, theme, onChange }: { label: string; value: s
     return (
         <label className="grid grid-cols-[60px_24px_minmax(0,1fr)] items-center gap-2">
             <span>{label}</span>
-            <ColorPicker disabledAlpha size="small" value={value} onChange={(color) => onChange(color.toHexString().toUpperCase())} />
+            <input type="color" className="atelier-color-swatch" aria-label={`${label}色板`} value={value} onChange={(event) => onChange(event.target.value.toUpperCase())} />
             <Input size="small" value={textValue} aria-label={`${label}色码`} style={{ color: theme.node.text }} onFocus={() => setEditing(true)} onChange={(event) => {
                 const next = event.target.value;
                 setTextValue(next);
@@ -156,11 +156,23 @@ function ColorField({ label, value, theme, onChange }: { label: string; value: s
 }
 
 function SliderField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+    // 原生 range：antd Slider 的 tooltip 用了 Portal，连续拖动时 Portal 的 setState 会死循环（Maximum update depth）。
+    const percent = ((value - min) / (max - min)) * 100;
     return (
-        <div className="grid grid-cols-[60px_minmax(0,1fr)_34px] items-center gap-2">
+        <div className="atelier-slider-field">
             <span>{label}</span>
-            <Slider style={{ margin: 0 }} ariaLabelForHandle={label} min={min} max={max} value={value} tooltip={{ open: false }} onChange={onChange} />
-            <span className="text-right tabular-nums">{value > 0 && min < 0 ? "+" : ""}{value}%</span>
+            <input
+                type="range"
+                className="atelier-slider"
+                aria-label={label}
+                min={min}
+                max={max}
+                step={1}
+                value={value}
+                onChange={(event) => onChange(Number(event.target.value))}
+                style={{ "--slider-percent": `${percent}%` } as CSSProperties}
+            />
+            <span className="atelier-slider-value">{value > 0 && min < 0 ? "+" : ""}{value}%</span>
         </div>
     );
 }
