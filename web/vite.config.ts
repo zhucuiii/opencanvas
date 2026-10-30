@@ -18,4 +18,12 @@ export default defineConfig({
     define: {
         __APP_VERSION__: JSON.stringify(localVersion),
     },
+    // Windows + 中文路径下 fs.watch 会漏事件，导致 dev server 端起旧模块（改了代码页面不更新）。
+    // 轮询监听牺牲一点 CPU，换来改一个字符也能稳定热更新。
+    server: {
+        watch: {
+            usePolling: true,
+            interval: 300,
+        },
+    },
 });

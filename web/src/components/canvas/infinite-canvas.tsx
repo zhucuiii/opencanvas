@@ -10,6 +10,10 @@ type InfiniteCanvasProps = {
     viewport: ViewportTransform;
     tool: "select" | "pan";
     backgroundMode?: CanvasBackgroundMode;
+    /** 画布底色（自定义外观时覆盖主题色）。 */
+    background?: string;
+    /** 网格/点阵颜色（自定义外观时覆盖主题色）。 */
+    gridColor?: string;
     onViewportChange: (viewport: ViewportTransform) => void;
     onCanvasMouseDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
     onCanvasDeselect?: () => void;
@@ -19,7 +23,7 @@ type InfiniteCanvasProps = {
     children: React.ReactNode;
 };
 
-export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onContextMenu, onDrop, children }: InfiniteCanvasProps) {
+export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", background, gridColor, onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onContextMenu, onDrop, children }: InfiniteCanvasProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const canvasOperationMode = useConfigStore((state) => state.config.canvasOperationMode);
     const panState = useRef({
@@ -223,7 +227,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         <div
             ref={containerRef}
             className="relative h-full w-full select-none overflow-hidden"
-            style={{ background: theme.canvas.background, cursor }}
+            style={{ background: background ?? theme.canvas.background, cursor }}
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
             onWheel={handleWheel}
@@ -231,7 +235,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
         >
-            <CanvasGrid viewport={viewport} mode={backgroundMode} />
+            <CanvasGrid viewport={viewport} mode={backgroundMode} gridColor={gridColor} />
             <div
                 className="absolute origin-top-left"
                 style={{
@@ -244,16 +248,18 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     );
 }
 
-function CanvasGrid({ viewport, mode }: { viewport: ViewportTransform; mode: CanvasBackgroundMode }) {
+function CanvasGrid({ viewport, mode, gridColor }: { viewport: ViewportTransform; mode: CanvasBackgroundMode; gridColor?: string }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     if (mode === "blank") return null;
+    const dotColor = gridColor ?? theme.canvas.dot;
+    const lineColor = gridColor ?? theme.canvas.line;
 
     const gridSize = (mode === "dots" ? 20 : 48) * viewport.k;
     const x = viewport.x % gridSize;
     const y = viewport.y % gridSize;
     const dotSize = viewport.k < 0.12 ? 0.8 : 1.15;
     const backgroundImage =
-        mode === "dots" ? `radial-gradient(circle, ${theme.canvas.dot} ${dotSize}px, transparent ${dotSize + 0.2}px)` : `linear-gradient(${theme.canvas.line} 1px, transparent 1px), linear-gradient(90deg, ${theme.canvas.line} 1px, transparent 1px)`;
+        mode === "dots" ? `radial-gradient(circle, ${dotColor} ${dotSize}px, transparent ${dotSize + 0.2}px)` : `linear-gradient(${lineColor} 1px, transparent 1px), linear-gradient(90deg, ${lineColor} 1px, transparent 1px)`;
 
     return (
         <div

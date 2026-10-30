@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import { localForageStorage } from "@/lib/localforage-storage";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
+import { normalizeCanvasAppearance, readCanvasAppearanceDefault, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 
 export type CanvasProject = {
@@ -17,6 +18,8 @@ export type CanvasProject = {
     chatSessions: CanvasAssistantSession[];
     activeChatId: string | null;
     backgroundMode: CanvasBackgroundMode;
+    /** 画布外观：深浅主题 / 自定义配色 / 网格样式，随项目保存。 */
+    appearance: CanvasAppearance;
     showImageInfo: boolean;
     viewport: ViewportTransform;
 };
@@ -36,10 +39,19 @@ type CanvasStore = {
     renameProject: (id: string, title: string) => void;
     deleteProjects: (ids: string[]) => void;
     replaceProjects: (projects: CanvasProject[], deletedProjects?: CanvasDeletedProject[]) => void;
-    updateProject: (id: string, patch: Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "showImageInfo" | "viewport">>) => void;
+    updateProject: (id: string, patch: Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "appearance" | "showImageInfo" | "viewport">>) => void;
 };
 
 const initialViewport: ViewportTransform = { x: 0, y: 0, k: 1 };
+
+/** 「设为新画布默认」的本机设置：新建画布时套用。 */
+function appearanceDefault() {
+    try {
+        return readCanvasAppearanceDefault();
+    } catch {
+        return null;
+    }
+}
 const CANVAS_STORE_KEY = "infinite-canvas:canvas_store";
 type PersistedCanvasState = Pick<CanvasStore, "projects" | "deletedProjects">;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -84,7 +96,8 @@ export const useCanvasStore = create<CanvasStore>()(
                     connections: [],
                     chatSessions: [],
                     activeChatId: null,
-                    backgroundMode: "dots",
+                    backgroundMode: appearanceDefault()?.backgroundMode ?? "dots",
+                    appearance: appearanceDefault()?.appearance ?? { mode: "dark" },
                     showImageInfo: false,
                     viewport: initialViewport,
                 };
@@ -103,6 +116,7 @@ export const useCanvasStore = create<CanvasStore>()(
                     chatSessions: source.chatSessions || [],
                     activeChatId: source.activeChatId || null,
                     backgroundMode: source.backgroundMode || "lines",
+                    appearance: normalizeCanvasAppearance(source.appearance, "dark"),
                     showImageInfo: source.showImageInfo || false,
                     viewport: source.viewport || initialViewport,
                 };

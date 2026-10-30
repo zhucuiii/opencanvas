@@ -1997,21 +1997,26 @@
     font-size: 0.75rem;
 }
 
-/* Canvas connection light trail: a short dash sliding along the path on top of the base stroke. */
-.canvas-connection-flow {
-    animation: canvas-connection-flow 1.6s linear infinite;
+/* Canvas connection comet beam: layered dashes sliding along the path with
+   staggered offsets — round head, thin tail (see CanvasConnectionBeam).
+   pathLength is normalized to 300, and each layer travels 100 units per cycle,
+   i.e. one third of the path; the loop is seamless. */
+.canvas-connection-comet {
+    animation: canvas-connection-comet 1.5s linear infinite;
 }
 
-@keyframes canvas-connection-flow {
+@keyframes canvas-connection-comet {
+    from {
+        stroke-dashoffset: var(--canvas-beam-offset);
+    }
     to {
-        stroke-dashoffset: -68;
+        stroke-dashoffset: calc(var(--canvas-beam-offset) - 100px);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .canvas-connection-flow {
+    .canvas-connection-comet {
         animation: none;
-        opacity: 0;
     }
 }
 

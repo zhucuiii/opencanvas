@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
-import { ChevronDown, ChevronLeft, Plus, Type, Image as ImageIcon, Video, Music2, Undo2, Redo2, Settings2, MousePointer2, Hand, Puzzle, Eraser, Grid2x2, Grip, Square, Info, Scan } from "lucide-react";
+import { ChevronDown, ChevronLeft, Plus, Type, Image as ImageIcon, Video, Music2, Undo2, Redo2, Settings2, MousePointer2, Hand, Puzzle, Eraser, Palette, Info, Scan } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
+import { Switch } from "antd";
+import { canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme } from "@/lib/canvas-theme";
+import { CanvasAppearancePanel } from "@/components/canvas/canvas-appearance-panel";
+import type { CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
@@ -16,6 +19,10 @@ export function CanvasToolbar({
     canUndo,
     canRedo,
     backgroundMode,
+    appearance,
+    colorTheme,
+    onAppearanceChange,
+    onSaveAppearanceDefault,
     showImageInfo,
     onAddImage,
     onAddVideo,
@@ -36,6 +43,8 @@ export function CanvasToolbar({
     canUndo: boolean;
     canRedo: boolean;
     backgroundMode: CanvasBackgroundMode;
+    appearance: CanvasAppearance;
+    colorTheme: CanvasColorTheme;
     showImageInfo: boolean;
     onAddImage: () => void;
     onAddVideo: () => void;
@@ -46,6 +55,8 @@ export function CanvasToolbar({
     onRedo: () => void;
     onClear: () => void;
     onCanvasToolChange: (tool: "select" | "pan") => void;
+    onAppearanceChange: (appearance: CanvasAppearance) => void;
+    onSaveAppearanceDefault: (appearance: CanvasAppearance) => void;
     onBackgroundModeChange: (mode: CanvasBackgroundMode) => void;
     onShowImageInfoChange: (show: boolean) => void;
     onFocusSelected: () => void;
@@ -59,7 +70,7 @@ export function CanvasToolbar({
     const setToolbarDock = useCanvasSidePanelStore((state) => state.setToolbarDock);
     const [dockTransition, setDockTransition] = useState<"idle" | "exit-left" | "enter-bottom" | "exit-bottom" | "enter-left">("idle");
     const dockTransitionTimers = useRef<number[]>([]);
-    type ToolbarMenu = "create" | "settings";
+    type ToolbarMenu = "create" | "appearance";
     const [menu, setMenu] = useState<ToolbarMenu | null>(null);
     const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -159,21 +170,17 @@ export function CanvasToolbar({
                 <button type="button" className="atelier-tool" aria-label={t("navigation.config")} title={t("navigation.config")} onClick={() => openConfigDialog(false)}>
                     <Settings2 size={18} />
                 </button>
-                {/*
-                 * 这个按钮管的是画布背景（点阵 / 网格 / 纯色），不是主题切换。
-                 * 原来用月亮/太阳图标，看起来像"切深浅色"，实际点开只有背景选项，
-                 * 图标和行为对不上；换成网格图标，和菜单里的三项一致。
-                 * 同时把 title 里误导性的"主题：深色"去掉，改成当前背景模式。
-                 */}
+                {/* 画布外观（配色与网格）：深浅配色 + 自定义调色 + 网格样式 + 媒体信息，入口图标与上游一致。 */}
                 <button
                     type="button"
                     className="atelier-tool"
-                    aria-label="画布背景"
-                    title={`画布背景：${backgroundMode === "dots" ? "点阵" : backgroundMode === "lines" ? "网格" : "纯色"}`}
-                    aria-expanded={menu === "settings"}
-                    onClick={(event) => toggle("settings", event)}
+                    aria-label="画布外观"
+                    title="画布外观：配色与网格"
+                    aria-expanded={menu === "appearance"}
+                    aria-pressed={menu === "appearance"}
+                    onClick={(event) => toggle("appearance", event)}
                 >
-                    <Grid2x2 size={18} />
+                    <Palette size={18} />
                 </button>
             </div>
             <div className="atelier-tools-extra">
@@ -213,8 +220,8 @@ export function CanvasToolbar({
                         } as CSSProperties
                     }
                 >
-                    <div className="atelier-tool-menu" role="menu" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
-                        <div className="atelier-menu-caption">{menu === "create" ? "添加节点" : "画布选项"}</div>
+                    <div className={`atelier-tool-menu${menu === "appearance" ? " atelier-tool-menu--appearance" : ""}`} role="menu" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
+                        {menu === "create" ? <div className="atelier-menu-caption">添加节点</div> : null}
                         {menu === "create" ? (
                             <>
                                 {row(t("canvas.toolbar.image"), <ImageIcon size={16} />, onAddImage)}
@@ -226,24 +233,29 @@ export function CanvasToolbar({
                                 ))}
                             </>
                         ) : null}
-                        {menu === "settings" ? (
-                            <>
-                                {(["dots", "lines", "blank"] as const).map((mode) => (
-                                    <button
-                                        key={mode}
-                                        type="button"
-                                        className="atelier-menu-row"
-                                        aria-pressed={backgroundMode === mode}
-                                        onClick={() => {
-                                            action(() => onBackgroundModeChange(mode));
-                                        }}
-                                    >
-                                        {mode === "dots" ? <Grip size={16} /> : mode === "lines" ? <Grid2x2 size={16} /> : <Square size={16} />}
-                                        <span>{mode === "dots" ? "点阵背景" : mode === "lines" ? "网格背景" : "纯色背景"}</span>
-                                        {backgroundMode === mode ? <span className="atelier-menu-current">当前</span> : null}
-                                    </button>
-                                ))}
-                            </>
+                        {menu === "appearance" ? (
+                            <div className="atelier-appearance">
+                                <div className="atelier-appearance-heading">
+                                    <span className="atelier-appearance-heading-icon"><Palette size={15} /></span>
+                                    <span className="min-w-0">
+                                        <span className="block text-xs font-semibold">画布外观</span>
+                                        <span className="mt-0.5 block text-[11px]" style={{ color: theme.node.muted }}>配色与网格</span>
+                                    </span>
+                                </div>
+                                <CanvasAppearancePanel
+                                    appearance={appearance}
+                                    backgroundMode={backgroundMode}
+                                    colorTheme={colorTheme}
+                                    theme={theme}
+                                    onAppearanceChange={onAppearanceChange}
+                                    onSaveAppearanceDefault={onSaveAppearanceDefault}
+                                    onBackgroundModeChange={onBackgroundModeChange}
+                                />
+                                <div className="atelier-appearance-media" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
+                                    <span className="inline-flex min-w-0 items-center gap-2 text-xs font-semibold"><Info size={12} />媒体信息</span>
+                                    <Switch size="small" checked={showImageInfo} onChange={onShowImageInfoChange} />
+                                </div>
+                            </div>
                         ) : null}
                     </div>
                 </div>

@@ -125,6 +125,48 @@
 .atelier-tool-menu::-webkit-scrollbar {
     display: none;
 }
+/* 画布外观面板：与上游一致的调色板浮层（深浅配色 / 自定义 / 网格样式 / 媒体信息）。 */
+.atelier-tool-menu--appearance {
+    width: 300px;
+    max-height: min(74vh, 680px);
+    padding: 10px;
+}
+
+.atelier-appearance {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.atelier-appearance-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 2px 0;
+}
+
+.atelier-appearance-heading-icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border: 1px solid currentColor;
+    border-radius: 9px;
+    opacity: 0.75;
+}
+
+.atelier-appearance-media {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+    padding: 8px 10px;
+    border: 1px solid;
+    border-radius: 9px;
+}
+
 .atelier-menu-caption {
     padding: 8px;
     font-size: 12px;

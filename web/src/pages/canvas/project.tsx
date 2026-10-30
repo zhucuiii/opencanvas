@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent as ReactChangeEvent, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { ChangeEvent as ReactChangeEvent, CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Group, Video } from "lucide-react";
 import { saveAs } from "file-saver";
@@ -17,6 +17,7 @@ import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { canvasAppearanceBaseTheme, normalizeCanvasAppearance, resolveCanvasAppearance, resolveCanvasGridColor, writeCanvasAppearanceDefault, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "@/lib/canvas/canvas-image-data";
 import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { inferMediaRatio } from "@/lib/media-size";
@@ -259,6 +260,7 @@ function InfiniteCanvasPage() {
     const [runningNodeId, setRunningNodeId] = useState<string | null>(null);
     const [isMiniMapOpen, setIsMiniMapOpen] = useState(false);
     const [backgroundMode, setBackgroundMode] = useState<CanvasBackgroundMode>("dots");
+    const [appearance, setAppearance] = useState<CanvasAppearance>({ mode: "dark" });
     const [showImageInfo, setShowImageInfo] = useState(false);
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -513,6 +515,8 @@ function InfiniteCanvasPage() {
             setChatSessions(restoredSessions);
             setActiveChatId(project.activeChatId || null);
             setBackgroundMode(project.backgroundMode);
+            // 老画布没有 appearance 字段时，沿用它打开时的工作台主题，避免一进来就突变深浅。
+            setAppearance(normalizeCanvasAppearance(project.appearance, useThemeStore.getState().theme));
             setShowImageInfo(project.showImageInfo || false);
             setViewport(project.viewport);
             historyRef.current = { past: [], future: [] };
@@ -580,8 +584,32 @@ function InfiniteCanvasPage() {
 
     useEffect(() => {
         if (!projectLoaded || historyPausedRef.current) return;
-        updateProject(projectId, { nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo });
-    }, [activeChatId, backgroundMode, chatSessions, connections, nodes, projectId, projectLoaded, showImageInfo, updateProject]);
+        updateProject(projectId, { nodes, connections, chatSessions, activeChatId, backgroundMode, appearance, showImageInfo });
+    }, [activeChatId, appearance, backgroundMode, chatSessions, connections, nodes, projectId, projectLoaded, showImageInfo, updateProject]);
+
+    // —— 画布外观：把当前画布的主题应用到编辑器；离开画布时恢复工作台原来的主题 ——
+    const workspaceThemeRef = useRef<"light" | "dark" | null>(null);
+    useEffect(() => {
+        if (!workspaceThemeRef.current) workspaceThemeRef.current = useThemeStore.getState().theme;
+        return () => {
+            if (workspaceThemeRef.current) useThemeStore.getState().setTheme(workspaceThemeRef.current);
+        };
+    }, []);
+    useEffect(() => {
+        if (!projectLoaded) return;
+        const base = canvasAppearanceBaseTheme(appearance, "dark");
+        if (useThemeStore.getState().theme !== base) useThemeStore.getState().setTheme(base);
+    }, [appearance, projectLoaded]);
+    const resolvedAppearance = useMemo(() => resolveCanvasAppearance(appearance, "dark"), [appearance]);
+    const resolvedGridColor = useMemo(() => resolveCanvasGridColor(appearance, "dark", backgroundMode), [appearance, backgroundMode]);
+    const handleAppearanceChange = useCallback((next: CanvasAppearance) => setAppearance(next), []);
+    const handleSaveAppearanceDefault = useCallback(
+        (next: CanvasAppearance) => {
+            writeCanvasAppearanceDefault({ appearance: next, backgroundMode });
+            message.success("已设为新画布默认");
+        },
+        [backgroundMode, message],
+    );
 
     useEffect(() => {
         if (!dialogNodeId) setNodeImageSettingsOpen(false);
@@ -3444,6 +3472,8 @@ function InfiniteCanvasPage() {
                     viewport={viewport}
                     tool={canvasTool}
                     backgroundMode={backgroundMode}
+                    background={resolvedAppearance.background}
+                    gridColor={resolvedGridColor}
                     onViewportChange={(next) => {
                         setViewport(next);
                         setContextMenu(null);
@@ -3463,7 +3493,7 @@ function InfiniteCanvasPage() {
                     onContextMenu={preventCanvasContextMenu}
                     onDrop={handleDrop}
                 >
-                    <svg className="absolute left-0 top-0 h-[10000px] w-[10000px] overflow-visible" style={{ pointerEvents: "none", transform: "translateZ(0)", zIndex: 0 }}>
+                    <svg className="absolute left-0 top-0 h-[10000px] w-[10000px] overflow-visible" style={{ pointerEvents: "none", transform: "translateZ(0)", zIndex: 0, "--canvas-committed-scale": viewport.k } as CSSProperties}>
                         {visibleConnections.map(({ connection, from, to }) => (
                             <ConnectionPath
                                 key={connection.id}
@@ -3634,6 +3664,10 @@ function InfiniteCanvasPage() {
                     canUndo={historyState.canUndo}
                     canRedo={historyState.canRedo}
                     backgroundMode={backgroundMode}
+                    appearance={appearance}
+                    colorTheme={canvasAppearanceBaseTheme(appearance, "dark")}
+                    onAppearanceChange={handleAppearanceChange}
+                    onSaveAppearanceDefault={handleSaveAppearanceDefault}
                     showImageInfo={showImageInfo}
                     onAddImage={() => createNode(CanvasNodeType.Image)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}

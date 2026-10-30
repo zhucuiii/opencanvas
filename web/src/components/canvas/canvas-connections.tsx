@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { CANVAS_CONNECTION_STROKE_WIDTH, canvasThemes } from "@/lib/canvas-theme";
 import { subscribeConnectionMorph } from "@/lib/canvas/connection-morph";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
@@ -41,7 +41,13 @@ export function ConnectionPath({
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const groupRef = useRef<SVGGElement>(null);
-    const pathD = connectionPathD(from.position.x + from.width, from.position.y + from.height / 2, to.position.x, to.position.y + to.height / 2);
+    const [hovered, setHovered] = useState(false);
+    const startX = from.position.x + from.width;
+    const startY = from.position.y + from.height / 2;
+    const endX = to.position.x;
+    const endY = to.position.y + to.height / 2;
+    const pathD = connectionPathD(startX, startY, endX, endY);
+    const emphasized = active || hovered;
     // 数据坐标下的路径直接写 DOM：形变动画期间每帧都要改，走 React state 会拖垮整页。
     // 这个 effect 故意不带依赖：每次渲染都要在**绘制前**重算一次。
     // 因为尺寸一变 React 就会把「按数据坐标算的」路径写进 d，而节点实际是动画过去的，
@@ -71,7 +77,14 @@ export function ConnectionPath({
             const s = toUser(a.right, (a.top + a.bottom) / 2);
             const e = toUser(b.left, (b.top + b.bottom) / 2);
             const d = connectionPathD(s.x, s.y, e.x, e.y);
-            for (const path of Array.from(group.children)) path.setAttribute("d", d);
+            for (const path of Array.from(group.querySelectorAll("path"))) path.setAttribute("d", d);
+            // 端点圆点同样按节点实际渲染位置纠正，形变动画期间不与曲线脱开。
+            const dotStart = group.querySelector<SVGCircleElement>('[data-role="connection-dot-start"]');
+            const dotEnd = group.querySelector<SVGCircleElement>('[data-role="connection-dot-end"]');
+            dotStart?.setAttribute("cx", String(s.x));
+            dotStart?.setAttribute("cy", String(s.y));
+            dotEnd?.setAttribute("cx", String(e.x));
+            dotEnd?.setAttribute("cy", String(e.y));
         };
         syncRef.current = sync;
         sync();
@@ -89,8 +102,11 @@ export function ConnectionPath({
                 d={pathD}
                 stroke="transparent"
                 strokeWidth="16"
+                vectorEffect="non-scaling-stroke"
                 fill="none"
                 style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
                 onClick={(event) => {
                     event.stopPropagation();
                     onSelect();
@@ -101,12 +117,16 @@ export function ConnectionPath({
                     onContextMenu?.(event);
                 }}
             />
-            <path d={pathD} stroke={active ? "#2f80ff" : theme.node.faint} strokeWidth={active ? 2 : 1.5} strokeOpacity={active ? 1 : 0.82} fill="none" style={{ pointerEvents: "none" }} />
+            <path d={pathD} stroke={theme.connection.stroke ?? theme.node.faint} strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH} vectorEffect="non-scaling-stroke" strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" fill="none" style={{ pointerEvents: "none" }} />
+            <circle data-role="connection-dot-start" cx={startX} cy={startY} r={2.5} fill={emphasized ? theme.connection.beam ?? theme.node.text : theme.connection.stroke ?? theme.node.faint} fillOpacity={0.8} style={{ pointerEvents: "none" }} />
+            <circle data-role="connection-dot-end" cx={endX} cy={endY} r={2.5} fill={emphasized ? theme.connection.beam ?? theme.node.text : theme.connection.stroke ?? theme.node.faint} fillOpacity={0.8} style={{ pointerEvents: "none" }} />
+            {emphasized ? <CanvasConnectionBeam pathD={pathD} color={theme.connection.beam ?? theme.node.text} /> : null}
         </g>
     );
 }
 
 export function ActiveConnectionPath({ node, handle, mouseWorld, target }: { node?: CanvasNodeData; handle: ConnectionHandle; mouseWorld: Position; target?: CanvasNodeData }) {
+    const theme = canvasThemes[useThemeStore((state) => state.theme)];
     if (!node) return null;
 
     const startX = handle.handleType === "source" ? node.position.x + node.width : mouseWorld.x;
@@ -119,5 +139,42 @@ export function ActiveConnectionPath({ node, handle, mouseWorld, target }: { nod
     const snappedEndY = handle.handleType === "source" && target ? target.position.y + target.height / 2 : endY;
     const pathD = connectionPathD(snappedStartX, snappedStartY, snappedEndX, snappedEndY);
 
-    return <path d={pathD} stroke="#b1b1b7" strokeWidth="1" strokeLinecap="butt" strokeLinejoin="round" fill="none" />;
+    // 拖拽草稿：底线 + 常驻流光，视觉与已落定的连线一致。
+    return (
+        <g>
+            <path d={pathD} stroke={theme.connection.stroke ?? theme.node.faint} strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH} vectorEffect="non-scaling-stroke" strokeOpacity={0.72} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <CanvasConnectionBeam pathD={pathD} color={theme.connection.beam ?? theme.node.text} />
+        </g>
+    );
+}
+
+const BEAM_LAYERS = [0.35, 0.6, 0.9, 1.2, CANVAS_CONNECTION_STROKE_WIDTH, 1.65, 1.9, 2.1].map((width, index) => ({
+    length: 36 - index * 4,
+    offset: -index * 4,
+    width,
+    opacity: 0.14 + index * 0.07,
+}));
+
+/** 连线流光（彗星）：多层短划沿曲线同速行进，圆头细尾的水滴轮廓。 */
+export function CanvasConnectionBeam({ pathD, color }: { pathD: string; color: string }) {
+    // 前缘对齐，靠近头部的短层逐渐加宽、加深，形成圆头细尾的水滴轮廓。
+    // 各层都沿原曲线行进，转弯时尾部自然贴线，底线宽度不受影响。
+    // 统一周期为路径的三分之一（pathLength=300，每周期走 100），循环无跳帧；
+    // 动画由 CSS 驱动，不逐帧更新 React。描边宽按画布缩放补偿，屏幕上恒定。
+    return <g data-connection-beam aria-hidden="true" style={{ pointerEvents: "none" }}>
+        {BEAM_LAYERS.map(({ length, offset, width, opacity }) => <path
+            key={length}
+            className="canvas-connection-comet"
+            d={pathD}
+            pathLength={300}
+            stroke={color}
+            strokeWidth={width}
+            strokeOpacity={opacity}
+            strokeDasharray={`${length} ${100 - length}`}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            fill="none"
+            style={{ "--canvas-beam-offset": `${offset}px`, strokeWidth: `calc(${width}px / var(--canvas-committed-scale, 1))` } as CSSProperties}
+        />)}
+    </g>;
 }
