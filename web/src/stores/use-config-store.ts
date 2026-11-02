@@ -242,6 +242,8 @@ export const defaultWebdavSyncConfig: WebdavSyncConfig = {
 type ConfigStore = {
     config: AiConfig;
     webdav: WebdavSyncConfig;
+    /** 一次性迁移标记：把老版本默认的「新建节点」切到「原地覆盖」。之后用户在偏好设置里的选择不再被覆盖。 */
+    regenerateBehaviorMigrated?: boolean;
     isConfigOpen: boolean;
     configTab: ConfigTabKey;
     shouldPromptContinue: boolean;
@@ -351,17 +353,19 @@ export const useConfigStore = create<ConfigStore>()(
         }),
         {
             name: CONFIG_STORE_KEY,
-            partialize: (state) => ({ config: state.config, webdav: state.webdav }),
+            partialize: (state) => ({ config: state.config, webdav: state.webdav, regenerateBehaviorMigrated: state.regenerateBehaviorMigrated }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
                 const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
+                const regenerateBehaviorMigrated = persistedState.regenerateBehaviorMigrated === true;
                 const config = { ...defaultConfig, ...persistedConfig };
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
                 const channels = normalizeChannels(config);
                 const models = modelOptionsFromChannels(channels);
                 return {
                     ...current,
+                    regenerateBehaviorMigrated: true,
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
                     config: {
                         ...config,
@@ -390,7 +394,7 @@ export const useConfigStore = create<ConfigStore>()(
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",
                         proxyEnabled: Boolean(config.proxyEnabled),
                         proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
-                        nodeRegenerateBehavior: config.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node",
+                        nodeRegenerateBehavior: !regenerateBehaviorMigrated || config.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node",
                         autoFocusOnSelect: Boolean(config.autoFocusOnSelect),
                         canvasOperationMode: config.canvasOperationMode === "libtv" ? "libtv" : "default",
                     },
