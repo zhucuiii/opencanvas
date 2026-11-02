@@ -1,7 +1,7 @@
 import { App, Button, Form, Input, Modal, Progress, Radio, Select, Switch, Tabs } from "antd";
 import type { TFunction } from "i18next";
 import { Cloud, RefreshCw, Wifi } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfigApiSettings } from "@/components/layout/config-api-settings";
@@ -248,6 +248,10 @@ export function AppConfigModal() {
     const configTab = useConfigStore((state) => state.configTab);
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
     const toolbarDock = useCanvasSidePanelStore((state) => state.toolbarDock);
+    const sidePanelMounted = useCanvasSidePanelStore((state) => state.panelMounted);
+    const sidePanelWidth = useCanvasSidePanelStore((state) => state.width);
+    // 弹窗贴工具栏右侧：88 = 工具栏 left16 + 宽50 + 间隙22。侧栏展开时整体右移，否则会盖住资产面板。
+    const modalLeft = 88 + (sidePanelMounted ? sidePanelWidth : 0);
     const [isClosing, setIsClosing] = useState(false);
     const closeTimerRef = useRef<number | null>(null);
     useEffect(() => {
@@ -292,6 +296,7 @@ export function AppConfigModal() {
             styles={{
                 // 弹窗本体不滚动：高度固定，滚动交给内部的 flex 列（头部 / tab / 内容 / 完成按钮各司其职）。
                 body: { overflow: "hidden", paddingRight: 0 },
+                root: { "--app-config-modal-left": `${modalLeft}px` } as CSSProperties,
             }}
             footer={null}
         >

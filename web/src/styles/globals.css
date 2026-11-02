@@ -1685,7 +1685,9 @@
 }
 
 .app-config-modal-left .ant-modal-wrap .ant-modal {
-    inset: 50% auto auto 88px;
+    inset: 50% auto auto var(--app-config-modal-left, 88px);
+    /* 侧栏展开后弹窗整体右移，宽度要按剩余空间收窄，避免右侧超出版口。 */
+    max-width: calc(100vw - var(--app-config-modal-left, 88px) - 16px);
     margin-block: 0;
     margin-inline: 0;
     padding-bottom: 0;
