@@ -207,6 +207,8 @@ function InfiniteCanvasPage() {
     const viewportSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const applyingHistoryRef = useRef(false);
     const historyPausedRef = useRef(false);
+    /** 生成过程中把节点切成 loading 的那一次改动不进历史：只记录最终结果，撤销一步就回到生成前。 */
+    const skipHistoryCommitRef = useRef(false);
     const rafRef = useRef<number | null>(null);
     const nodeDraggingRef = useRef(false);
     const dragRef = useRef<{
@@ -550,6 +552,10 @@ function InfiniteCanvasPage() {
 
     useEffect(() => {
         if (!projectLoaded || applyingHistoryRef.current || historyPausedRef.current) return;
+        if (skipHistoryCommitRef.current) {
+            skipHistoryCommitRef.current = false;
+            return;
+        }
         const next = createHistoryEntry();
         const previous = lastHistoryRef.current;
         if (
@@ -2576,6 +2582,8 @@ function InfiniteCanvasPage() {
                         },
                     };
 
+                    // 生成中的 loading 态不进历史：撤销一步直接回到生成前的画面。
+                    skipHistoryCommitRef.current = true;
                     setNodes((prev) => [
                         ...prev.map((node) =>
                             node.id === nodeId

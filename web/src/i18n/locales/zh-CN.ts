@@ -971,7 +971,7 @@ export default {
             videoResolution: "默认视频分辨率",
             regenerateBehavior: "已有内容的节点再次生成时",
             regenerateBehaviorOverwrite: "原地重新生成（覆盖当前节点）",
-            regenerateBehaviorOverwriteDescription: "直接替换该节点的内容和参数，不新建节点。想保留旧结果时，先复制该节点。",
+            regenerateBehaviorOverwriteDescription: "直接替换该节点的内容和参数，不新建节点；旧结果仍留在画布历史里，撤销一步即可找回。",
             regenerateBehaviorNewNode: "新建节点（原行为）",
             regenerateBehaviorNewNodeDescription: "保留当前节点，新建一个节点承接生成结果，适合做变体或分支。",
             autoFocusOnSelect: "选中自动居中",

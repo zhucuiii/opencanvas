@@ -226,7 +226,7 @@ export const defaultConfig: AiConfig = {
     count: "1",
     proxyEnabled: false,
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,
-    nodeRegenerateBehavior: "new-node",
+    nodeRegenerateBehavior: "overwrite",
     autoFocusOnSelect: false,
     canvasOperationMode: "default",
 };

@@ -1019,7 +1019,7 @@ export default {
             videoResolution: "Default video resolution",
             regenerateBehavior: "When generating on a node that already has content",
             regenerateBehaviorOverwrite: "Regenerate in place (overwrite the node)",
-            regenerateBehaviorOverwriteDescription: "Replace the node's content and settings in place without creating a new node. Copy the node first to keep the old result.",
+            regenerateBehaviorOverwriteDescription: "Replace the node's content and settings in place without creating a new node. The previous result stays in the canvas history — one undo brings it back.",
             regenerateBehaviorNewNode: "Create a new node (original behavior)",
             regenerateBehaviorNewNodeDescription: "Keep the current node and create a new one for the result. Good for variants or branches.",
             autoFocusOnSelect: "Auto-center on select",
