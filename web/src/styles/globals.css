@@ -748,7 +748,13 @@
 .app-config-modal-bottom .ant-modal-wrap {
     display: flex;
     align-items: flex-end;
+    /* 左侧资产面板展开时，弹窗只在剩余画布区域里居中，别压到面板上。 */
+    padding-left: var(--app-config-panel-offset, 0px);
     padding-bottom: 96px;
+}
+
+.app-config-modal-bottom .ant-modal-wrap .ant-modal {
+    max-width: calc(100vw - var(--app-config-panel-offset, 0px) - 32px);
 }
 
 .app-config-modal-bottom .ant-modal-wrap .ant-modal {

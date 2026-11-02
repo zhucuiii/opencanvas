@@ -251,7 +251,8 @@ export function AppConfigModal() {
     const sidePanelMounted = useCanvasSidePanelStore((state) => state.panelMounted);
     const sidePanelWidth = useCanvasSidePanelStore((state) => state.width);
     // 弹窗贴工具栏右侧：88 = 工具栏 left16 + 宽50 + 间隙22。侧栏展开时整体右移，否则会盖住资产面板。
-    const modalLeft = 88 + (sidePanelMounted ? sidePanelWidth : 0);
+    const panelOffset = sidePanelMounted ? sidePanelWidth : 0;
+    const modalLeft = 88 + panelOffset;
     const [isClosing, setIsClosing] = useState(false);
     const closeTimerRef = useRef<number | null>(null);
     useEffect(() => {
@@ -296,7 +297,7 @@ export function AppConfigModal() {
             styles={{
                 // 弹窗本体不滚动：高度固定，滚动交给内部的 flex 列（头部 / tab / 内容 / 完成按钮各司其职）。
                 body: { overflow: "hidden", paddingRight: 0 },
-                root: { "--app-config-modal-left": `${modalLeft}px` } as CSSProperties,
+                root: { "--app-config-modal-left": `${modalLeft}px`, "--app-config-panel-offset": `${panelOffset}px` } as CSSProperties,
             }}
             footer={null}
         >
