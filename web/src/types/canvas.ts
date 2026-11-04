@@ -78,15 +78,6 @@ export type CanvasNodeMetadata = {
     quality?: string;
     background?: string;
     count?: number;
-    /** Midjourney 节点级参数（未填时回落到全局配置）。 */
-    mjVersion?: string;
-    mjStylize?: string;
-    mjChaos?: string;
-    mjSeed?: string;
-    mjNo?: string;
-    mjWeird?: string;
-    mjTile?: string;
-    mjRaw?: string;
     textCount?: number;
     texts?: CanvasNodeText[];
     primaryTextId?: string;

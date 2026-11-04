@@ -132,65 +132,6 @@
     padding: 10px;
 }
 
-/* Midjourney 参数（节点底栏的「比例 / 画质 / 质量」弹层里）。 */
-.atelier-mj-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin: 6px 0 8px;
-}
-
-.atelier-mj-field {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    padding: 5px 8px;
-    border: 1px solid rgba(136, 136, 136, 0.24);
-    border-radius: 9px;
-    background: rgba(136, 136, 136, 0.08);
-}
-
-.atelier-mj-field > span {
-    flex: none;
-    font-size: 11px;
-    opacity: 0.62;
-}
-
-.atelier-mj-field > input,
-.atelier-mj-field > select {
-    min-width: 0;
-    flex: 1;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font-size: 12px;
-    text-align: right;
-    outline: none;
-}
-
-.atelier-mj-toggles {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 4px;
-}
-
-.atelier-mj-toggles > button {
-    flex: 1;
-    padding: 6px 8px;
-    border: 1px solid rgba(136, 136, 136, 0.24);
-    border-radius: 9px;
-    background: transparent;
-    color: inherit;
-    font-size: 11px;
-    cursor: pointer;
-}
-
-.atelier-mj-toggles > button[aria-pressed="true"] {
-    background: rgba(136, 136, 136, 0.22);
-    border-color: rgba(136, 136, 136, 0.5);
-}
-
 .atelier-appearance {
     display: flex;
     flex-direction: column;
