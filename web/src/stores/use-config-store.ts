@@ -6,11 +6,11 @@ import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import { inferMediaRatio } from "@/lib/media-size";
 
-export type ApiCallFormat = "openai" | "gemini";
+export type ApiCallFormat = "openai" | "gemini" | "midjourney";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
-export type ApiProtocolPresetId = "openai" | "openai-compatible" | "gemini";
+export type ApiProtocolPresetId = "openai" | "openai-compatible" | "gemini" | "midjourney";
 
 export type ApiProtocolPreset = {
     id: ApiProtocolPresetId;
@@ -141,6 +141,22 @@ export type AiConfig = {
     imageOutputFormat?: "png" | "jpeg" | "webp";
     imageModeration?: "auto" | "low";
     count: string;
+    /** Midjourney：版本（--v），如 7 / 6.1 / niji 6。空 = 不指定。 */
+    mjVersion: string;
+    /** Midjourney：风格化强度（--s，0-1000）。 */
+    mjStylize: string;
+    /** Midjourney：混乱度（--c，0-100）。 */
+    mjChaos: string;
+    /** Midjourney：随机种子（--seed）。 */
+    mjSeed: string;
+    /** Midjourney：排除词（--no），逗号分隔。 */
+    mjNo: string;
+    /** Midjourney：怪异度（--weird，0-3000）。 */
+    mjWeird: string;
+    /** Midjourney：平铺图案（--tile）。 */
+    mjTile: string;
+    /** Midjourney：原始模式（--raw）。 */
+    mjRaw: string;
     proxyEnabled: boolean;
     proxyUrl: string;
     nodeRegenerateBehavior: "new-node" | "overwrite";
@@ -173,6 +189,7 @@ export const API_PROTOCOL_PRESETS: ApiProtocolPreset[] = [
     { id: "openai", apiFormat: "openai", baseUrl: OPENAI_BASE_URL },
     { id: "openai-compatible", apiFormat: "openai", baseUrl: "" },
     { id: "gemini", apiFormat: "gemini", baseUrl: GEMINI_BASE_URL },
+    { id: "midjourney", apiFormat: "midjourney", baseUrl: "" },
 ];
 
 export const defaultConfig: AiConfig = {
@@ -224,6 +241,14 @@ export const defaultConfig: AiConfig = {
     imageOutputFormat: "png",
     imageModeration: "auto",
     count: "1",
+    mjVersion: "",
+    mjStylize: "",
+    mjChaos: "",
+    mjSeed: "",
+    mjNo: "",
+    mjWeird: "",
+    mjTile: "false",
+    mjRaw: "false",
     proxyEnabled: false,
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,
     nodeRegenerateBehavior: "overwrite",
@@ -624,6 +649,8 @@ function normalizeChannels(config: AiConfig) {
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
     if (apiFormat === "gemini") return GEMINI_BASE_URL;
+    // Midjourney 走用户自己的中转站，没有公共默认地址。
+    if (apiFormat === "midjourney") return "";
     return OPENAI_BASE_URL;
 }
 
@@ -651,7 +678,7 @@ function normalizePresetBaseUrl(baseUrl: string) {
 }
 
 function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" ? apiFormat : "openai";
+    return apiFormat === "gemini" || apiFormat === "midjourney" ? apiFormat : "openai";
 }
 
 function uniqueModelOptions(models: string[]) {

@@ -6,7 +6,7 @@ import { GooeyPills } from "@/components/ui/gooey-pills";
 import i18n from "@/i18n";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { computeMediaSize, inferMediaRatio, inferMediaScale, mediaRatioOptions, mediaScaleOptions, readMediaDimensions } from "@/lib/media-size";
-import type { AiConfig } from "@/stores/use-config-store";
+import { resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 
 const qualityOptions = [
     { value: "auto", labelKey: "auto" },
@@ -24,7 +24,7 @@ export const imageScaleOptions = mediaScaleOptions.map((value) => ({ value, labe
 
 type ImageSettingsPanelProps = {
     config: AiConfig;
-    onConfigChange: (key: "quality" | "size" | "count" | "background" | "imageScale", value: string) => void;
+    onConfigChange: (key: "quality" | "size" | "count" | "background" | "imageScale" | "mjVersion" | "mjStylize" | "mjChaos" | "mjSeed" | "mjNo" | "mjWeird" | "mjTile" | "mjRaw", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
@@ -43,6 +43,9 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
     const transparentBackground = config.background === "transparent";
+    // Midjourney 走自己的参数（--v/--s/--c/--seed/--no 等），没有「张数」概念。
+    // 以「当前选中模型所属渠道」的协议为准：顶层 apiFormat 只是旧字段，不一定跟着模型走。
+    const isMidjourney = resolveModelChannel(config, config.model || config.imageModel)?.apiFormat === "midjourney";
     /*
      * 比例和分辨率各自独立：分辨率单独存在 config.imageScale 里，改它不会顺手把比例补成 1:1，
      * 改比例也不会把分辨率重置掉（以前 size 一个字符串塞不下「比例自动 + 指定分辨率」，
@@ -165,7 +168,43 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <Switch size="small" checked={transparentBackground} onChange={(checked) => onConfigChange("background", checked ? "transparent" : "")} />
                     </span>
                 </div>
-                {showCount ? (
+                {isMidjourney ? (
+                    <div className="space-y-2.5">
+                        <SettingTitle color={theme.node.muted}>Midjourney 参数</SettingTitle>
+                        <div className="grid grid-cols-4 gap-2">
+                            {[
+                                { value: "", label: "默认" },
+                                { value: "7", label: "v7" },
+                                { value: "6.1", label: "v6.1" },
+                                { value: "niji 6", label: "niji 6" },
+                            ].map((item) => (
+                                <OptionPill key={item.label} selected={(config.mjVersion || "") === item.value} theme={theme} onClick={() => onConfigChange("mjVersion", item.value)}>
+                                    {item.label}
+                                </OptionPill>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <MjField label="风格化 --s" value={config.mjStylize} theme={theme} placeholder="0–1000" onChange={(value) => onConfigChange("mjStylize", value)} />
+                            <MjField label="混乱 --c" value={config.mjChaos} theme={theme} placeholder="0–100" onChange={(value) => onConfigChange("mjChaos", value)} />
+                            <MjField label="种子 --seed" value={config.mjSeed} theme={theme} placeholder="随机" onChange={(value) => onConfigChange("mjSeed", value)} />
+                            <MjField label="怪异 --weird" value={config.mjWeird} theme={theme} placeholder="0–3000" onChange={(value) => onConfigChange("mjWeird", value)} />
+                        </div>
+                        <MjField label="排除词 --no" value={config.mjNo} theme={theme} placeholder="不要出现的元素，逗号分隔" numeric={false} onChange={(value) => onConfigChange("mjNo", value)} />
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-medium" style={{ color: theme.node.muted }}>平铺 --tile</span>
+                            <span onMouseDown={(event) => event.stopPropagation()}>
+                                <Switch size="small" checked={config.mjTile === "true"} onChange={(checked) => onConfigChange("mjTile", checked ? "true" : "false")} />
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-medium" style={{ color: theme.node.muted }}>原始模式 --raw</span>
+                            <span onMouseDown={(event) => event.stopPropagation()}>
+                                <Switch size="small" checked={config.mjRaw === "true"} onChange={(checked) => onConfigChange("mjRaw", checked ? "true" : "false")} />
+                            </span>
+                        </div>
+                    </div>
+                ) : null}
+                {showCount && !isMidjourney ? (
                     <div className="space-y-2.5">
                         <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.count")}</SettingTitle>
                         <div className="grid grid-cols-4 gap-2.5">
@@ -225,6 +264,23 @@ export function imageSizeLabel(size: string, storedScale?: string) {
     if (scale === "auto") return ratioText;
     // 左边比例、右边分辨率（参考即梦底栏的「9:16 · 1K」），不是之前的「分辨率 · 比例」。
     return `${ratioText} · ${scale}`;
+}
+
+function MjField({ label, value, placeholder, theme, numeric = true, onChange }: { label: string; value: string; placeholder?: string; theme: CanvasTheme; numeric?: boolean; onChange: (value: string) => void }) {
+    return (
+        <label className="flex items-center gap-2 rounded-lg px-2 py-1.5" style={{ background: theme.node.fill }}>
+            <span className="shrink-0 text-[11px] font-medium" style={{ color: theme.node.muted }}>{label}</span>
+            <input
+                value={value}
+                placeholder={placeholder}
+                inputMode={numeric ? "decimal" : "text"}
+                onChange={(event) => onChange(numeric ? event.target.value.replace(/[^\d.\-]/g, "") : event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-right text-xs outline-none"
+                style={{ color: theme.node.text }}
+                onMouseDown={(event) => event.stopPropagation()}
+            />
+        </label>
+    );
 }
 
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {

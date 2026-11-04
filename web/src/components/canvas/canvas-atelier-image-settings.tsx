@@ -4,7 +4,7 @@ import { Focus, RectangleHorizontal } from "lucide-react";
 import { AspectIcon, imageQualityLabel, imageQualityOptions } from "@/components/image-settings-panel";
 import { computeMediaSize, inferMediaRatio, inferMediaScale, mediaRatioOptions } from "@/lib/media-size";
 import { onCanvasPopoverDismiss } from "@/lib/canvas/canvas-popover-dismiss";
-import type { AiConfig } from "@/stores/use-config-store";
+import { resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 
 const resolutionOptions = ["auto", "1k", "2k", "4k"] as const;
 
@@ -18,7 +18,21 @@ const qualityLabels: Record<string, string> = {
     max: "Max",
 };
 
-export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: { config: AiConfig; onChange: (patch: { size?: string; imageScale?: string; quality?: string }) => void; onOpenChange?: (open: boolean) => void }) {
+type CanvasImageSettingsPatch = {
+    size?: string;
+    imageScale?: string;
+    quality?: string;
+    mjVersion?: string;
+    mjStylize?: string;
+    mjChaos?: string;
+    mjSeed?: string;
+    mjNo?: string;
+    mjWeird?: string;
+    mjTile?: string;
+    mjRaw?: string;
+};
+
+export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: { config: AiConfig; onChange: (patch: CanvasImageSettingsPatch) => void; onOpenChange?: (open: boolean) => void }) {
     const [open, setOpen] = useState(false);
     const [anchorOffsetX, setAnchorOffsetX] = useState(0);
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -26,6 +40,8 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
     const ratio = inferMediaRatio(config.size);
     const scale = inferMediaScale(config.size, config.imageScale);
     const quality = config.quality || "auto";
+    // 按「当前选中模型所属渠道」判断协议：Midjourney 才显示它自己的参数。
+    const isMidjourney = resolveModelChannel(config, config.model || config.imageModel)?.apiFormat === "midjourney";
     const resolutionIndex = Math.max(
         0,
         resolutionOptions.findIndex((value) => value === scale),
@@ -123,6 +139,34 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
                             </button>
                         ))}
                     </div>
+                    {isMidjourney ? (
+                        <>
+                            <div className="atelier-menu-caption">Midjourney</div>
+                            <div className="atelier-mj-grid">
+                                <label className="atelier-mj-field">
+                                    <span>版本</span>
+                                    <select value={config.mjVersion || ""} onChange={(event) => onChange({ mjVersion: event.target.value })}>
+                                        <option value="">默认</option>
+                                        <option value="7">v7</option>
+                                        <option value="6.1">v6.1</option>
+                                        <option value="niji 6">niji 6</option>
+                                    </select>
+                                </label>
+                                <MjNumber label="风格化 --s" value={config.mjStylize} onChange={(value) => onChange({ mjStylize: value })} />
+                                <MjNumber label="混乱 --c" value={config.mjChaos} onChange={(value) => onChange({ mjChaos: value })} />
+                                <MjNumber label="种子 --seed" value={config.mjSeed} onChange={(value) => onChange({ mjSeed: value })} />
+                                <MjNumber label="怪异 --weird" value={config.mjWeird} onChange={(value) => onChange({ mjWeird: value })} />
+                                <label className="atelier-mj-field">
+                                    <span>排除 --no</span>
+                                    <input value={config.mjNo || ""} placeholder="逗号分隔" onChange={(event) => onChange({ mjNo: event.target.value })} />
+                                </label>
+                            </div>
+                            <div className="atelier-mj-toggles">
+                                <button type="button" aria-pressed={config.mjTile === "true"} onClick={() => onChange({ mjTile: config.mjTile === "true" ? "false" : "true" })}>平铺 --tile</button>
+                                <button type="button" aria-pressed={config.mjRaw === "true"} onClick={() => onChange({ mjRaw: config.mjRaw === "true" ? "false" : "true" })}>原始 --raw</button>
+                            </div>
+                        </>
+                    ) : null}
                 </div>
             }
         >
@@ -137,5 +181,19 @@ export function CanvasAtelierImageSettings({ config, onChange, onOpenChange }: {
                 </span>
             </button>
         </Popover>
+    );
+}
+function MjNumber({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }) {
+    return (
+        <label className="atelier-mj-field">
+            <span>{label}</span>
+            <input
+                value={value || ""}
+                inputMode="decimal"
+                placeholder="—"
+                onChange={(event) => onChange(event.target.value.replace(/[^\d.\-]/g, ""))}
+                onMouseDown={(event) => event.stopPropagation()}
+            />
+        </label>
     );
 }

@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { imageToDataUrl } from "@/services/image-storage";
-import { imageSizePresets, inferMediaScale } from "@/lib/media-size";
+import { imageSizePresets, inferMediaRatio, inferMediaScale } from "@/lib/media-size";
 import type { ReferenceImage } from "@/types/image";
 import { base64ImageSource, imageOutputOptions } from "@/lib/image-output";
 import { canSendReferenceUrl } from "@/lib/image-reference-encoding";
@@ -694,6 +694,14 @@ function parseGeminiImagePayload(payload: GeminiPayload) {
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    // Midjourney：提交任务后轮询结果（/v1/midjourney/generations → /v1/tasks/:id）。
+    if (requestConfig.apiFormat === "midjourney") {
+        try {
+            return await requestMidjourneyImages(requestConfig, prompt, config, options);
+        } catch (error) {
+            throw new Error(readAxiosError(error, apiText("requestFailed")));
+        }
+    }
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const script = resolveModelScript(config, config.model || config.imageModel);
     if (script) {
@@ -894,3 +902,197 @@ const defaultGeminiConfig: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat" | "
     model: "",
     systemPrompt: "",
 };
+
+/* ------------------------------------------------------------------ *
+ * Midjourney（提交 + 轮询）
+ *
+ * 中转站协议与 weftcanvas 一致：
+ *   POST {base}/v1/midjourney/generations  → { task_id | id, status, ... }
+ *   GET  {base}/v1/tasks/{id}              → { status, progress, image_urls | outputs }
+ *   旧式中转站把详情放在 /v1/midjourney/{id}，只对明确 404 时回退。
+ *
+ * MJ 没有「张数」概念：一次任务返回一张四宫格，因此忽略 count。
+ * 画布的其它参数（比例 / 版本 / 风格化 / 混乱 / 种子 / 排除词 …）按 MJ 的
+ * --参数 形式拼在提示词末尾。
+ * ------------------------------------------------------------------ */
+
+const MJ_POLL_INTERVAL_MS = 5_000;
+const MJ_TIMEOUT_MS = 30 * 60_000;
+const MJ_TRANSIENT_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000] as const;
+
+function midjourneySuffix(config: AiConfig) {
+    const parts: string[] = [];
+    const ratio = inferMediaRatio(config.size || "auto");
+    if (ratio && ratio !== "auto") parts.push(`--ar ${ratio}`);
+    const version = config.mjVersion.trim();
+    if (version) parts.push(/^niji/i.test(version) ? `--niji ${version.replace(/^niji\s*/i, "") || "6"}` : `--v ${version}`);
+    if (config.mjStylize.trim()) parts.push(`--s ${config.mjStylize.trim()}`);
+    if (config.mjChaos.trim()) parts.push(`--c ${config.mjChaos.trim()}`);
+    if (config.mjSeed.trim()) parts.push(`--seed ${config.mjSeed.trim()}`);
+    if (config.mjWeird.trim()) parts.push(`--weird ${config.mjWeird.trim()}`);
+    if (config.mjNo.trim()) parts.push(`--no ${config.mjNo.trim()}`);
+    if (config.mjTile === "true") parts.push("--tile");
+    if (config.mjRaw === "true") parts.push("--raw");
+    return parts.join(" ");
+}
+
+function midjourneyRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const root = value as Record<string, unknown>;
+    const data = root.data;
+    if (data && typeof data === "object" && !Array.isArray(data)) return data as Record<string, unknown>;
+    if (Array.isArray(data) && data[0] && typeof data[0] === "object" && !Array.isArray(data[0])) return data[0] as Record<string, unknown>;
+    return root;
+}
+
+function midjourneyTaskId(value: unknown) {
+    const record = midjourneyRecord(value);
+    for (const key of ["task_id", "taskId", "job_id", "jobId", "id"]) {
+        const candidate = record?.[key];
+        if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    }
+    return null;
+}
+
+function midjourneyStatus(value: unknown): "completed" | "failed" | "running" | "pending" {
+    const record = midjourneyRecord(value);
+    const raw = typeof record?.status === "string" ? record.status.trim().toLowerCase().replace(/-/g, "_") : "";
+    if (["completed", "complete", "success", "succeeded", "done"].includes(raw)) return "completed";
+    if (["failed", "failure", "error", "cancelled", "canceled", "timeout"].includes(raw)) return "failed";
+    if (["running", "processing", "in_progress"].includes(raw)) return "running";
+    return "pending";
+}
+
+function midjourneyError(value: unknown) {
+    const record = midjourneyRecord(value);
+    const error = record?.error;
+    if (typeof error === "string" && error.trim()) return error.trim().slice(0, 240);
+    if (error && typeof error === "object" && typeof (error as Record<string, unknown>).message === "string") return String((error as Record<string, unknown>).message).trim().slice(0, 240);
+    for (const key of ["message", "error_message", "fail_reason", "failure_reason"]) {
+        if (typeof record?.[key] === "string" && String(record[key]).trim()) return String(record[key]).trim().slice(0, 240);
+    }
+    return "";
+}
+
+function midjourneyImageUrls(value: unknown): string[] {
+    const root = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+    const collect = (node: unknown, depth = 0): unknown[] => {
+        if (depth > 5 || !node || typeof node !== "object") return [];
+        if (Array.isArray(node)) return node;
+        const record = node as Record<string, unknown>;
+        for (const key of ["image_urls", "imageUrls"]) if (Array.isArray(record[key])) return record[key] as unknown[];
+        for (const child of Object.values(record)) {
+            const found = collect(child, depth + 1);
+            if (found.length) return found;
+        }
+        return [];
+    };
+    let items = collect(root);
+    if (!items.length) {
+        for (const key of ["outputs", "images"]) {
+            const candidate = root[key];
+            if (Array.isArray(candidate)) { items = candidate; break; }
+        }
+    }
+    if (!items.length) {
+        // 单图返回：grid_image_url / image_url / url
+        const single = ["grid_image_url", "gridImageUrl", "image_url", "imageUrl", "url"]
+            .map((key) => root[key])
+            .find((candidate) => typeof candidate === "string" && candidate.trim());
+        if (single) items = [single];
+    }
+    return items
+        .flatMap((item) => {
+            if (typeof item === "string") return /^https?:\/\//i.test(item) || item.startsWith("data:image/") ? [item] : [];
+            if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+            const record = item as Record<string, unknown>;
+            const url = [record.url, record.image_url, record.imageUrl, record.content_url, record.download_url].find((candidate): candidate is string => typeof candidate === "string" && (/^https?:\/\//i.test(candidate) || candidate.startsWith("data:image/")));
+            return url ? [url] : [];
+        })
+        .slice(0, 8);
+}
+
+function isMidjourneyTransientError(error: unknown) {
+    if (!axios.isAxiosError(error)) return false;
+    if (!error.response) return true;
+    const status = error.response.status;
+    return status === 408 || status === 425 || status === 429 || (status >= 500 && status < 600);
+}
+
+async function requestMidjourneyImages(config: AiConfig, prompt: string, imageConfig: AiConfig, options?: RequestOptions) {
+    const suffix = midjourneySuffix(imageConfig);
+    const finalPrompt = suffix ? `${prompt.trim()} ${suffix}` : prompt.trim();
+    const payload: Record<string, unknown> = { prompt: finalPrompt };
+    if (config.model) payload.model = config.model;
+    const response = await axios.post<unknown>(aiApiUrl(config, "/midjourney/generations"), payload, {
+        headers: aiHeaders(config, "application/json"),
+        timeout: 120_000,
+        signal: options?.signal,
+    });
+    const urls = await waitForMidjourneyTask(config, response.data, options?.signal);
+    const items: Array<{ id: string; dataUrl: string }> = [];
+    for (const url of urls) {
+        const dataUrl = await imageToDataUrl({ url }, { signal: options?.signal });
+        if (dataUrl) items.push({ id: nanoid(), dataUrl });
+    }
+    if (!items.length) throw new Error(apiText("requestFailed"));
+    return items;
+}
+
+async function waitForMidjourneyTask(config: AiConfig, initial: unknown, signal?: AbortSignal) {
+    let current = initial;
+    let taskId = midjourneyTaskId(current);
+    let usedLegacyPath = false;
+    let transientFailures = 0;
+    const immediate = midjourneyImageUrls(current);
+    if (!taskId && immediate.length) return immediate;
+    if (!taskId) throw new Error("Midjourney 任务没有返回任务编号");
+    const deadline = Date.now() + MJ_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+        if (signal?.aborted) throw new axios.CanceledError("canceled");
+        const status = midjourneyStatus(current);
+        if (status === "failed") throw new Error(midjourneyError(current) ? `图片生成失败：${midjourneyError(current)}` : "图片生成失败");
+        const urls = midjourneyImageUrls(current);
+        if (status === "completed" && urls.length) return urls;
+        if (urls.length && !taskId) return urls;
+        await new Promise((resolve) => setTimeout(resolve, MJ_POLL_INTERVAL_MS));
+        try {
+            current = await fetchMidjourneyTask(config, taskId, usedLegacyPath, signal);
+            transientFailures = 0;
+        } catch (error) {
+            if (axios.isCancel(error) || signal?.aborted) throw error;
+            if (!usedLegacyPath && axios.isAxiosError(error) && error.response?.status === 404) {
+                usedLegacyPath = true;
+                try {
+                    current = await fetchMidjourneyTask(config, taskId, true, signal);
+                    transientFailures = 0;
+                } catch (legacyError) {
+                    if (axios.isCancel(legacyError)) throw legacyError;
+                    if (!isMidjourneyTransientError(legacyError)) throw legacyError;
+                    await midjourneyRetryDelay(transientFailures++);
+                }
+            } else if (isMidjourneyTransientError(error)) {
+                await midjourneyRetryDelay(transientFailures++);
+            } else {
+                throw error;
+            }
+        }
+        taskId = midjourneyTaskId(current) ?? taskId;
+    }
+    throw new Error("图片生成等待超时，可稍后在任务记录中查看");
+}
+
+async function fetchMidjourneyTask(config: AiConfig, taskId: string, legacy: boolean, signal?: AbortSignal) {
+    const path = legacy ? `/midjourney/${encodeURIComponent(taskId)}` : `/tasks/${encodeURIComponent(taskId)}`;
+    const response = await axios.get<unknown>(aiApiUrl(config, path), {
+        headers: aiHeaders(config),
+        timeout: 30_000,
+        signal,
+    });
+    return response.data;
+}
+
+async function midjourneyRetryDelay(failures: number) {
+    const delay = MJ_TRANSIENT_RETRY_DELAYS_MS[Math.min(failures, MJ_TRANSIENT_RETRY_DELAYS_MS.length - 1)];
+    await new Promise((resolve) => setTimeout(resolve, delay));
+}

@@ -231,10 +231,10 @@ export function ConfigApiSettings({ config, onChange }: ConfigApiSettingsProps) 
                                 <div className="atelier-config-api-field atelier-config-api-field--protocol">
                                     <span className="atelier-config-api-field-label">调用协议</span>
                                     <div className="atelier-config-api-protocol" role="radiogroup" aria-label="调用协议">
-                                        {(["openai", "gemini"] as ApiCallFormat[]).map((format) => (
+                                        {(["openai", "gemini", "midjourney"] as ApiCallFormat[]).map((format) => (
                                             <button key={format} type="button" role="radio" aria-checked={activeChannel.apiFormat === format} className={activeChannel.apiFormat === format ? "is-active" : undefined} onClick={() => changeFormat(format)}>
                                                 <i />
-                                                <span>{format === "openai" ? "OpenAI 兼容" : "Gemini 原生"}</span>
+                                                <span>{format === "openai" ? "OpenAI 兼容" : format === "gemini" ? "Gemini 原生" : "Midjourney"}</span>
                                             </button>
                                         ))}
                                     </div>
