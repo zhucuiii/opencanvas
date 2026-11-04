@@ -762,6 +762,14 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    // Midjourney：带参考图的生成同样走 MJ 任务接口，参考图放在 image_urls 里。
+    if (requestConfig.apiFormat === "midjourney") {
+        try {
+            return await requestMidjourneyImages(requestConfig, prompt, config, options, references);
+        } catch (error) {
+            throw new Error(readAxiosError(error, apiText("requestFailed")));
+        }
+    }
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const requestPrompt = buildImageReferencePromptText(prompt, references);
     const script = resolveModelScript(config, config.model || config.imageModel);
@@ -1019,11 +1027,16 @@ function isMidjourneyTransientError(error: unknown) {
     return status === 408 || status === 425 || status === 429 || (status >= 500 && status < 600);
 }
 
-async function requestMidjourneyImages(config: AiConfig, prompt: string, imageConfig: AiConfig, options?: RequestOptions) {
+async function requestMidjourneyImages(config: AiConfig, prompt: string, imageConfig: AiConfig, options?: RequestOptions, references: ReferenceImage[] = []) {
     const suffix = midjourneySuffix(imageConfig);
     const finalPrompt = suffix ? `${prompt.trim()} ${suffix}` : prompt.trim();
     const payload: Record<string, unknown> = { prompt: finalPrompt };
     if (config.model) payload.model = config.model;
+    if (references.length) {
+        payload.image_urls = await Promise.all(
+            references.slice(0, 8).map(async (reference) => (reference.dataUrl?.startsWith("http") ? reference.dataUrl : await imageToDataUrl(reference))),
+        );
+    }
     const response = await axios.post<unknown>(aiApiUrl(config, "/midjourney/generations"), payload, {
         headers: aiHeaders(config, "application/json"),
         timeout: 120_000,
