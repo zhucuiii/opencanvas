@@ -276,6 +276,10 @@ function imageTaskId(value: unknown): string | null {
         const candidate = record?.[key];
         if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
     }
+    // 少数中转站用 { id, status } 表达任务；只在有 status 时才把 id 当任务号，
+    // 避免把普通图片对象里的 id 误判成任务。
+    const id = record?.id;
+    if (typeof id === "string" && id.trim() && typeof record?.status === "string") return id.trim();
     return null;
 }
 
