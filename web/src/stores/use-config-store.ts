@@ -656,6 +656,7 @@ export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
 
 export function apiProtocolPresetForChannel(channel: Pick<ModelChannel, "apiFormat" | "baseUrl">): ApiProtocolPreset | null {
     const baseUrl = normalizePresetBaseUrl(channel.baseUrl);
+    if (channel.apiFormat === "midjourney") return API_PROTOCOL_PRESETS.find((preset) => preset.id === "midjourney") || null;
     if (channel.apiFormat === "gemini") return API_PROTOCOL_PRESETS.find((preset) => preset.apiFormat === "gemini" && normalizePresetBaseUrl(preset.baseUrl) === baseUrl) || null;
     if (baseUrl === normalizePresetBaseUrl(OPENAI_BASE_URL)) return API_PROTOCOL_PRESETS[0];
     return baseUrl ? API_PROTOCOL_PRESETS[1] : null;
@@ -669,7 +670,9 @@ export function apiProtocolPresetForChannel(channel: Pick<ModelChannel, "apiForm
 export function applyApiProtocolPreset(channel: ModelChannel, presetId: ApiProtocolPresetId): ModelChannel {
     const preset = API_PROTOCOL_PRESETS.find((item) => item.id === presetId);
     if (!preset) return channel;
-    const baseUrl = preset.id === "openai-compatible" && channel.baseUrl.trim() ? channel.baseUrl : preset.baseUrl;
+    // 这两种协议没有公共默认地址，切换预设时保留用户已填的中转站地址。
+    const keepsCustomBaseUrl = preset.id === "openai-compatible" || preset.id === "midjourney";
+    const baseUrl = keepsCustomBaseUrl && channel.baseUrl.trim() ? channel.baseUrl : preset.baseUrl;
     return { ...channel, apiFormat: preset.apiFormat, baseUrl };
 }
 

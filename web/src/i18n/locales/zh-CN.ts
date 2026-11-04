@@ -1119,6 +1119,7 @@ export default {
             openai: { name: "OpenAI 官方", description: "官方 OpenAI 接口与模型列表" },
             "openai-compatible": { name: "OpenAI 兼容代理", description: "中转站或兼容网关，地址按服务商填写" },
             gemini: { name: "Gemini 原生", description: "Google Gemini 原生 v1beta 接口" },
+            midjourney: { name: "Midjourney", description: "Midjourney 中转站：提交任务后轮询取图" },
         },
         protocolPresets: {
             title: "常见协议预设",

@@ -1167,6 +1167,7 @@ export default {
             openai: { name: "OpenAI official", description: "Official OpenAI API and model list" },
             "openai-compatible": { name: "OpenAI-compatible proxy", description: "Relay or compatible gateway; enter its endpoint" },
             gemini: { name: "Gemini native", description: "Google Gemini native v1beta API" },
+            midjourney: { name: "Midjourney", description: "Midjourney relay: submit a task, then poll for the image" },
         },
         protocolPresets: {
             title: "Common protocol presets",

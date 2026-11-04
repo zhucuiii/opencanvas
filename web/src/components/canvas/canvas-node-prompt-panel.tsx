@@ -3,7 +3,7 @@ import { ArrowUp, LoaderCircle, MousePointer2, Plus, MoreHorizontal, Mic, Square
 import { App, Button, Modal } from "antd";
 import { useTranslation } from "react-i18next";
 import { ModelPicker } from "@/components/model-picker";
-import { resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasAtelierImageSettings } from "./canvas-atelier-image-settings";
@@ -315,7 +315,7 @@ export function CanvasNodePromptPanel({
                     </div>
                 </div>
                 <div className="atelier-prompt-actions">
-                    {mode === "image" ? <CanvasImageCountChip value={Number(node.metadata?.count) || 1} onChange={(count) => onConfigChange(node.id, { count })} /> : null}
+                    {mode === "image" && resolveModelChannel(config, config.model || config.imageModel)?.apiFormat !== "midjourney" ? <CanvasImageCountChip value={Number(node.metadata?.count) || 1} onChange={(count) => onConfigChange(node.id, { count })} /> : null}
                     <button type="button" className="atelier-icon-button" aria-label="增强提示词" title="增强提示词" disabled={!prompt.trim() || enhancing} onClick={() => void enhance()}>
                         {enhancing ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
                     </button>

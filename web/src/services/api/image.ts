@@ -877,6 +877,10 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
 
 export async function fetchImageModels(config: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat">) {
     try {
+        // Midjourney 中转站通常没有 OpenAI 风格的 /v1/models，模型名按中转站文档手填。
+        if (config.apiFormat === "midjourney") {
+            throw new Error("Midjourney 渠道请手动填写模型名（中转站一般没有模型列表接口）");
+        }
         if (config.apiFormat === "gemini") {
             const response = await axios.get<GeminiPayload>(geminiApiUrl({ ...defaultGeminiConfig, ...config }), { headers: geminiHeaders({ ...defaultGeminiConfig, ...config }) });
             validateGeminiPayload(response.data);
@@ -1066,7 +1070,10 @@ async function waitForMidjourneyTask(config: AiConfig, initial: unknown, signal?
         const status = midjourneyStatus(current);
         if (status === "failed") throw new Error(midjourneyError(current) ? `图片生成失败：${midjourneyError(current)}` : "图片生成失败");
         const urls = midjourneyImageUrls(current);
-        if (status === "completed" && urls.length) return urls;
+        if (status === "completed") {
+            if (urls.length) return urls;
+            throw new Error("Midjourney 任务已完成但没有返回图片");
+        }
         if (urls.length && !taskId) return urls;
         await new Promise((resolve) => setTimeout(resolve, MJ_POLL_INTERVAL_MS));
         try {
