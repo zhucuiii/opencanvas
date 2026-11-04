@@ -21,8 +21,9 @@ function initialWidth() {
 }
 
 function initialOpen() {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem(OPEN_KEY) !== "0";
+    if (typeof window === "undefined") return false;
+    // 默认收起：只有用户手动打开过（"1"）才展开。
+    return localStorage.getItem(OPEN_KEY) === "1";
 }
 
 function initialNodeView(): CanvasNodeViewMode {
@@ -48,6 +49,8 @@ type CanvasSidePanelStore = {
     toggleToolbarDock: () => void;
     openPanel: () => void;
     closePanel: () => void;
+    /** 立即收起（不做关闭动画、不经过 panelClosing），新建画布时用。 */
+    resetClosed: () => void;
     togglePanel: () => void;
 };
 
@@ -71,6 +74,10 @@ export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) =
         const dock = get().toolbarDock === "bottom" ? "left" : "bottom";
         if (typeof window !== "undefined") localStorage.setItem(TOOLBAR_DOCK_KEY, dock);
         set({ toolbarDock: dock });
+    },
+    resetClosed: () => {
+        if (typeof window !== "undefined") localStorage.setItem(OPEN_KEY, "0");
+        set({ panelOpen: false, panelMounted: false, panelClosing: false });
     },
     openPanel: () => {
         if (typeof window !== "undefined") localStorage.setItem(OPEN_KEY, "1");

@@ -16,6 +16,7 @@ import type { CanvasExportFile } from "@/types/canvas-export";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 
 export default function CanvasPage() {
@@ -39,7 +40,11 @@ export default function CanvasPage() {
     const enterProject = (id: string) => {
         navigate(`/canvas/${id}${entryQuery}`);
     };
-    const createAndEnter = () => enterProject(createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
+    const createAndEnter = () => {
+        // 新建画布默认收起左侧资产栏。
+        useCanvasSidePanelStore.getState().resetClosed();
+        enterProject(createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
+    };
     const importCanvas = async (file?: File) => {
         if (!file) return;
         try {
