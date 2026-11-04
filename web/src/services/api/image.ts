@@ -246,6 +246,167 @@ function parseImagePayload(payload: ImageApiResponse, outputFormat = "png") {
     return images;
 }
 
+/* ------------------------------------------------------------------ *
+ * 返图适配：兼容 OpenAI 兼容中转站（典型是 Midjourney 代理）的异步出图
+ *
+ * 这类中转站的 /v1/images/generations 有几种额外形态：
+ *   1. 直接返回图片 URL：{ data: [{ url }] } —— parseImagePayload 已支持；
+ *   2. 返回任务号：{ task_id, status } 或 { code: 0, data: { task_id } }，
+ *      需要再查 /v1/tasks/{id}（旧站用 /v1/midjourney/{id}）；
+ *   3. 任务详情里用 image_urls / outputs / images / grid_image_url 给图。
+ * 这里只做「识别任务 + 轮询 + 提取 URL」，不改变 OpenAI 协议的请求体。
+ * ------------------------------------------------------------------ */
+
+const IMAGE_TASK_POLL_INTERVAL_MS = 5_000;
+const IMAGE_TASK_TIMEOUT_MS = 30 * 60_000;
+const IMAGE_TASK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000] as const;
+
+function imageTaskRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const root = value as Record<string, unknown>;
+    const data = root.data;
+    if (data && typeof data === "object" && !Array.isArray(data)) return data as Record<string, unknown>;
+    if (Array.isArray(data) && data[0] && typeof data[0] === "object" && !Array.isArray(data[0])) return data[0] as Record<string, unknown>;
+    return root;
+}
+
+function imageTaskId(value: unknown): string | null {
+    const record = imageTaskRecord(value);
+    for (const key of ["task_id", "taskId", "job_id", "jobId"]) {
+        const candidate = record?.[key];
+        if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    }
+    return null;
+}
+
+function imageTaskStatus(value: unknown): "completed" | "failed" | "running" | "pending" {
+    const record = imageTaskRecord(value);
+    const raw = typeof record?.status === "string" ? record.status.trim().toLowerCase().replace(/-/g, "_") : "";
+    if (["completed", "complete", "success", "succeeded", "done", "finished"].includes(raw)) return "completed";
+    if (["failed", "failure", "error", "cancelled", "canceled", "timeout"].includes(raw)) return "failed";
+    if (["running", "processing", "in_progress", "queued"].includes(raw)) return "running";
+    return "pending";
+}
+
+function imageTaskError(value: unknown) {
+    const record = imageTaskRecord(value);
+    const error = record?.error;
+    if (typeof error === "string" && error.trim()) return error.trim().slice(0, 240);
+    if (error && typeof error === "object" && typeof (error as Record<string, unknown>).message === "string") return String((error as Record<string, unknown>).message).trim().slice(0, 240);
+    for (const key of ["message", "error_message", "fail_reason", "failure_reason"]) {
+        if (typeof record?.[key] === "string" && String(record[key]).trim()) return String(record[key]).trim().slice(0, 240);
+    }
+    return "";
+}
+
+/** 从任意返图结构里提取图片 URL（http/data）。 */
+function imageUrlsFromPayload(value: unknown): string[] {
+    const root = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+    const isImageUrl = (candidate: unknown): candidate is string => typeof candidate === "string" && (/^https?:\/\//i.test(candidate) || candidate.startsWith("data:image/"));
+    const collectArray = (node: unknown, depth = 0): unknown[] => {
+        if (depth > 5 || !node || typeof node !== "object") return [];
+        if (Array.isArray(node)) return node;
+        const record = node as Record<string, unknown>;
+        for (const key of ["image_urls", "imageUrls"]) if (Array.isArray(record[key])) return record[key] as unknown[];
+        for (const child of Object.values(record)) {
+            const found = collectArray(child, depth + 1);
+            if (found.length) return found;
+        }
+        return [];
+    };
+    let items = collectArray(root);
+    if (!items.length) {
+        for (const key of ["outputs", "images", "results", "data"]) {
+            const candidate = root[key];
+            if (Array.isArray(candidate)) { items = candidate; break; }
+        }
+    }
+    if (!items.length) {
+        const single = ["grid_image_url", "gridImageUrl", "image_url", "imageUrl", "url"].map((key) => root[key]).find(isImageUrl);
+        if (single) items = [single];
+    }
+    const urls = items.flatMap((item) => {
+        if (isImageUrl(item)) return [item];
+        if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+        const record = item as Record<string, unknown>;
+        for (const key of ["url", "image_url", "imageUrl", "content_url", "download_url", "b64_json"]) {
+            const candidate = record[key];
+            if (isImageUrl(candidate)) return [candidate];
+        }
+        return [];
+    });
+    return Array.from(new Set(urls)).slice(0, 8);
+}
+
+function imageItemsFromUrls(urls: string[]) {
+    return urls.map((url) => ({ id: nanoid(), dataUrl: url }));
+}
+
+/** 解析一次返图；如果是「任务号」形态，轮询到完成后再解析。 */
+async function parseImagePayloadWithTask(config: AiConfig, payload: unknown, outputFormat = "png", signal?: AbortSignal) {
+    const directUrls = imageUrlsFromPayload(payload);
+    if (directUrls.length) return imageItemsFromUrls(directUrls);
+    const status = imageTaskStatus(payload);
+    if (status === "failed") throw new Error(imageTaskError(payload) ? `图片生成失败：${imageTaskError(payload)}` : "图片生成失败");
+    const taskId = imageTaskId(payload);
+    if (!taskId) return await parseImagePayload(payload as ImageApiResponse, outputFormat);
+    let current: unknown = payload;
+    let currentTaskId = taskId;
+    let usedLegacyPath = false;
+    let transientFailures = 0;
+    const deadline = Date.now() + IMAGE_TASK_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+        if (signal?.aborted) throw new axios.CanceledError("canceled");
+        const currentStatus = imageTaskStatus(current);
+        if (currentStatus === "failed") throw new Error(imageTaskError(current) ? `图片生成失败：${imageTaskError(current)}` : "图片生成失败");
+        const urls = imageUrlsFromPayload(current);
+        if (urls.length && (currentStatus === "completed" || currentStatus === "pending")) return imageItemsFromUrls(urls);
+        if (currentStatus === "completed") throw new Error("图片任务已完成但没有返回图片");
+        await new Promise((resolve) => setTimeout(resolve, IMAGE_TASK_POLL_INTERVAL_MS));
+        try {
+            current = await fetchImageTask(config, currentTaskId, usedLegacyPath, signal);
+            transientFailures = 0;
+        } catch (error) {
+            if (axios.isCancel(error) || signal?.aborted) throw error;
+            if (!usedLegacyPath && axios.isAxiosError(error) && error.response?.status === 404) {
+                usedLegacyPath = true;
+                try {
+                    current = await fetchImageTask(config, currentTaskId, true, signal);
+                    transientFailures = 0;
+                } catch (legacyError) {
+                    if (axios.isCancel(legacyError)) throw legacyError;
+                    if (!isTransientImageTaskError(legacyError)) throw legacyError;
+                    await imageTaskRetryDelay(transientFailures++);
+                }
+            } else if (isTransientImageTaskError(error)) {
+                await imageTaskRetryDelay(transientFailures++);
+            } else {
+                throw error;
+            }
+        }
+        currentTaskId = imageTaskId(current) ?? currentTaskId;
+    }
+    throw new Error("图片生成等待超时，可稍后在任务记录中查看");
+}
+
+async function fetchImageTask(config: AiConfig, taskId: string, legacy: boolean, signal?: AbortSignal) {
+    const path = legacy ? `/midjourney/${encodeURIComponent(taskId)}` : `/tasks/${encodeURIComponent(taskId)}`;
+    const response = await axios.get<unknown>(aiApiUrl(config, path), { headers: aiHeaders(config), timeout: 30_000, signal });
+    return response.data;
+}
+
+function isTransientImageTaskError(error: unknown) {
+    if (!axios.isAxiosError(error)) return false;
+    if (!error.response) return true;
+    const status = error.response.status;
+    return status === 408 || status === 425 || status === 429 || (status >= 500 && status < 600);
+}
+
+async function imageTaskRetryDelay(failures: number) {
+    const delay = IMAGE_TASK_RETRY_DELAYS_MS[Math.min(failures, IMAGE_TASK_RETRY_DELAYS_MS.length - 1)];
+    await new Promise((resolve) => setTimeout(resolve, delay));
+}
+
 function readApiErrorMessage(value: unknown): string {
     if (!value) return "";
     if (typeof value === "string") {
@@ -745,7 +906,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 timeout: IMAGE_REQUEST_TIMEOUT_MS,
             },
         );
-        const images = await parseImagePayload(response.data, imageOutputOptions(config).output_format);
+        const images = await parseImagePayloadWithTask(requestConfig, response.data, imageOutputOptions(config).output_format, options?.signal);
         return images;
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
@@ -814,7 +975,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
 
     try {
         const response = await axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal, timeout: IMAGE_REQUEST_TIMEOUT_MS });
-        const images = await parseImagePayload(response.data, outputOptions.output_format);
+        const images = await parseImagePayloadWithTask(requestConfig, response.data, outputOptions.output_format, options?.signal);
         return images;
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
