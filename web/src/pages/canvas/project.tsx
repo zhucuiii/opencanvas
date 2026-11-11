@@ -1308,17 +1308,22 @@ function InfiniteCanvasPage() {
     }, []);
 
     const undoCanvas = useCallback(() => {
-        const previous = historyRef.current.past.pop();
         const current = lastHistoryRef.current;
-        if (!previous || !current) return;
+        // 先判断再出栈：原写法先 pop 再检查 current，一旦 current 为空（画布刚加载完、
+        // 历史还没建立时按 Ctrl+Z 就会这样），这一条已经从 past 里摘掉了却没用上，
+        // 等于凭空丢掉一步历史。改回「确认可用才摘」。
+        if (!current || historyRef.current.past.length === 0) return;
+        const previous = historyRef.current.past.pop();
+        if (!previous) return;
         historyRef.current.future.push(current);
         applyHistory(previous);
     }, [applyHistory]);
 
     const redoCanvas = useCallback(() => {
-        const next = historyRef.current.future.pop();
         const current = lastHistoryRef.current;
-        if (!next || !current) return;
+        if (!current || historyRef.current.future.length === 0) return;
+        const next = historyRef.current.future.pop();
+        if (!next) return;
         historyRef.current.past.push(current);
         applyHistory(next);
     }, [applyHistory]);
