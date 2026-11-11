@@ -2567,3 +2567,25 @@
     }
 }
 
+
+/* 路由懒加载占位：一枚 20px 细环，只做旋转，深浅主题都取当前前景色。 */
+.route-loading-ring {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--foreground);
+    animation: route-loading-spin 0.7s linear infinite;
+}
+
+@keyframes route-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .route-loading-ring {
+        animation-duration: 2s;
+    }
+}

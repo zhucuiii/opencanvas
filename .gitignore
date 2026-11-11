@@ -27,3 +27,6 @@ web/public/plugins
 # 本地验证脚本（内含本机绝对路径 D:\祝\...），不上传
 web/.verify-*.mjs
 web/.verify-*.png
+
+# Alma 版本快照（本地工具生成，不进仓库）
+.alma-snapshots/
