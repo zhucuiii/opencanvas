@@ -38,6 +38,7 @@ import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "@/components
 import { CanvasNodeUpscaleDialog, type CanvasImageUpscaleParams } from "@/components/canvas/canvas-node-upscale-dialog";
 import { buildNodeGenerationContext, buildNodeGenerationInputs, buildNodeResponseMessages, hydrateNodeGenerationContext, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
+import { CanvasGroupHarness } from "@/components/canvas/canvas-group-harness";
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-selection-toolbar";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
@@ -877,14 +878,31 @@ function InfiniteCanvasPage() {
     const canGroupSelection = canGroupSelectedNodes(selectedNodeIds, nodes);
     const canUngroupSelection = canUngroupSelectedNodes(selectedNodeIds, nodes);
     const activeNodeId = hasMultipleSelectedNodes ? null : hoveredNodeId || (selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null);
-    const groupChildCountById = useMemo(() => {
-        const map = new Map<string, number>();
+    // 组成员（按节点数组顺序），用来画组内的汇聚线，并给组标题显示成员数。
+    const groupMembersById = useMemo(() => {
+        const map = new Map<string, CanvasNodeData[]>();
         nodes.forEach((node) => {
             const groupId = node.metadata?.groupId;
-            if (groupId) map.set(groupId, (map.get(groupId) || 0) + 1);
+            if (!groupId) return;
+            const list = map.get(groupId);
+            if (list) list.push(node);
+            else map.set(groupId, [node]);
         });
         return map;
     }, [nodes]);
+    const groupChildCountById = useMemo(() => {
+        const map = new Map<string, number>();
+        groupMembersById.forEach((members, groupId) => map.set(groupId, members.length));
+        return map;
+    }, [groupMembersById]);
+    /**
+     * 有成员、且真的连了下游的组 —— 只有这些需要画组内汇聚线。
+     * 组没接出去时里面几条线悬空没有意义，反而像接错了。
+     */
+    const harnessGroups = useMemo(() => {
+        const hasOutgoing = new Set(connections.map((connection) => connection.fromNodeId));
+        return nodes.filter((node) => node.type === CanvasNodeType.Group && hasOutgoing.has(node.id) && (groupMembersById.get(node.id)?.length ?? 0) > 0);
+    }, [nodes, connections, groupMembersById]);
     const relatedHighlight = useMemo(() => {
         const nodeIds = new Set<string>();
         const connectionIds = new Set<string>();
@@ -3525,6 +3543,19 @@ function InfiniteCanvasPage() {
                     onContextMenu={preventCanvasContextMenu}
                     onDrop={handleDrop}
                 >
+                    {/*
+                      组内汇聚线单独一层，夹在组框（z-5）和普通节点（z-10）之间。
+                      放进下面那个连线 SVG 不行：那层是 zIndex 0，汇聚线整段都在节点的
+                      几何范围里，会被节点直接盖住。
+                    */}
+                    <svg
+                        className="absolute left-0 top-0 h-[10000px] w-[10000px] overflow-visible"
+                        style={{ pointerEvents: "none", transform: "translateZ(0)", zIndex: 8, "--canvas-committed-scale": viewport.k } as CSSProperties}
+                    >
+                        {harnessGroups.map((group) => (
+                            <CanvasGroupHarness key={`harness-${group.id}`} group={group} members={groupMembersById.get(group.id) || []} />
+                        ))}
+                    </svg>
                     <svg className="absolute left-0 top-0 h-[10000px] w-[10000px] overflow-visible" style={{ pointerEvents: "none", transform: "translateZ(0)", zIndex: 0, "--canvas-committed-scale": viewport.k } as CSSProperties}>
                         {visibleConnections.map(({ connection, from, to }) => (
                             <ConnectionPath
