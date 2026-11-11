@@ -29,6 +29,10 @@ export default {
         save: "保存",
         edit: "编辑",
         done: "完成",
+        // 画布页「生成任务恢复」提示条上的关闭按钮用 aria-label={t("common.close")}。
+        close: "关闭",
+        // 转绘提示词编辑弹层的保存按钮用 t("common.confirm")。
+        confirm: "确定",
         delete: "删除",
         copy: "复制",
         copied: "已复制",
@@ -198,7 +202,9 @@ export default {
         importFailed: "导入失败，请选择有效的资产压缩包",
         deleted: "资产已删除",
         packageName: "我的资产.zip",
-        kinds: { text: "文本", image: "图片", video: "视频" },
+        // 内置节点用 assets.kinds.* 当标题（见 components/canvas/nodes/builtin-nodes.tsx），
+        // 画布上有音频节点，缺 audio 会让节点标题直接显示成 key。
+        kinds: { text: "文本", image: "图片", video: "视频", audio: "音频" },
         fields: {
             title: "标题",
             titleRequired: "请输入标题",

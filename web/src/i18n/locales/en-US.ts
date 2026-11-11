@@ -38,6 +38,10 @@ export default {
         save: "Save",
         edit: "Edit",
         done: "Done",
+        // 画布页「生成任务恢复」提示条上的关闭按钮用 aria-label={t("common.close")}。
+        close: "Close",
+        // 转绘提示词编辑弹层的保存按钮用 t("common.confirm")。
+        confirm: "Confirm",
         delete: "Delete",
         copy: "Copy",
         copied: "Copied",
@@ -213,7 +217,9 @@ export default {
         importFailed: "Import failed. Select a valid asset package.",
         deleted: "Asset deleted",
         packageName: "my-assets.zip",
-        kinds: { text: "Text", image: "Image", video: "Video" },
+        // 内置节点用 assets.kinds.* 当标题（见 components/canvas/nodes/builtin-nodes.tsx），
+        // 画布上有音频节点，缺 audio 会让节点标题直接显示成 key。
+        kinds: { text: "Text", image: "Image", video: "Video", audio: "Audio" },
         fields: {
             title: "Title",
             titleRequired: "Enter a title",
@@ -921,6 +927,9 @@ export default {
         studio: "Studio",
         image: "Image",
         video: "Video",
+        // 顶栏 / 移动端抽屉按 `navigation.${slug}` 取词，navigationTools 里有 assets，
+        // 缺这一条时英文界面会把原始 key 直接印在导航项上。
+        assets: "My Assets",
         config: "Settings",
     },
     topNav: {
