@@ -171,6 +171,29 @@ function defaultSizeForMode(config: AiConfig, mode: CanvasNodeGenerationMode) {
     return config.size || defaultConfig.size;
 }
 
+/**
+ * 生成模式 → 全局配置里对应的默认模型字段。
+ *
+ * 四种能力各存各的模型（imageModel / videoModel / textModel / audioModel），
+ * 所以在画布上换模型时必须按模式写回对应那一个，不能糊成同一个 `model`：
+ * 图片节点选了 A 不该把视频节点的默认模型也改掉。
+ */
+export const MODEL_CONFIG_KEY = {
+    image: "imageModel",
+    video: "videoModel",
+    text: "textModel",
+    audio: "audioModel",
+} as const satisfies Record<CanvasGenerationMode, keyof AiConfig>;
+
+/**
+ * 节点类型 → 生成模式。插件节点会在自己的 useBuiltinPanel 里声明 mode，
+ * 那种情况调用方直接传 mode；这里只处理内置类型。
+ * 与 canvas-node-prompt-panel 的 defaultMode 保持一致。
+ */
+export function generationModeOf(type: CanvasNodeData["type"]): CanvasGenerationMode {
+    return type === CanvasNodeType.Text ? "text" : type === CanvasNodeType.Video ? "video" : type === CanvasNodeType.Audio ? "audio" : "image";
+}
+
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
     return {
         ...config,

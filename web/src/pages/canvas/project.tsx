@@ -78,6 +78,7 @@ import {
     generationReferenceUrls,
     getGenerationCount,
     getInputSummary,
+    generationModeOf,
     generationRecoveryCounts,
     hasResumableVideoTask,
     hydrateAssistantImages,
@@ -91,6 +92,7 @@ import {
     startGenerationMetadata,
     markGenerationRequestUnknown,
     markGenerationRequestCanceled,
+    MODEL_CONFIG_KEY,
     resumeGenerationMetadata,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
@@ -1946,7 +1948,7 @@ function InfiniteCanvasPage() {
         // 改配置可能连带改节点尺寸（比如换比例）。节点是动画过渡过去的，而连线端点按数据坐标算，
         // 所以过渡期间要逐帧把连线重算到节点的实际尺寸上（见下面的形变记号与 ConnectionPath）。
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
-        // 比例 / 分辨率 / 质量 / 张数要「沿用上次用的」：设置里已经不单独配这几个默认值了，
+        // 比例 / 分辨率 / 质量 / 张数 / 模型 要「沿用上次用的」：设置里已经不单独配这几个默认值了，
         // 所以把画布上这次的选择回写到全局配置，下一个新建节点直接用它。
         const updateConfig = useConfigStore.getState().updateConfig;
         const next = patch || {};
@@ -1959,6 +1961,14 @@ function InfiniteCanvasPage() {
         if (typeof next.imageScale === "string") updateConfig("imageScale", next.imageScale);
         if (typeof next.quality === "string") updateConfig("quality", next.quality);
         if (typeof next.count === "number") updateConfig("count", String(next.count));
+        // 模型按能力分开记：图片节点选的模型只回写 imageModel，不影响视频/文本/音频的默认值。
+        // 模式优先取节点自己声明的 generationMode（配置节点可选图片/视频/文本/音频，
+        // 插件节点也可以自带），否则由节点类型推出来。
+        if (typeof next.model === "string" && next.model) {
+            const node = nodesRef.current.find((item) => item.id === nodeId);
+            const mode = node?.metadata?.generationMode ?? (node ? generationModeOf(node.type) : "image");
+            updateConfig(MODEL_CONFIG_KEY[mode], next.model);
+        }
     }, []);
 
     const downloadNodeImage = useCallback((node: CanvasNodeData) => {
