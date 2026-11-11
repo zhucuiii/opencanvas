@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Palette, Plus, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Palette, Plus, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { FRAME_HEADER_HEIGHT } from "@/lib/canvas/canvas-frame";
 import { formatBytes } from "@/lib/image-utils";
 import { pickImageSource } from "@/lib/image-thumbnail";
 import { previewUrlFor, subscribeImagePreviews, getImagePreviewRevision } from "@/services/image-storage";
@@ -40,6 +41,8 @@ type CanvasNodeProps = {
     renderHoverToolbar?: (node: CanvasNodeData) => ReactNode;
     renderNodeContent?: (node: CanvasNodeData) => ReactNode;
     groupChildCount?: number;
+    /** 组的折叠开关（只有组节点会传）。 */
+    onToggleCollapsed?: (nodeId: string) => void;
     isGroupDropTarget?: boolean;
     batchExpanded?: boolean;
     onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
@@ -87,6 +90,8 @@ type NodeContentRendererProps = {
     onDeleteBatchImage?: (imageId: string) => void;
     onViewBatchImage?: (imageId: string) => void;
     groupChildCount: number;
+    /** 组的折叠开关。收起后只留头部，成员在画布上隐藏。 */
+    onToggleCollapsed?: (nodeId: string) => void;
 };
 
 /**
@@ -119,6 +124,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     renderHoverToolbar,
     renderNodeContent,
     groupChildCount = 0,
+    onToggleCollapsed,
     isGroupDropTarget = false,
     batchExpanded = false,
     onMouseDown,
@@ -321,7 +327,9 @@ export const CanvasNode = React.memo(function CanvasNode({
     return (
         <div
             data-node-id={data.id}
-            className={`node-element group/node absolute flex select-none flex-col transition-shadow duration-200 ${isGroup ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
+            // 组固定最底层（z 0）：子节点浮在它上面，「框住成员」这件事自动成立，
+            // 不用给子节点算裁剪。普通节点 z-10、选中 z-20（对应 --z-node / --z-node-active）。
+            className={`node-element group/node absolute flex select-none flex-col transition-shadow duration-200 ${isGroup ? "z-0" : isSelected ? "z-20" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
             style={{
                 transform: `translate(${data.position.x}px, ${data.position.y}px)`,
                 width: data.width,
@@ -345,9 +353,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                 else onContextMenu(event, data.id);
             }}
         >
-            {!referenceSelectionState && (
-                // 组的标题也走这条（画在框外上方）。组的 z-index 是 5、子节点是 10，
-                // 画在框内部会被第一个成员盖住；框外这一条没有节点，永远读得清。
+            {/* 组不画框外标题：组在 z 0，子节点从 header 下方开始，所以组名可以安全地
+                画在框内顶部（见 GroupNodeContent），不需要再在框外重复一条。 */}
+            {!referenceSelectionState && !isGroup && (
                 <div className="absolute left-0 top-[-28px] z-[65] max-w-full" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
@@ -369,7 +377,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                     ) : (
                         <button
                             type="button"
-                            className="flex max-w-full items-center gap-2 truncate border-b border-dashed border-transparent px-0 py-0.5 text-left text-xs font-medium opacity-65 transition hover:border-current hover:opacity-100"
+                            // 标题：13px / 500 / 65% 不透明度。悬停才提亮到 100% ——
+                            // 常驻高对比会让整块画布显得吵，标题是辅助信息不是内容。
+                            className="flex max-w-full items-center gap-1.5 truncate px-0 py-0.5 text-left text-[13px] font-medium leading-tight opacity-60 transition-opacity duration-200 hover:opacity-100"
                             style={{ color: theme.node.text }}
                             title={t("canvas.node.renameHint")}
                             onDoubleClick={(event) => {
@@ -392,15 +402,17 @@ export const CanvasNode = React.memo(function CanvasNode({
             )}
 
             <div
-                className="atelier-node-frame relative h-full w-full overflow-visible rounded-[18px] border"
+                // 圆角统一到 --r-lg（12px）：原来 18px 和工具栏的 16px、弹层的 12px 各说各话。
+                className="atelier-node-frame relative h-full w-full overflow-visible rounded-[var(--r-lg)] border"
                 style={{
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
                     borderColor: isGroup
                         ? isGroupDropTarget || isActive
                             ? isSelected ? "#f5f5f5" : selectionBlue
-                            // 组框要明显一点：node.stroke 在深色主题下只有 12% 白，虚线框几乎看不见。
-                            // 这里用 muted 色（深色 #a3a3a3 / 浅色 #6b7280）压到 55%，既看得清又不抢戏。
-                            : `color-mix(in srgb, ${theme.node.muted} 55%, transparent)`
+                            // 组框：node.stroke 在深色下只有 12% 白，虚线几乎看不见。
+                            // 用 muted 压到 45%，看得清又不抢戏 —— 组的存在感靠"包住"这件事，
+                            // 不靠粗边框。
+                            : `color-mix(in srgb, ${theme.node.muted} 45%, transparent)`
                         : hasImageContent
                           ? isBatchImage
                               ? "transparent"
@@ -483,6 +495,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onDeleteBatchImage={(imageId) => onDeleteBatchImage?.(data.id, imageId)}
                         onViewBatchImage={(imageId) => onViewImage?.(data, imageId)}
                         groupChildCount={groupChildCount}
+                        onToggleCollapsed={onToggleCollapsed}
                     />
                 </div>
 
@@ -574,22 +587,47 @@ const nodeContentRenderers = {
 } satisfies Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>;
 
 /**
- * 组的内容区 —— 只负责空组时的引导文案。
+ * 组的内容区。
  *
- * 标题不画在这里：组的 z-index 是 5、子节点是 10，画在框内会被第一个成员压住，
- * 所以组的名称统一走节点自带的框外标题（见 JSX 里那处 absolute top-[-28px]）。
- * 成员有内容时也不在框内铺缩略图 —— 子节点本身就是浮在上面的真节点，
- * 再铺一层只会叠成重影。组的视觉身份由「虚线外框 + 框外标题」表达。
+ * 组固定在最底层（z 0），子节点浮在它上面，但子节点只会落在 header 以下的区域
+ * （成组与拖入时都按 FRAME_HEADER_HEIGHT 让开了顶部），所以 header 永远读得清。
+ *
+ * 头部画在框内顶部：折叠按钮 + 标题 + 成员数，高度固定 36px。
+ * 成员有内容时不铺缩略图 —— 子节点本身就是浮在上面的真节点，再铺一层只会叠成重影。
  */
-function GroupNodeContent({ theme, groupChildCount }: NodeContentRendererProps) {
+function GroupNodeContent({ node, theme, groupChildCount, onToggleCollapsed }: NodeContentRendererProps) {
     const { t } = useTranslation();
-    if (groupChildCount > 0) return null;
+    const collapsed = Boolean(node.metadata?.collapsed);
     return (
-        <div className="pointer-events-none flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
-            <Group className="size-6 opacity-25" style={{ color: theme.node.muted }} />
-            <p className="text-[11px] leading-5" style={{ color: theme.node.muted }}>
-                {t("canvas.group.emptyHint")}
-            </p>
+        <div className="pointer-events-none flex h-full w-full flex-col">
+            {/* 头部：高度锁死在 FRAME_HEADER_HEIGHT，和几何计算共用同一个数。 */}
+            <div className="pointer-events-auto flex shrink-0 items-center gap-1.5 px-2" style={{ height: FRAME_HEADER_HEIGHT, color: theme.node.text }}>
+                <button
+                    type="button"
+                    className="grid size-6 shrink-0 place-items-center rounded-[var(--r-xs)] transition-colors hover:bg-white/10"
+                    aria-label={collapsed ? t("canvas.group.expand") : t("canvas.group.collapse")}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onToggleCollapsed?.(node.id);
+                    }}
+                >
+                    {collapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+                </button>
+                <Group className="size-3.5 shrink-0 opacity-50" />
+                <span className="min-w-0 truncate text-[13px] font-semibold">{node.title || t("canvas.node.group")}</span>
+                <span className="ml-auto shrink-0 text-[11px] tabular-nums opacity-45">{groupChildCount}</span>
+            </div>
+
+            {/* 空组才给引导文案；有成员时留白交给上面的真节点。 */}
+            {groupChildCount === 0 ? (
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4 text-center">
+                    <Group className="size-6 opacity-25" style={{ color: theme.node.muted }} />
+                    <p className="text-[11px] leading-5" style={{ color: theme.node.muted }}>
+                        {t("canvas.group.emptyHint")}
+                    </p>
+                </div>
+            ) : null}
         </div>
     );
 }

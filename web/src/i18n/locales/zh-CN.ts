@@ -424,9 +424,11 @@ export default {
     },
     canvas: {
         defaultTitle: "OpenCanvas {{count}}",
-        // 组节点内部：空组时的提示。
+        // 组节点内部：空组提示与折叠控制。
         group: {
             emptyHint: "把节点拖进这里，或选中多个节点后按 Ctrl+G 成组",
+            collapse: "收起成员",
+            expand: "展开成员",
         },
         library: "画布库",
         title: "OpenCanvas",

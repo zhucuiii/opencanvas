@@ -153,7 +153,10 @@ export function applyGroupSelection(selectedIds: Set<string>, nodes: CanvasNodeD
     if (members.length < 2) return null;
     const memberIds = new Set(members.map((node) => node.id));
     const flattenedGroupIds = selectedGroupIds(selectedIds, nodes);
-    const updated = nodes.filter((node) => !flattenedGroupIds.has(node.id)).map((node) => (memberIds.has(node.id) ? { ...node, metadata: { ...node.metadata, groupId: group.id } } : node));
+    // 归属写在顶层 parentId（结构关系），metadata.groupId 仅作为老数据的兼容副本一起写。
+    const updated = nodes
+        .filter((node) => !flattenedGroupIds.has(node.id))
+        .map((node) => (memberIds.has(node.id) ? { ...node, parentId: group.id, metadata: { ...node.metadata, groupId: group.id } } : node));
     const insertAt = updated.findIndex((node) => memberIds.has(node.id));
     const withGroup = insertAt < 0 ? [...updated, group] : [...updated.slice(0, insertAt), group, ...updated.slice(insertAt)];
     const next = withoutRemoved(withGroup, connections, new Set([...flattenedGroupIds, ...emptyGroupIds(withGroup, group.id)]));

@@ -100,15 +100,18 @@ export const canvasThemes = {
             shadowLight: "rgba(255,255,255,.06)",
         },
         frame: {
+            // 组框：只留一个非常淡的填充 + 低透明度描边，靠"包住"这件事本身表达归属，
+            // 不靠粗边框抢注意力（参考 canvas-theme.ts 的 frame 段）。
             fill: "rgba(255,255,255,.025)",
-            stroke: "rgba(190,198,210,.15)",
-            activeFill: "rgba(255,255,255,.08)",
+            stroke: "rgba(190,198,210,.14)",
+            activeFill: "rgba(255,255,255,.07)",
             activeStroke: "#f5f5f5",
             preview: "rgba(20,20,20,.94)",
         },
         toolbar: {
-            panel: "rgba(20,20,20,.97)",
-            border: "rgba(255,255,255,.1)",
+            // 影策的浮层更透气：面板不要接近不透明，留一点背景透上来才有"浮"的感觉。
+            panel: "rgba(20,20,20,.82)",
+            border: "rgba(255,255,255,.08)",
             item: "#d4d4d4",
             itemHover: "rgba(255,255,255,.07)",
             activeBg: "rgba(255,255,255,.10)",
