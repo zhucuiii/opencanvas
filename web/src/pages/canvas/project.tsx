@@ -817,14 +817,10 @@ function InfiniteCanvasPage() {
         // `nodes` keeps the container rect re-read on node changes, matching the previous behaviour when the container resizes without a size update.
     }, [nodes, size.height, size.width, viewport.k, viewport.x, viewport.y]);
 
-    const visibleNodes = useMemo(() => {
-        // 折叠的组：成员整体隐藏，只留组自己（头部 + 折叠壳）。
-        const collapsedIds = new Set(nodes.filter((node) => node.type === CanvasNodeType.Group && node.metadata?.collapsed).map((node) => node.id));
-        return nodes.filter((node) => {
-            if (collapsedIds.size && node.parentId && collapsedIds.has(node.parentId)) return false;
-            return node.position.x + node.width > viewBounds.left && node.position.x < viewBounds.right && node.position.y + node.height > viewBounds.top && node.position.y < viewBounds.bottom;
-        });
-    }, [nodes, viewBounds]);
+    const visibleNodes = useMemo(
+        () => nodes.filter((node) => node.position.x + node.width > viewBounds.left && node.position.x < viewBounds.right && node.position.y + node.height > viewBounds.top && node.position.y < viewBounds.bottom),
+        [nodes, viewBounds],
+    );
 
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
 
@@ -886,7 +882,7 @@ function InfiniteCanvasPage() {
     const groupMembersById = useMemo(() => {
         const map = new Map<string, CanvasNodeData[]>();
         nodes.forEach((node) => {
-            const groupId = node.parentId ?? node.metadata?.groupId;
+            const groupId = node.metadata?.groupId;
             if (!groupId) return;
             const list = map.get(groupId);
             if (list) list.push(node);
@@ -915,7 +911,7 @@ function InfiniteCanvasPage() {
 
         const addNode = (nodeId: string) => {
             nodeIds.add(nodeId);
-            if (nodeById.get(nodeId)?.type === CanvasNodeType.Group) nodes.forEach((node) => (node.parentId ?? node.metadata?.groupId) === nodeId && nodeIds.add(node.id));
+            if (nodeById.get(nodeId)?.type === CanvasNodeType.Group) nodes.forEach((node) => node.metadata?.groupId === nodeId && nodeIds.add(node.id));
         };
         addNode(activeNodeId);
         connections.forEach((connection) => {
@@ -1028,7 +1024,7 @@ function InfiniteCanvasPage() {
             setNodes((prev) => {
                 const next = prev.filter((node) => !allIds.has(node.id));
                 const releveled = next.map((node) => {
-                    const groupId = node.parentId ?? node.metadata?.groupId;
+                    const groupId = node.metadata?.groupId;
                     if (groupId && allIds.has(groupId)) return { ...node, metadata: { ...node.metadata, groupId: undefined } };
                     return node;
                 });
@@ -1060,7 +1056,6 @@ function InfiniteCanvasPage() {
         const members = collectGroupMemberNodes(selectedIds, nodesRef.current);
         if (members.length < 2) return;
         const rect = getGroupWrapRect(members);
-        if (!rect) return;
         const created = createCanvasNode(CanvasNodeType.Group, { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
         const result = applyGroupSelection(selectedIds, nodesRef.current, connectionsRef.current, { ...created, position: { x: rect.x, y: rect.y }, width: rect.width, height: rect.height });
         if (!result) return;
@@ -1071,16 +1066,6 @@ function InfiniteCanvasPage() {
         setToolbarNodeId(result.selectedIds[0] || null);
         setDialogNodeId(null);
         setContextMenu(null);
-    }, []);
-
-    /** 组的折叠开关：收起后成员在画布上隐藏，组框缩到折叠尺寸。 */
-    const toggleGroupCollapsed = useCallback((nodeId: string) => {
-        setNodes((prev) =>
-            prev.map((node) => {
-                if (node.id !== nodeId || node.type !== CanvasNodeType.Group) return node;
-                return { ...node, metadata: { ...node.metadata, collapsed: !node.metadata?.collapsed } };
-            }),
-        );
     }, []);
 
     const ungroupSelection = useCallback((ids?: Set<string>) => {
@@ -1239,7 +1224,7 @@ function InfiniteCanvasPage() {
         });
 
         const pastedNodes = nextNodes.map((node) => {
-            const groupId = node.parentId ?? node.metadata?.groupId;
+            const groupId = node.metadata?.groupId;
             if (!groupId) return node;
             return { ...node, metadata: { ...node.metadata, groupId: idMap.get(groupId) } };
         });
@@ -1468,7 +1453,7 @@ function InfiniteCanvasPage() {
             if (!nextSelected.has(node.id)) return;
             if (node.type === CanvasNodeType.Group) {
                 currentNodes.forEach((child) => {
-                    if ((child.parentId ?? child.metadata?.groupId) === node.id) dragIds.add(child.id);
+                    if (child.metadata?.groupId === node.id) dragIds.add(child.id);
                 });
             }
         });
@@ -1518,7 +1503,7 @@ function InfiniteCanvasPage() {
                     moved.map((node) => {
                         if (!movedIds.has(node.id) || node.type === CanvasNodeType.Group) return node;
                         const groupId = findContainingGroupId(node, moved);
-                        if ((node.parentId ?? node.metadata?.groupId) === groupId) return node;
+                        if (node.metadata?.groupId === groupId) return node;
                         return { ...node, metadata: { ...node.metadata, groupId } };
                     }),
                 );
@@ -3608,7 +3593,6 @@ function InfiniteCanvasPage() {
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
                             showPanel={!isNodeDragging && !isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
-                            onToggleCollapsed={toggleGroupCollapsed}
                             isGroupDropTarget={dropTargetGroupId === node.id}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
                             showImageInfo={showImageInfo}

@@ -223,25 +223,7 @@
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-border: var(--border);
-    --color-border-strong: var(--border-strong);
-    --color-surface: var(--surface);
-    --color-surface-raised: var(--surface-raised);
     --color-ring: var(--ring);
-    /* 圆角体系：控件 8 / 卡片 12 / 浮层 16。组件里用 rounded-control 这类工具类。 */
-    --radius-control: var(--radius-control);
-    --radius-card: var(--radius-card);
-    --radius-overlay: var(--radius-overlay);
-    --radius-menu: var(--radius-menu);
-    --radius-pill: var(--radius-pill);
-    /* 字号 token：text-label / text-ui / text-body … */
-    --font-size-label: var(--fs-label);
-    --font-size-caption: var(--fs-caption);
-    --font-size-ui: var(--fs-ui);
-    --font-size-body: var(--fs-body);
-    --font-size-heading: var(--fs-heading);
-    --font-size-title: var(--fs-title);
-    /* 阴影 token */
-    --shadow-hairline: var(--elevation-hairline);
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
@@ -285,129 +267,26 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/*
- * ── 设计 token：影策式极简 ────────────────────────────────────────────
- *
- * 参照 ddcat-ai/open-ai-canvas 的皮肤体系（lib/skin-themes.ts + lib/canvas-theme.ts）。
- * 三条原则：
- *
- * 1. **层级靠填充和留白，不靠描边**。边框永远是很低透明度的一层，不当分隔线用。
- * 2. **圆角偏小、成体系**。控件 8、卡片 12、浮层 16 —— 不要到处 18/20 混着来。
- * 3. **灰度台阶要拉得开**。深色下 background 纯黑、surface 比它亮一档、
- *    raised 再亮一档；三档差别小到不刺眼、大到能区分。
- *
- * 所有组件都应该只引用这里的变量，不再写裸色值。
- */
 :root {
-    /* ── 圆角：4 档 + full（照搬参考仓库的四档体系）──
-       同一层级的元素用同一档：4 = 徽章/勾选框；8 = 按钮/输入/菜单项；
-       12 = 卡片/浮层/面板；16 = 大容器/弹窗。 */
-    --radius: 12px;             /* 12px —— 卡片、节点默认 */
-    --radius-control: 8px;      /* 按钮、输入框、小控件 */
-    --radius-card: 12px;
-    --radius-overlay: 16px;     /* 弹窗、浮层 */
-    --radius-menu: 8px;         /* 菜单项 */
-    --radius-pill: 9999px;      /* 胶囊 */
-    --r-xs: 4px;
-    --r-md: 8px;
-    --r-lg: 12px;
-    --r-2xl: 16px;
-    --r-full: 9999px;
-
-    /* ── 字号：6 档 + display。层级靠字号和灰度拉开，不靠加粗 ── */
-    --fs-label: 11px;           /* 标签、徽章、角标 */
-    --fs-caption: 12px;         /* 说明、元信息 */
-    --fs-ui: 13px;              /* 控件、导航、紧凑正文 */
-    --fs-body: 14px;            /* 正文 */
-    --fs-heading: 16px;         /* 区块标题、弹窗标题 */
-    --fs-title: 22px;           /* 页面标题 */
-    --fs-display: 32px;         /* hero 数字 / 营销标题 */
-    --lh-body: 1.65;
-    --lh-heading: 1.3;
-    --ls-title: -0.015em;
-
-    /* ── 阴影：两层（贴近的边 + 大而淡的悬浮感）── */
-    --shadow-xs: 0 1px 2px rgba(20, 20, 32, 0.06);
-    --shadow-sm: 0 1px 2px rgba(20, 20, 32, 0.06), 0 2px 8px rgba(20, 20, 32, 0.04);
-    --shadow-md: 0 1px 2px rgba(20, 20, 32, 0.06), 0 4px 16px rgba(20, 20, 32, 0.06);
-    --shadow-lg: 0 1px 3px rgba(20, 20, 32, 0.07), 0 8px 24px rgba(20, 20, 32, 0.08);
-    --shadow-xl: 0 2px 4px rgba(20, 20, 32, 0.07), 0 16px 40px rgba(20, 20, 32, 0.10);
-    --shadow-2xl: 0 2px 6px rgba(20, 20, 32, 0.08), 0 24px 56px rgba(20, 20, 32, 0.14);
-    /* 浮层专用：两个主题都用黑影（--shadow-* 在暗色会翻白、发光刺眼） */
-    --elevation-hairline: inset 0 0 0 1px rgba(17, 17, 17, 0.13);
-    --elevation-card: 0 1px 2px rgba(20, 20, 32, 0.05), 0 2px 8px rgba(20, 20, 32, 0.03);
-    --elevation-overlay: 0 24px 60px rgba(0, 0, 0, 0.20), 0 3px 10px rgba(0, 0, 0, 0.09);
-
-    /* ── 层级：按视觉层划分，不要随手写 z-[37] ── */
-    --z-canvas: 0;
-    --z-canvas-overlay: 5;
-    --z-node: 10;
-    --z-node-active: 20;
-    --z-toolbar: 30;
-    --z-node-toolbar: 50;
-    --z-panel: 60;
-    --z-panel-floating: 80;
-    --z-modal: 100;
-    --z-popover: 200;
-    --z-toast: 500;
-    --z-tooltip: 1150;
-    --z-max: 2000;
-
-    /* ── 动效：UI 过渡只用 150–250ms，退出比进入快 ── */
-    --motion-dur-fast: 150ms;
-    --motion-dur-base: 200ms;
-    --motion-dur-slow: 250ms;
-    --motion-dur-enter: 200ms;
-    --motion-dur-exit: 150ms;
-    --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-    --motion-ease-in-out: cubic-bezier(0.64, 0, 0.36, 1);
-    --motion-ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --motion-scale: 1;
-
-    /* ── 毛玻璃：收敛成一组参数，避免每个组件各写 blur 值 ── */
-    --glass-blur: 10px;
-    --glass-saturate: 112%;
-    --glass-alpha: 0.94;
-    --glass-alpha-strong: 0.97;
-
-    /* ── 描边与不透明度 ── */
-    --stroke-1: 1px;
-    --opa-faint: 0.2;
-    --opa-muted: 0.45;
-    --opa-subtle: 0.55;
-    --opa-medium: 0.72;
-
-    /* ── 间距：8pt 网格 ── */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-5: 20px;
-    --space-6: 24px;
-    --space-8: 32px;
-
-    /* ── 浅色：iOS 分组列表的观感 ── */
-    --border: rgba(0, 0, 0, 0.08);
-    --border-strong: rgba(0, 0, 0, 0.14);
-    --ring: #007AFF;
-    --background: #FFFFFF;
-    --surface: #FFFFFF;
-    --surface-raised: #FFFFFF;
-    --foreground: #1C1C1E;
-    --card: #FFFFFF;
-    --card-foreground: #1C1C1E;
-    --popover: #FFFFFF;
-    --popover-foreground: #1C1C1E;
-    --primary: #007AFF;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F2F2F7;
-    --secondary-foreground: #1C1C1E;
-    --muted: #F2F2F7;
-    --muted-foreground: #8E8E93;
-    --accent: #F2F2F7;
-    --accent-foreground: #1C1C1E;
-    --destructive: #FF3B30;
-    --input: #F2F2F7;
+    --radius: 0.625rem;
+    --border: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --input: oklch(0.922 0 0);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -424,28 +303,24 @@
 }
 
 .dark {
-    /* 深色三档：纯黑底 → 一档浮起 → 再一档（浮层/菜单） */
     --background: #000000;
-    --surface: #181818;         /* 卡片、面板（对应 skin canvas-theme 的 node.fill） */
-    --surface-raised: #1E1E1E;  /* 浮层、菜单 */
-    --foreground: #EDEDED;
-    --border: rgba(255, 255, 255, 0.10);        /* 只做层次感，不当分隔线 */
-    --border-strong: rgba(255, 255, 255, 0.16);
-    --ring: #0A84FF;
-    --card: #181818;
-    --card-foreground: #EDEDED;
-    --popover: #1E1E1E;
-    --popover-foreground: #EDEDED;
-    --primary: #0A84FF;
-    --primary-foreground: #FFFFFF;
+    --foreground: #f5f5f5;
+    --border: #2b2b2d;
+    --ring: #77777b;
+    --card: #19191b;
+    --card-foreground: #f5f5f5;
+    --popover: #19191b;
+    --popover-foreground: #f5f5f5;
+    --primary: #f5f5f5;
+    --primary-foreground: #111111;
     --secondary: #202023;
-    --secondary-foreground: #EDEDED;
-    --muted: #181818;
-    --muted-foreground: #A3A3A3;
-    --accent: rgba(255, 255, 255, 0.08);
-    --accent-foreground: #EDEDED;
-    --destructive: #FF453A;
-    --input: rgba(255, 255, 255, 0.06);
+    --secondary-foreground: #f5f5f5;
+    --muted: #19191b;
+    --muted-foreground: #a0a0a4;
+    --accent: #27272a;
+    --accent-foreground: #f5f5f5;
+    --destructive: oklch(0.704 0.191 22.216);
+    --input: #303034;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -459,29 +334,6 @@
     --sidebar-accent-foreground: #f5f5f5;
     --sidebar-border: #2b2b2d;
     --sidebar-ring: #77777b;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    :root {
-        /* 动效降级：全局把时长压到 30%，组件不需要各自判断。 */
-        --motion-scale: 0.3;
-    }
-}
-
-/*
- * antd 浮层：套用同一套圆角和毛玻璃。
- * antd 默认是 8px 圆角 + 硬边框 + 不透明底，和画布里的浮层放一起明显不是一套语言。
- */
-.ant-dropdown .ant-dropdown-menu,
-.ant-select-dropdown,
-.ant-picker-dropdown .ant-picker-panel-container,
-.ant-popover .ant-popover-inner,
-.ant-modal .ant-modal-content,
-.ant-drawer .ant-drawer-content {
-    border-radius: var(--radius-overlay);
-    border: 1px solid var(--border);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 /* Keep portalled Ant Design overlays on the same quiet graphite surface. */

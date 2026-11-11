@@ -19,22 +19,17 @@ export function AppTopNav() {
 
     return (
         <>
-            {/*
-              顶栏：不做硬边框分隔，靠 backdrop-blur 的一层薄雾把内容和画布分开。
-              导航项改成胶囊 —— 选中项是填充块，未选中只有文字和图标。
-              影策的分层全靠填充和留白，不用下划线。
-            */}
             {!hideHeader ? (
-                <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-border bg-background/75 backdrop-blur-2xl backdrop-saturate-150">
+                <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
                     <div className="grid h-full grid-cols-[1fr_auto_1fr] items-center gap-5 px-6">
                         <div className="flex min-w-0 items-center">
-                            <Link to="/" className="flex h-full shrink-0 items-center text-sm font-semibold leading-none tracking-tight text-foreground transition hover:opacity-70">
-                                <span className="text-base font-semibold tracking-[-0.01em]">{t("meta.title")}</span>
+                            <Link to="/" className="flex h-full shrink-0 items-center text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:text-stone-600 dark:text-stone-100 dark:hover:text-stone-300">
+                                <span className="text-base font-medium">{t("meta.title")}</span>
                             </Link>
 
                             <button
                                 type="button"
-                                className="ml-3 inline-flex size-8 shrink-0 items-center justify-center rounded-control text-muted-foreground transition hover:bg-accent hover:text-foreground md:hidden"
+                                className="ml-3 inline-flex size-8 shrink-0 items-center justify-center text-stone-600 transition hover:text-stone-950 md:hidden dark:text-stone-300 dark:hover:text-white"
                                 onClick={() => setMobileNavOpen(true)}
                                 aria-label={t("topNav.openMenu")}
                                 title={t("topNav.menu")}
@@ -43,7 +38,7 @@ export function AppTopNav() {
                             </button>
                         </div>
 
-                        <nav className="hide-scrollbar hidden h-full min-w-0 items-center justify-center gap-1 overflow-x-auto md:flex">
+                        <nav className="hide-scrollbar hidden h-full min-w-0 items-center justify-center gap-7 overflow-x-auto md:flex">
                             {navigationTools.map((tool) => {
                                 const Icon = tool.icon;
                                 const active = tool.slug === activeToolSlug;
@@ -52,10 +47,8 @@ export function AppTopNav() {
                                         key={tool.slug}
                                         to={"href" in tool ? tool.href : `/${tool.slug}`}
                                         className={cn(
-                                            "flex h-9 shrink-0 items-center gap-2 rounded-pill px-3.5 text-sm leading-6 transition-colors duration-200",
-                                            active
-                                                ? "bg-accent font-medium text-foreground"
-                                                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                                            "relative flex h-14 shrink-0 items-center gap-2 text-sm leading-6 transition after:absolute after:inset-x-0 after:bottom-0 after:h-px",
+                                            active ? "font-medium text-stone-950 after:bg-stone-950 dark:text-stone-100 dark:after:bg-stone-100" : "text-stone-500 after:bg-transparent hover:text-stone-950 dark:text-stone-400 dark:hover:text-stone-100",
                                         )}
                                     >
                                         <Icon className="size-4" />

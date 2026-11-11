@@ -439,11 +439,9 @@ export default {
     },
     canvas: {
         defaultTitle: "OpenCanvas {{count}}",
-        // Inside a group node: empty hint and collapse controls.
+        // Inside a group node: shown while the group is still empty.
         group: {
             emptyHint: "Drop nodes here, or select several and press Ctrl+G",
-            collapse: "Collapse members",
-            expand: "Expand members",
         },
         library: "Canvas library",
         title: "OpenCanvas",

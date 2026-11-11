@@ -108,10 +108,7 @@ export type CanvasNodeMetadata = {
     videoTaskId?: string;
     videoTaskProvider?: "openai" | "gemini";
     generationRequest?: CanvasGenerationRequestRecord;
-    /** @deprecated 用顶层的 CanvasNodeData.parentId；保留只为了打开老画布。 */
     groupId?: string;
-    /** 组折叠后只显示头部，成员在画布上隐藏。仅组节点使用。 */
-    collapsed?: boolean;
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
 };
 
@@ -122,14 +119,6 @@ export type CanvasNodeData = {
     position: Position;
     width: number;
     height: number;
-    /**
-     * 所属组的 id（组的类型是 Group）。
-     *
-     * 放在顶层而不是 metadata 里：归属是结构关系，不是节点的可选属性，
-     * 顶层字段能让「查子节点」「判祖先」这些操作一眼看明白。
-     * 老数据用 metadata.groupId 表达，打开画布时由 normalizeFrameParents 提升过来。
-     */
-    parentId?: string;
     metadata?: CanvasNodeMetadata;
 };
 
