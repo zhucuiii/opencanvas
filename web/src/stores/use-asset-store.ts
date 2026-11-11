@@ -3,6 +3,7 @@ import { persist, type PersistStorage, type StorageValue } from "zustand/middlew
 
 import { nanoid } from "nanoid";
 import { localForageStorage } from "@/lib/localforage-storage";
+import { parsePersistedState } from "@/lib/safe-persist";
 import { cleanupUnusedImages, ensureImagePreview, previewUrlFor, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { cleanupUnusedMedia, resolveMediaUrl } from "@/services/file-storage";
 
@@ -48,7 +49,11 @@ const assetStorage: PersistStorage<AssetStore> = {
     getItem: async (name) => {
         const value = await localForageStorage.getItem(name);
         if (!value) return null;
-        const parsed = JSON.parse(value) as StorageValue<AssetStore>;
+        // 存档损坏时按「没有存档」恢复，避免 hydrated 卡在 false。详见 lib/safe-persist.ts。
+        const parsed = parsePersistedState<AssetStore>(value, `${ASSET_STORE_KEY}:corrupt`);
+        if (!parsed) return null;
+        // assets 缺失或不是数组时同样不能硬往下走，否则 .map 直接抛错。
+        if (!Array.isArray(parsed.state.assets)) return null;
         parsed.state.assets = await Promise.all(
             parsed.state.assets.map(async (asset) => {
                 if (asset.kind === "video" && asset.data.storageKey) return { ...asset, data: { ...asset.data, url: await resolveMediaUrl(asset.data.storageKey, asset.data.url) } };

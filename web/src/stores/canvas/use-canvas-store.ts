@@ -4,6 +4,7 @@ import { persist, type PersistStorage, type StorageValue } from "zustand/middlew
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import { localForageStorage } from "@/lib/localforage-storage";
+import { parsePersistedState } from "@/lib/safe-persist";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { normalizeCanvasAppearance, readCanvasAppearanceDefault, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
@@ -61,7 +62,10 @@ const canvasStorage: PersistStorage<CanvasStore> = {
     getItem: async (name) => {
         const value = await localForageStorage.getItem(name);
         if (!value) return null;
-        const parsed = JSON.parse(value) as StorageValue<CanvasStore>;
+        // 存档损坏时按「没有存档」恢复，否则 rehydrate 抛错会让 hydrated 永远停在 false，
+        // 画布页就一直卡在「打开中」。详见 lib/safe-persist.ts。
+        const parsed = parsePersistedState<CanvasStore>(value, `${CANVAS_STORE_KEY}:corrupt`);
+        if (!parsed) return null;
         queuedPersistState = parsed.state as PersistedCanvasState;
         return parsed;
     },
