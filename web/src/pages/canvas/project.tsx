@@ -62,6 +62,7 @@ import {
     connectedNodePosition,
     findContainingGroupId,
     findGroupDropTarget,
+    refitGroupWraps,
     focusViewportForNode,
     getConnectionTargetAnchor,
     getGroupWrapRect,
@@ -1004,11 +1005,13 @@ function InfiniteCanvasPage() {
             const allIds = new Set(ids);
             setNodes((prev) => {
                 const next = prev.filter((node) => !allIds.has(node.id));
-                return next.map((node) => {
+                const releveled = next.map((node) => {
                     const groupId = node.metadata?.groupId;
                     if (groupId && allIds.has(groupId)) return { ...node, metadata: { ...node.metadata, groupId: undefined } };
                     return node;
                 });
+                // 删掉成员后组框会空出一块，跟着收一下。
+                return refitGroupWraps(releveled);
             });
             setConnections((prev) => prev.filter((conn) => !allIds.has(conn.fromNodeId) && !allIds.has(conn.toNodeId)));
             setSelectedNodeIds(new Set());
@@ -1476,13 +1479,16 @@ function InfiniteCanvasPage() {
                     return initial ? { ...node, position: { x: initial.x + dx, y: initial.y + dy } } : node;
                 });
                 const targetGroup = findGroupDropTarget(movedIds, moved);
-                if (targetGroup) return snapNodesIntoGroup(movedIds, moved, targetGroup);
-                return moved.map((node) => {
-                    if (!movedIds.has(node.id) || node.type === CanvasNodeType.Group) return node;
-                    const groupId = findContainingGroupId(node, moved);
-                    if (node.metadata?.groupId === groupId) return node;
-                    return { ...node, metadata: { ...node.metadata, groupId } };
-                });
+                // 松手后才重算组框：拖动过程中逐帧改组尺寸会让框自己追着自己跑。
+                if (targetGroup) return refitGroupWraps(snapNodesIntoGroup(movedIds, moved, targetGroup));
+                return refitGroupWraps(
+                    moved.map((node) => {
+                        if (!movedIds.has(node.id) || node.type === CanvasNodeType.Group) return node;
+                        const groupId = findContainingGroupId(node, moved);
+                        if (node.metadata?.groupId === groupId) return node;
+                        return { ...node, metadata: { ...node.metadata, groupId } };
+                    }),
+                );
             });
         }
 

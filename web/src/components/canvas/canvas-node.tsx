@@ -346,6 +346,8 @@ export const CanvasNode = React.memo(function CanvasNode({
             }}
         >
             {!referenceSelectionState && (
+                // 组的标题也走这条（画在框外上方）。组的 z-index 是 5、子节点是 10，
+                // 画在框内部会被第一个成员盖住；框外这一条没有节点，永远读得清。
                 <div className="absolute left-0 top-[-28px] z-[65] max-w-full" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
@@ -376,7 +378,14 @@ export const CanvasNode = React.memo(function CanvasNode({
                             }}
                         >
                             {data.type === CanvasNodeType.Image ? <Palette className="size-4 shrink-0" /> : null}
+                            {isGroup ? <Group className="size-3.5 shrink-0" style={{ color: theme.node.muted }} /> : null}
                             {data.title || t("canvas.node.untitled")}
+                            {/* 组的成员数跟在标题后面，和虚线外框一起构成"这是一个容器"的信号。 */}
+                            {isGroup ? (
+                                <span className="shrink-0 text-[11px] font-normal" style={{ color: theme.node.muted }}>
+                                    {t("canvas.node.nodeCount", { count: groupChildCount })}
+                                </span>
+                            ) : null}
                         </button>
                     )}
                 </div>
@@ -389,7 +398,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                     borderColor: isGroup
                         ? isGroupDropTarget || isActive
                             ? isSelected ? "#f5f5f5" : selectionBlue
-                            : theme.node.stroke
+                            // 组框要明显一点：node.stroke 在深色主题下只有 12% 白，虚线框几乎看不见。
+                            // 这里用 muted 色（深色 #a3a3a3 / 浅色 #6b7280）压到 55%，既看得清又不抢戏。
+                            : `color-mix(in srgb, ${theme.node.muted} 55%, transparent)`
                         : hasImageContent
                           ? isBatchImage
                               ? "transparent"
@@ -562,17 +573,23 @@ const nodeContentRenderers = {
     [CanvasNodeType.Group]: GroupNodeContent,
 } satisfies Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>;
 
-function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererProps) {
+/**
+ * 组的内容区 —— 只负责空组时的引导文案。
+ *
+ * 标题不画在这里：组的 z-index 是 5、子节点是 10，画在框内会被第一个成员压住，
+ * 所以组的名称统一走节点自带的框外标题（见 JSX 里那处 absolute top-[-28px]）。
+ * 成员有内容时也不在框内铺缩略图 —— 子节点本身就是浮在上面的真节点，
+ * 再铺一层只会叠成重影。组的视觉身份由「虚线外框 + 框外标题」表达。
+ */
+function GroupNodeContent({ theme, groupChildCount }: NodeContentRendererProps) {
     const { t } = useTranslation();
+    if (groupChildCount > 0) return null;
     return (
-        <div className="pointer-events-none flex h-full w-full p-3">
-            <div className="flex h-7 max-w-full items-center gap-2 px-1 text-xs font-medium" style={{ color: theme.node.text }}>
-                <Group className="size-3.5 shrink-0" style={{ color: theme.node.muted }} />
-                <span className="truncate">{node.title || t("canvas.node.group")}</span>
-                <span className="shrink-0 text-[11px] font-normal" style={{ color: theme.node.muted }}>
-                    {t("canvas.node.nodeCount", { count: groupChildCount })}
-                </span>
-            </div>
+        <div className="pointer-events-none flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
+            <Group className="size-6 opacity-25" style={{ color: theme.node.muted }} />
+            <p className="text-[11px] leading-5" style={{ color: theme.node.muted }}>
+                {t("canvas.group.emptyHint")}
+            </p>
         </div>
     );
 }

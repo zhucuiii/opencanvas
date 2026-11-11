@@ -439,6 +439,10 @@ export default {
     },
     canvas: {
         defaultTitle: "OpenCanvas {{count}}",
+        // Inside a group node: shown while the group is still empty.
+        group: {
+            emptyHint: "Drop nodes here, or select several and press Ctrl+G",
+        },
         library: "Canvas library",
         title: "OpenCanvas",
         imported: "Imported {{count}} canvases",

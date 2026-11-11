@@ -79,6 +79,52 @@ export function getGroupWrapRect(members: CanvasNodeData[]) {
     };
 }
 
+/** 组框比成员范围多留的余量，用来判断「要不要重算」——小于这个值不值得动。 */
+const GROUP_REFIT_EPSILON = 6;
+
+/**
+ * 让每个组框重新包住它当前的成员。
+ *
+ * 成组那一刻的尺寸是算准的，但之后成员会被拖动、缩放、删除、或者从外面拖进组里，
+ * 组框就慢慢对不上了 —— 要么成员露到框外，要么框里空出一大块。
+ * 这里在节点列表变化时统一收口：谁有成员就按成员重新算，没有成员的组保持原样
+ * （空组仍可当占位框用）。尺寸变化小于 EPSILON 时不改，避免每帧都产生新对象
+ * 把这些节点推去重渲染。
+ *
+ * 返回原数组引用（没有组需要调整时），调用方据此判断要不要 setState。
+ */
+export function refitGroupWraps(nodes: CanvasNodeData[]): CanvasNodeData[] {
+    const membersByGroup = new Map<string, CanvasNodeData[]>();
+    for (const node of nodes) {
+        if (node.type === CanvasNodeType.Group) continue;
+        const groupId = node.metadata?.groupId;
+        if (!groupId) continue;
+        const list = membersByGroup.get(groupId);
+        if (list) list.push(node);
+        else membersByGroup.set(groupId, [node]);
+    }
+    if (membersByGroup.size === 0) return nodes;
+
+    let changed = false;
+    const next = nodes.map((node) => {
+        if (node.type !== CanvasNodeType.Group) return node;
+        const members = membersByGroup.get(node.id);
+        if (!members?.length) return node;
+        const rect = getGroupWrapRect(members);
+        if (
+            Math.abs(rect.x - node.position.x) < GROUP_REFIT_EPSILON &&
+            Math.abs(rect.y - node.position.y) < GROUP_REFIT_EPSILON &&
+            Math.abs(rect.width - node.width) < GROUP_REFIT_EPSILON &&
+            Math.abs(rect.height - node.height) < GROUP_REFIT_EPSILON
+        ) {
+            return node;
+        }
+        changed = true;
+        return { ...node, position: { x: rect.x, y: rect.y }, width: rect.width, height: rect.height };
+    });
+    return changed ? next : nodes;
+}
+
 export function canGroupSelectedNodes(selectedIds: Set<string>, nodes: CanvasNodeData[]) {
     const members = collectGroupMemberNodes(selectedIds, nodes);
     if (members.length < 2) return false;

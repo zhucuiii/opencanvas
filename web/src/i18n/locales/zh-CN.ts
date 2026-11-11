@@ -424,6 +424,10 @@ export default {
     },
     canvas: {
         defaultTitle: "OpenCanvas {{count}}",
+        // 组节点内部：空组时的提示。
+        group: {
+            emptyHint: "把节点拖进这里，或选中多个节点后按 Ctrl+G 成组",
+        },
         library: "画布库",
         title: "OpenCanvas",
         imported: "已导入 {{count}} 个画布",
